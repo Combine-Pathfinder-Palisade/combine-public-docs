@@ -1,1 +1,0 @@
-arn:aws:iam::385268266302:role/combine-partner-role
