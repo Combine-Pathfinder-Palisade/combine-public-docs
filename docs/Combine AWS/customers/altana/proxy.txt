@@ -1,0 +1,7 @@
+Combine Proxy Server:
+
+  VPC: Combine
+
+    IP: 54.209.4.237
+    User: ec2-user
+
