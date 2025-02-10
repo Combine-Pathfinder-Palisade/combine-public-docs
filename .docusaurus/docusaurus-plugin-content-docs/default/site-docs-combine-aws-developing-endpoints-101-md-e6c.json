@@ -1,0 +1,26 @@
+{
+  "id": "Combine AWS/developing/endpoints-101",
+  "title": "Endpoints 101",
+  "description": "Sparse checklist to get feet wet/troubleshooting:",
+  "source": "@site/docs/Combine AWS/developing/endpoints-101.md",
+  "sourceDirName": "Combine AWS/developing",
+  "slug": "/Combine AWS/developing/endpoints-101",
+  "permalink": "/Combine AWS/developing/endpoints-101",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/Combine-Pathfinder-Palisade/combine-docs/blob/main/docs/Combine AWS/developing/endpoints-101.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Author",
+  "lastUpdatedAt": 1539502055000,
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "walk-through-endpointservletimplementation",
+    "permalink": "/Combine AWS/developing/combine-101/walk-through-endpointservletimplementation"
+  },
+  "next": {
+    "title": "Tag a Release",
+    "permalink": "/Combine AWS/developing/tag-a-release"
+  }
+}

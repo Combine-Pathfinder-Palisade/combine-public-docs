@@ -1,0 +1,26 @@
+{
+  "id": "Combine AWS/deploying-maintaining/how-tos/how-to-configure-airgap",
+  "title": "How To: Configure AirGap Layer",
+  "description": "There are several options to control the AirGap layer behavior in Combine. These are configured via configuration parameters in the combine-vpc.yaml template.",
+  "source": "@site/docs/Combine AWS/deploying-maintaining/how-tos/how-to-configure-airgap.md",
+  "sourceDirName": "Combine AWS/deploying-maintaining/how-tos",
+  "slug": "/Combine AWS/deploying-maintaining/how-tos/how-to-configure-airgap",
+  "permalink": "/Combine AWS/deploying-maintaining/how-tos/how-to-configure-airgap",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/Combine-Pathfinder-Palisade/combine-docs/blob/main/docs/Combine AWS/deploying-maintaining/how-tos/how-to-configure-airgap.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Author",
+  "lastUpdatedAt": 1539502055000,
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "How-Tos",
+    "permalink": "/category/how-tos"
+  },
+  "next": {
+    "title": "How To: Modify Customer Firewall Rules",
+    "permalink": "/Combine AWS/deploying-maintaining/how-tos/how-to-configure-customer-firewall"
+  }
+}

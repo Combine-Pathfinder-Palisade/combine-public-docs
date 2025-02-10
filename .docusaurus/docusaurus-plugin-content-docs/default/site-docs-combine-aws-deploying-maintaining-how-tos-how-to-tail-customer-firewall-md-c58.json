@@ -1,0 +1,26 @@
+{
+  "id": "Combine AWS/deploying-maintaining/how-tos/how-to-tail-customer-firewall",
+  "title": "How To: Tail a Customer Firewall to Check for Dropped Traffic",
+  "description": "Steps",
+  "source": "@site/docs/Combine AWS/deploying-maintaining/how-tos/how-to-tail-customer-firewall.md",
+  "sourceDirName": "Combine AWS/deploying-maintaining/how-tos",
+  "slug": "/Combine AWS/deploying-maintaining/how-tos/how-to-tail-customer-firewall",
+  "permalink": "/Combine AWS/deploying-maintaining/how-tos/how-to-tail-customer-firewall",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/Combine-Pathfinder-Palisade/combine-docs/blob/main/docs/Combine AWS/deploying-maintaining/how-tos/how-to-tail-customer-firewall.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Author",
+  "lastUpdatedAt": 1539502055000,
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "How To: Run Java Through Socks Proxy with proxychains",
+    "permalink": "/Combine AWS/deploying-maintaining/how-tos/how-to-run-java-through-proxychains"
+  },
+  "next": {
+    "title": "How To: Update Combine Service Parity Definitions",
+    "permalink": "/Combine AWS/deploying-maintaining/how-tos/how-to-update-service-parity"
+  }
+}

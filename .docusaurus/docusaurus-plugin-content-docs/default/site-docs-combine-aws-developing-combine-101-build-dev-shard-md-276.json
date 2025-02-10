@@ -1,0 +1,26 @@
+{
+  "id": "Combine AWS/developing/combine-101/build-dev-shard",
+  "title": "Building a Developer Shard",
+  "description": "Prerequisites",
+  "source": "@site/docs/Combine AWS/developing/combine-101/build-dev-shard.md",
+  "sourceDirName": "Combine AWS/developing/combine-101",
+  "slug": "/Combine AWS/developing/combine-101/build-dev-shard",
+  "permalink": "/Combine AWS/developing/combine-101/build-dev-shard",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/Combine-Pathfinder-Palisade/combine-docs/blob/main/docs/Combine AWS/developing/combine-101/build-dev-shard.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Author",
+  "lastUpdatedAt": 1539502055000,
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "The Combine Automation Tool",
+    "permalink": "/Combine AWS/developing/combine-101/automation-tool"
+  },
+  "next": {
+    "title": "Connecting to the Bastion Server via SSH",
+    "permalink": "/Combine AWS/developing/combine-101/get-into-bastion"
+  }
+}

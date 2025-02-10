@@ -1,0 +1,26 @@
+{
+  "id": "Combine AWS/deploying-maintaining/other-commands",
+  "title": "Other Commands",
+  "description": "last updated: 1/6/2025",
+  "source": "@site/docs/Combine AWS/deploying-maintaining/other-commands.md",
+  "sourceDirName": "Combine AWS/deploying-maintaining",
+  "slug": "/Combine AWS/deploying-maintaining/other-commands",
+  "permalink": "/Combine AWS/deploying-maintaining/other-commands",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/Combine-Pathfinder-Palisade/combine-docs/blob/main/docs/Combine AWS/deploying-maintaining/other-commands.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Author",
+  "lastUpdatedAt": 1539502055000,
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Minor Upgrade",
+    "permalink": "/Combine AWS/deploying-maintaining/minor-upgrade"
+  },
+  "next": {
+    "title": "Support Duties",
+    "permalink": "/Combine AWS/deploying-maintaining/support-duties"
+  }
+}

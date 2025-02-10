@@ -1,0 +1,26 @@
+{
+  "id": "Combine AWS/developing/combine-101/automation-tool",
+  "title": "The Combine Automation Tool",
+  "description": "TODO write description of the Automation tool, how we use it, what a CombineCommand is, etc",
+  "source": "@site/docs/Combine AWS/developing/combine-101/automation-tool.md",
+  "sourceDirName": "Combine AWS/developing/combine-101",
+  "slug": "/Combine AWS/developing/combine-101/automation-tool",
+  "permalink": "/Combine AWS/developing/combine-101/automation-tool",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/Combine-Pathfinder-Palisade/combine-docs/blob/main/docs/Combine AWS/developing/combine-101/automation-tool.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Author",
+  "lastUpdatedAt": 1539502055000,
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Combine 101",
+    "permalink": "/Combine AWS/developing/combine-101/"
+  },
+  "next": {
+    "title": "Building a Developer Shard",
+    "permalink": "/Combine AWS/developing/combine-101/build-dev-shard"
+  }
+}
