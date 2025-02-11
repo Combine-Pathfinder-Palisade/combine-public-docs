@@ -13,14 +13,14 @@ const config: Config = {
   url: 'https://combine-pathfinder-palisade.github.io/',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: '/combine-public-docs/',
   trailingSlash: false,
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'combine-pathfinder-palisade', // Usually your GitHub org/user name.
-  projectName: 'combine-docs', // Usually your repo name.
-  deploymentBranch: 'main',
+  projectName: 'combine-public-docs', // Usually your repo name.
+  deploymentBranch: 'gh-pages',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -42,7 +42,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/Combine-Pathfinder-Palisade/combine-docs/blob/main',
+            'https://github.com/Combine-Pathfinder-Palisade/combine-public-docs/blob/main',
           routeBasePath: '/',
           path: 'docs',
           showLastUpdateAuthor: true,
@@ -57,7 +57,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/Combine-Pathfinder-Palisade/combine-docs',
+            'https://github.com/Combine-Pathfinder-Palisade/combine-public-docs',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
