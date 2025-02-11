@@ -16,13 +16,13 @@ function HomepageHeader() {
           Welcome to the {siteConfig.title}!
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
+        {/* <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
             to="/category/onboarding">
             🚀 Get Onboarded
           </Link>
-        </div>
+        </div> */}
         <br></br>
         <div>
           <Link
