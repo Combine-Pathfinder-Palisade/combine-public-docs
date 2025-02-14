@@ -16,7 +16,7 @@ Here's the process:
 - deploy to customer
 - upon successful deploy (i..e hear back from customer that it works):
 	- push the _first_ commit (i.e. the code change + release note change) into master via squash commit
-    - you can also `cherrypick`, just as long as the change and the release notes are merged into `master`
+    - you can also `cherry-pick`, just as long as the change and the release notes are merged into `master`
 - tag your new tag from your hotfix branch, with `git tag bricks_v_3_13_1_1` in this case
 - push the tag, i.e. `git push origin tag bricks_v_3_13_1_1`
 
