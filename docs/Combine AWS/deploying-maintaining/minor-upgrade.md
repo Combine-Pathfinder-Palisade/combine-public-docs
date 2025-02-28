@@ -2,7 +2,7 @@
 
 ## How to Upgrade a Customer Account
 
-1. Go into the `combine-account-automation` directory and checkout the current tag (e.g. `git checkout bricks_v_3_13_2`)
+1. Go into the `combine-aws` repository and checkout the current tag (e.g. `git checkout bricks_v_3_13_2`)
 
 4. Build and deploy the Combine components:
     - for versions 3.13 and later: 
