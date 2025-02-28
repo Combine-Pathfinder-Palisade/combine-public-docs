@@ -7,8 +7,9 @@
 4. Build and deploy the Combine components:
     - for versions 3.13 and later: 
       - Perform a `mvn clean package install` in root directory of the `combine-aws` repository. This will build all Combine components and package them as needed.
+      - `cd` into `combine-account-automation`
       - Perform this command to do the upgrade: 
-        - On Mac/Linux: `java -classpath "combine-account-automation/lib/*:combine-account-automation/target/*" com.sequoia.combine.accounts.CombineCommandExecutor migrate_to_3_dot_x --config-store-profile <customer name from clients.json> --bricks-release-version <version number>` (Bricks Version numbers use the format: `bricks_v_<major>_<minor>`.)
+        - On Mac/Linux: `java -classpath "lib/*:target/*" com.sequoia.combine.accounts.CombineCommandExecutor migrate_to_3_dot_x --config-store-profile <customer name from clients.json> --bricks-release-version <version number>` (Bricks Version numbers use the format: `bricks_v_<major>_<minor>`.)
         - On Windows: `java -classpath lib/*;target/* com.sequoia.combine.accounts.CombineCommandExecutor migrate_to_3_dot_x --config-store-profile <customer name from clients.json> --bricks-release-version <version number>` (Bricks Version numbers use the format: `bricks_v_<major>_<minor>`.)
     - for versions prior to 3.13:
       - Perform a `npm i && npm run build` in the `combine-tap/tap-dashboard` directory.
