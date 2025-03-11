@@ -41,3 +41,7 @@ A more precise style guide will be determined soon, but for now here are a few c
 ### How it's Deployed
 
 The deployment pipeline is still being worked out, but it will involve [Github Actions](https://docs.github.com/en/actions) to deploy a new version of the site every time we push to the main branch.
+
+### Security Best Practices
+
+Sequoia expects customers to adhere to our [Security Best Practices](/security).
