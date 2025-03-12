@@ -78,7 +78,7 @@
 
 8. Update our customer list: [Customer Accounts Spreadsheet](https://sequoiaholdingsllc-my.sharepoint.com/:x:/g/personal/bking_sequoiainc_com/EfVi7XircpJIsS2v8HHknPcBuRV2Lh3efr3AHteAP_VEcA?e=WfGGpt)
 
-9. You also need to add an entry for the customer in the `combine-aws-customers/customers` repo. This includes the certs, `passwords.txt` file, `tap.txt` file, `README.txt`, etc.
+9. You also need to add an entry for the customer in the `Combine AWS/customers/` directory in the `combine-docs` repo. This includes the certs, `passwords.txt` file, `tap.txt` file, `README.txt`, etc.
     - `tap.txt` should contain the url of the Load Balancer that points to the customer's TAP Autoscaling group.
 
 
