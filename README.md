@@ -29,19 +29,8 @@ $ npm run build
 This command generates static content into the `build` directory and can be served using any static contents hosting service.
 
 
-### 👇 this does not work yet
-### Deployment
+### Miscellaneous
 
-Using SSH:
+This repository uses a github access token to deploy a public version of this site, which lives at [public-docs.sequoiacombine.io](https://public-docs.sequoiacombine.io). The access token has a max life of 366 days, after which it will need to be renewed. See [this wiki](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) to generate a new token.
 
-```
-$ USE_SSH=true npm run deploy
-```
-
-Not using SSH:
-
-```
-$ GIT_USER=<Your GitHub username> npm run deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+The DNS records for both this site [docs.sequoiacombine.io](docs.sequoiacombine.io) and the [public-docs.sequoiacombine.io](https://public-docs.sequoiacombine.io) live in our [dev account's Route 53 console](https://us-east-1.console.aws.amazon.com/route53/v2/hostedzones?region=us-east-1#ListRecordSets/ZD3F9THWWHYA3).
