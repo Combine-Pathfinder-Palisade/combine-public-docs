@@ -57,10 +57,11 @@
 
 5. Build and deploy the Combine components:
     - for versions 3.13 and later: 
-      - Perform a `mvn clean package install` in root directory of the `combine-aws` repository. This will build all Combine components and package them as needed.
-      - Perform the actual deploy:
-        - On Mac/Linux: `java -classpath "combine-account-automation/lib/*:combine-account-automation/target/*" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <customer name from clients.json> --bricks-release-version <version number>` (Bricks Version numbers use the format: `bricks_v_<major>_<minor>`.)
-        - On Windows: `java -classpath lib/*;target/* com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <customer name from clients.json> --bricks-release-version <version number>` (Bricks Version numbers use the format: `bricks_v_<major>_<minor>`.)
+      - simply run `deploy-full.sh` in the `combine-account-automation/scripts` directory. Or you can do it the hard way:
+        - Perform a `mvn clean package install` in root directory of the `combine-aws` repository. This will build all Combine components and package them as needed.
+        - Perform the actual deploy:
+          - On Mac/Linux: `java -classpath "combine-account-automation/lib/*:combine-account-automation/target/*" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <customer name from clients.json> --bricks-release-version <version number>` (Bricks Version numbers use the format: `bricks_v_<major>_<minor>`.)
+          - On Windows: `java -classpath lib/*;target/* com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <customer name from clients.json> --bricks-release-version <version number>` (Bricks Version numbers use the format: `bricks_v_<major>_<minor>`.)
     - for versions prior to 3.13:
       - Perform a `npm i && npm run build` in the `combine-tap/tap-dashboard` directory.
       - Perform a `mvn clean install` on the following directories:
@@ -79,3 +80,10 @@
 
 9. You also need to add an entry for the customer in the `combine-aws-customers/customers` repo. This includes the certs, `passwords.txt` file, `tap.txt` file, `README.txt`, etc.
     - `tap.txt` should contain the url of the Load Balancer that points to the customer's TAP Autoscaling group.
+
+
+------
+
+## FAQs
+
+If you encounter the `Insufficient Elastic IP Addresss available in account!` error in the automation tool, you will need to federate into the customer's account, go to the Service Quotas, and request an increase on the `EC2-VPC Elastic IPs` to at least 10.
