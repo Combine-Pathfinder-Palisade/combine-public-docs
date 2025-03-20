@@ -23,4 +23,4 @@ The default for these is `2147483647`, try setting them to `134217728`.
 
 To do this via DynamoDb, create an item and set `parameter_name` to `combine.endpoints.aws.request.tunneling.threshold`, and add an attribute for `parameter_value` with the value set to `134217728`, shown below:
 
-![Image](/aws/broken-pipe.png)
+![Image](#) (Restricted Access)

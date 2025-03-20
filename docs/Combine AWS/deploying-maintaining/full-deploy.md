@@ -87,7 +87,7 @@
   - run an `npm run build` on the project to ensure that there are no broken links
   - `git push main` and you're good to go!
 
-11. Last thing! Add their account switch link [here](/account-switching)
+11. Last thing! Add their account switch link [here](#) (Restricted Access)
 
 ------
 

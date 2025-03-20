@@ -4,7 +4,7 @@
 
 
 A diagram:
-![Combine Architecture](/aws/combine-architecture.png)
+![Combine Architecture](#) (Restricted Access)
 
 
 TODOs:
