@@ -82,6 +82,7 @@
 
 10. You also need to add an entry for the customer in the `Combine AWS/customers/` directory in the `combine-docs` repo. This includes the certs and all other files in the bundle.
   - Duplicate the `/CUSTOMER_TEMPLATE` directory inside the `/customers`
+  - MAKE SURE THE DIRECTORY NAME FOR THE CUSTOMER IS LOWERCASE, and use underscores (_) for customers who have more than one word in their name
   - Go in and rename everything with the customer's name, add the TAP url, etc
   - run an `npm run build` on the project to ensure that there are no broken links
   - `git push main` and you're good to go!
