@@ -5,6 +5,10 @@ Here is where scratch notes and potentially-permanent notes will go for the Dash
 ## Discussion Topics for Frontend Working Sessions
 
 - should we use a different framework than Angular?
+  - we should do a basic hello world with a few different ones to get some experience with them
+- what are the the pros/coons with the existing dashboard (which runs Angular 14)
+  - Angular 15 and forward requires use of MDC components which requires rewrite of a lot of our styling..
+  - some bugs that we need to crush
 - should we bundle the frontend into the backend api jar?
   - seems like we should, since this works just fine now
 
