@@ -81,7 +81,10 @@
 9. If the customer has given us tap users we'll need to add them to their tap dashboard.
 
 10. You also need to add an entry for the customer in the `Combine AWS/customers/` directory in the `combine-docs` repo. This includes the certs and all other files in the bundle.
-  - You'll also need to add a `<customer-name>.md`, you can copy this from an existing customer directory and just change the customer name, TAP url, etc
+  - Duplicate the `/CUSTOMER_TEMPLATE` directory inside the `/customers`
+  - Go in and rename everything with the customer's name, add the TAP url, etc
+  - run an `npm run build` on the project to ensure that there are no broken links
+  - `git push main` and you're good to go!
 
 11. Last thing! Add their account switch link [here](/account-switching)
 
