@@ -3,6 +3,7 @@
 - update combine-provisioning role
 - must rebuild bastion server due to change in ssh key.
 - manually require IMDSv2 on Bastion server?
+- if doing a disconnected deployment - check customer's `clients.json` to see if their clients object be updated with any new values. (maybe the bucket KMS key field?)
 
 Salesforce:
 - enable deletion protection for Tap/Endpoints LB
