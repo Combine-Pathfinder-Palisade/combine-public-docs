@@ -3,7 +3,7 @@
 ## Prerequisites
 1. maven
 2. java openjdk 17
-3. Bouncy Castle encryption library `bcprov-jdk18on-1.78.1.jar` in `combine-aws/account-automation/lib/`
+3. Bouncy Castle encryption library `bcprov-jdk18on-1.78.1.jar` in `combine-aws/combine-account-automation/lib/`
 
 ### 1. Pull the latest release tag for deployment to the dev shard from the git repository
 
@@ -58,7 +58,7 @@
   - **For versions 3.13 and later:**
     - Perform a `mvn clean package install` in the `combine-aws` directory. This will build all Combine components and package them as needed.
     - *Troubleshooting*
-      - If installation doesn't work from the `combine-aws` directory then try running the `mvn` command in `combine-aws/combine-account/automation`
+      - If installation doesn't work from the `combine-aws` directory then try running the `mvn` command in `combine-aws/combine-account-automation`
       - For a `Could not resolve dependencies` error use the following `grep` format to identify mismatched release values in `pom.xml` files throughout the Combine directories:
         - `cd` in to the `combine-aws` directory and run the following grep command:
           `grep -rn . -e '<version>3\.13.*'`
