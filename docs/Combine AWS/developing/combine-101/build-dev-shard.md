@@ -56,7 +56,8 @@
 
 ### 3. Build and deploy the Combine components:
   - **For versions 3.13 and later:**
-    - Perform a `mvn clean package install` in the `combine-aws` directory. This will build all Combine components and package them as needed.
+    - Perform a `mvn clean package install` in the `combine-aws` directory. This will build most Combine components and package them as needed.
+    - Perform a `mvn clean install` in the `combine-aws/combine-account-automation` directory. This will build the `combine-tomcat-#.#.jar` file.
     - *Troubleshooting*
       - If installation doesn't work from the `combine-aws` directory then try running the `mvn` command in `combine-aws/combine-account-automation`
       - For a `Could not resolve dependencies` error use the following `grep` format to identify mismatched release values in `pom.xml` files throughout the Combine directories:
