@@ -74,7 +74,7 @@
           ```
       - Example command: 
           ```bash
-          java -classpath "combine-account-automation/lib/*:combine-account-automation/target/*" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile combineExample --bricks-release-version bricks_v_3_13_1_1
+          java -classpath "lib/*:target/*" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile combineExample --bricks-release-version bricks_v_3_13_1_1
           ```
       - On Windows:
           ```bash
