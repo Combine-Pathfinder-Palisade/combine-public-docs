@@ -2,6 +2,21 @@
 
 - Remove any resources you created within each Combine VPC.
 - Goto the [Amazon S3 console](https://us-east-1.console.aws.amazon.com/s3/) and empty the `combine-<shard id>-app-storage-<account number>` and `combine-<shard id>-app-storage-<account number>-public` buckets.
+  - These buckets can be deleted if they only contain basic shard information
+- Goto the [VPC Console](https://us-east-1.console.aws.amazon.com/vpcconsole/home?region=us-east-1#Home:)
+- Perform the following deletions IN ORDER!
+  - Goto [Firewalls](https://us-east-1.console.aws.amazon.com/vpcconsole/home?region=us-east-1#NetworkFirewalls:) from the "Network Firewalls" menu on the left
+    - Filter for the target ShardID in the list of firewalls
+    - Select the radio button next to the target firewall and click "Delete" in the upper right
+    - Wait for deletion to complete before proceeding to the next stage
+  - Next go to [Firewall Policies](https://us-east-1.console.aws.amazon.com/vpcconsole/home?region=us-east-1#NetworkFirewallPolicies:) from the menu on the left
+    - Filter for the target ShardID
+    - Ex: `<ShardId>-Combine-Firewall-Private-Policy`
+    - Click the checkbox next to the target policy and click "Delete" in the upper right
+  - Next go to [Network Firewall Groups](https://us-east-1.console.aws.amazon.com/vpcconsole/home?region=us-east-1#NetworkFirewallRuleGroups:) from the menu on the left
+  -   Filter for the target ShardID
+  -   Ex: `<ShardId>-Combine-Private-Rule-Allow-Default`
+  -   Click the checkbox next to the target rule group and click "Delete" in the upper right.
 - Goto the [CloudFormation console](https://us-east-1.console.aws.amazon.com/cloudformation/) and delete each Combine VPC CloudFormation stack. (These are typically named `Combine-VPC-<Id>` but are also identified by a `CombineId` Output Value of `combine-vpc`.)
 - Goto the [EC2 Key Pairs](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#KeyPairs) console and delete any Combine EC2 Keys. 
   - If shard id was not set these are named `Combine` and `CombineRestricted`.
