@@ -50,15 +50,13 @@ Click Next.
 Choose a name. Recommended: `Combine-Firewall-Override-List`.
 Choose a capacity. Recommended: `4092`.
 
-For `IP set variables` you probably want to create a variable with the `Variable name` of `VpcCidrRanges` and a `Values` of a list of the CIDR blocks for the VPC you are in.
-
 Now you enter a `Suricata compatible rule string`.
 
 Here is a template for a single domain suffix exception:
 
 ```
-pass tls $VpcCidrRanges any -> any any (msg:"White List"; flow:to_server; tls.sni; content:"<domain suffix>"; nocase; endswith; ssl_state:client_hello; sid:1001; rev:1;)
-pass http $VpcCidrRanges any -> any any (msg:"White List"; content:"<domain suffix>"; http_host; endswith; sid:1002; rev:1;)
+pass tls any any -> any any (msg:"White List"; flow:to_server; tls.sni; content:"<domain suffix>"; nocase; endswith; ssl_state:client_hello; sid:1001; rev:1;)
+pass http any any -> any any (msg:"White List"; content:"<domain suffix>"; http_host; endswith; sid:1002; rev:1;)
 ```
 
 In the above template `<domain suffix>` can be a value such as `github.com` (which matches all domains ending in `github.com`) or `.combine.io` (which matches all subdomains of `combine.io` but NOT `combine.io` itself).
