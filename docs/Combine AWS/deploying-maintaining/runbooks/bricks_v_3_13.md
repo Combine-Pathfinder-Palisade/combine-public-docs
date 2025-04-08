@@ -51,6 +51,6 @@ combine.endpoints.aws.request.reflection.headers
 
 - Disable the Combine Firewall (not needed in their env)
 
----
-
-Trello ticket original - https://trello.com/c/hnEc4KiO/1811-release-313
+  JStage - 
+    - privatelink internal sg: sg-0c85058e0c643af1a
+    - account data db for cluster api cache: account-data
