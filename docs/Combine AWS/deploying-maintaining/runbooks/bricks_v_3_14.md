@@ -10,6 +10,7 @@ Salesforce:
 - enable deletion protection for Tap/Endpoints LB
 - remember to copy config from JDev as relates to rewriter configs for EKS tags when doing JStage deploy
 - we removed the cloudformation flag for Role Masquerade. confirm that environments (such as SStage and SDev) have the desired Role Masquerade setting).
+- Ensure that the following config values are set to true: `combine.tap.certificates.user.key.encrypted` and `combine.tap.certificates.server.key.encrypted`
 
 -----
 
