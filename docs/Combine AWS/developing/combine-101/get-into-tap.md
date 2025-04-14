@@ -34,6 +34,6 @@
    ```
 6. Use that address in a web browser to connect to the public web front end of the TAP server dashboard.
   - Be sure to add the Combine certificate authority to the operating system or browser CAs prior to connecting
-  - See [Set up the CA on the local system](./build-dev-shard.md#5-set-up-the-ca-on-the-local-system) in the "Building a Developer Shard" article.
+  - See [Set up the CA on the local system](./build-shard.md#5-set-up-the-ca-on-the-local-system) in the "Building a Shard" article.
 
 7. Add the user's `.pem` file to the browser for authentication (add to this)

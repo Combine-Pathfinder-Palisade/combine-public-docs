@@ -1,4 +1,4 @@
-# Building a Developer Shard
+# Building a Shard
 
 ## Prerequisites
 1. maven
