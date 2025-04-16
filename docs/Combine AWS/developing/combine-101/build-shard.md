@@ -55,45 +55,119 @@
  - **Remember** to add a leading or trailing comma to the JSON.
 
 ### 3. Build and deploy the Combine components:
-  - **For versions 3.13 and later:**
-    - Perform a `mvn clean package install` in the `combine-aws` directory. This will build most Combine components and package them as needed.
-    - Perform a `mvn clean install` in the `combine-aws/combine-account-automation` directory. This will build the `combine-tomcat-#.#.jar` file.
-    - *Troubleshooting*
-      - If installation doesn't work from the `combine-aws` directory then try running the `mvn` command in `combine-aws/combine-account-automation`
-      - For a `Could not resolve dependencies` error use the following `grep` format to identify mismatched release values in `pom.xml` files throughout the Combine directories:
-        - `cd` in to the `combine-aws` directory and run the following grep command:
-          `grep -rn . -e '<version>3\.13.*'`
-        - Replace the major and minor version numbers with the release in use for the deployment.
-        - Note that `3.13` is the first portion of the release version and any minor values will be found in matching nodes.
-        - Modify any `value` fields in `parent` nodes in `pom.xml` files that do not match the selected tag / release number.
-    - Perform the actual deploy:
-        - On Mac/Linux: 
-        - `cd combine-account-automation/`
-          ```bash 
-          java -classpath "lib/*:target/*" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <customer name from clients.json> --bricks-release-version <version number>
-          ```
-      - Example command: 
-          ```bash
-          java -classpath "lib/*:target/*" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile combineExample --bricks-release-version bricks_v_3_13_1_1
-          ```
-      - On Windows:
-          ```bash
-          java -classpath lib/*;target/* com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <customer name from clients.json> --bricks-release-version <version number>
-          ```
-      - Bricks Version numbers use the format: `bricks_v_<major>_<minor>`.
-    - *Troubleshooting*
-      - If the error `Configuration Profile [ProfileName] not found in Configuration Store!` appears then double check that the profile specified from `clients.json` is spelled correctly.
-      - If there is a `Bucket resource is in a CREATE_FAILED state.` error then check that the profile name in `clients.json` isn't too long. Bucket names can only be 63 characters
-      - The profile name "example" will create the bucket name `combine-example-connection-logging-us-east-1-663117128738` among others
-  - **For versions prior to 3.13:**
-    - Perform a `npm i && npm run build` in the `combine-tap/tap-dashboard` directory.
-    - Perform a `mvn clean install` on the following directories:
-      - `combine-commons`
-      - `combine-tap/tap-api`
-      - `combine-endpoints`
-    - Perform a `mvn clean package install` on `combine-account-automation`
-    - Run the following command:
-      - `mvn exec:java -q "-Dexec.args=full --config-store-profile {CUSTOMER_NAME_FROM_CLIENTS.JSON} --bricks-release-version bricks_v_3_12"`
+
+<details>
+<summary>For version 3.14:</summary>
+
+- Check that the proper version of `node.js` is installed
+  - List the versions of node present
+    - `nvm ls`
+  - If there is no `16.20.2` installed, then install it
+    - `nvm install 16.20.2`
+  - Use version 16.20.2
+    - `nvm use 16.20.2`
+    - Version 16.20.2 satisfies angular requirements for the tap dashboard
+- Perform a `mvn clean package install` in the `combine-aws` directory. This will build most Combine components and package them as needed.
+- Perform a `mvn clean install` in the `combine-aws/combine-account-automation` directory. This will build the `combine-tomcat-#.#.jar` file.
+- Add the shardID info into `clients.json`
+
+> ```json
+> "shard_id": {
+>   "region": "us-east-1",
+>   "clientAccountId": "663117128738",
+>   "clientRoleArn": "arn:aws:iam::663117128738:role/Combine-Provisioning-Role",
+>   "masterRegion": "us-east-1",
+>   "shardId": "Shard_id",
+>   "hasUserManagementAccount": "false",
+>   "bucketEncryptionKey": "",
+>   "bucketSetBlockPublicAccess": "true",
+>   "buildTS": "true",
+>   "buildS": "true",
+>   "buildGovCloud": "false",
+>   "buildCustomerIT": "true",
+>   "emulatedPartitionId": "AWS_SC2S",
+>   "bricksReleaseVersion": "bricks_v_3_14",
+>   "certificateName": "Shard_id",
+>   "configurationFileOverrides": [],
+>   "templateParameters": {
+>     "combine.yaml": {},
+>     "combine-policy.yaml": {},
+>     "combine-vpc.yaml": {}
+>   }
+> },
+> ```
+
+- Perform the actual deploy:
+  - On Mac/Linux:
+    ```bash
+    cd combine-account-automation/
+    java -classpath "deployment/lib/*:deployment/combine-aws-account-automation.jar:deployment/release/configuration:../combine-tap/tap-api/target/classes/com/sequoia/combine/configuration" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile shard_id
+    ```
+    
+ </details>
+
+<details>
+<summary>For version 3.13:</summary>
+
+- Perform a `mvn clean package install` in the `combine-aws` directory. This will build most Combine components and package them as needed.
+- Perform a `mvn clean install` in the `combine-aws/combine-account-automation` directory. This will build the `combine-tomcat-#.#.jar` file.
+
+- *Troubleshooting*
+  - If installation doesn't work from the `combine-aws` directory then try running the `mvn` command in `combine-aws/combine-account-automation`
+  - For a `Could not resolve dependencies` error use the following `grep` format to identify mismatched release values in `pom.xml` files throughout the Combine directories:
+    - `cd` into the `combine-aws` directory and run the following grep command:
+      ```bash
+      grep -rn . -e '<version>3\.13.*'
+      ```
+    - Replace the major and minor version numbers with the release in use for the deployment.
+    - Modify any `value` fields in `parent` nodes in `pom.xml` files that do not match the selected tag/release number.
+
+- Perform the actual deploy:
+  - On Mac/Linux:
+    ```bash
+    cd combine-account-automation/
+    java -classpath "lib/*:target/*" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <customer name from clients.json> --bricks-release-version <version number>
+    ```
+  - Example command:
+    ```bash
+    java -classpath "lib/*:target/*" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile combineExample --bricks-release-version bricks_v_3_13_1_1
+    ```
+  - On Windows:
+    ```bash
+    java -classpath lib/*;target/* com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <customer name from clients.json> --bricks-release-version <version number>
+    ```
+
+- Bricks Version numbers use the format: `bricks_v_<major>_<minor>`
+
+- *Troubleshooting*
+  - If the error `Configuration Profile [ProfileName] not found in Configuration Store!` appears then double check that the profile specified from `clients.json` is spelled correctly.
+  - If there is a `Bucket resource is in a CREATE_FAILED state.` error then check that the profile name in `clients.json` isn't too long. Bucket names can only be 63 characters.
+  - The profile name "example" will create the bucket name `combine-example-connection-logging-us-east-1-663117128738` among others.
+
+</details>
+
+<details>
+<summary>For versions prior to 3.13:</summary>
+
+- Run the following in the `combine-tap/tap-dashboard` directory:
+  ```bash
+  npm i && npm run build
+  ```
+
+- Run `mvn clean install` in each of the following directories:
+  - `combine-commons`
+  - `combine-tap/tap-api`
+  - `combine-endpoints`
+
+- Run `mvn clean package install` in:
+  - `combine-account-automation`
+
+- Execute the following command to deploy:
+  ```bash
+  mvn exec:java -q "-Dexec.args=full --config-store-profile {CUSTOMER_NAME_FROM_CLIENTS.JSON} --bricks-release-version bricks_v_3_12"
+  ```
+
+</details>
 
 <details>
   <summary>These prompts will only appear if the clients.json profile fails to load.</summary>
