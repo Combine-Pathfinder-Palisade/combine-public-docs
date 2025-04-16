@@ -23,55 +23,12 @@
 ### 2. Create a `clients.json` entry for your shard
 
  - `clients.json` is located at `combine-aws/combine-account-automation/clients.json`
- - Here is an example json entry for addition to clients.json:
-      ```bash
-        "example": {
-            "region": "us-east-1",
-            "masterRegion": "us-east-1",
-            "shardId": "Example",
-            "clientAccountId": "663117128738",
-            "clientRoleArn": "arn:aws:iam::663117128738:role/Combine-Provisioning-Role",
-            "bucketEncryptionKey": "",
-            "hasUserManagementAccount": "false",
-            "followerType": "None",
-            "buildTS": "true",
-            "buildS": "true",
-            "buildGovCloud": "false",
-            "certificateName": "Example",
-            "templateParameters": {
-              "combine.yaml": {
-              },
-              "combine-policy.yaml": {
-              },
-              "combine-vpc.yaml": {
-              }
-            }
-        }
-
-      ```
-
- - Note that "Combine-Example" will be the final stack name for the above configuration.
- - The `shardId` field will have the string `Combine-` prepended to it upon creation.
- - **Remember** to add a leading or trailing comma to the JSON.
-
-### 3. Build and deploy the Combine components:
+ - Here are example json entries for addition to clients.json:
 
 <details>
-<summary>For version 3.14:</summary>
+ <summary>For version 3.14:</summary>
 
-- Check that the proper version of `node.js` is installed
-  - List the versions of node present
-    - `nvm ls`
-  - If there is no `16.20.2` installed, then install it
-    - `nvm install 16.20.2`
-  - Use version 16.20.2
-    - `nvm use 16.20.2`
-    - Version 16.20.2 satisfies angular requirements for the tap dashboard
-- Perform a `mvn clean package install` in the `combine-aws` directory. This will build most Combine components and package them as needed.
-- Perform a `mvn clean install` in the `combine-aws/combine-account-automation` directory. This will build the `combine-tomcat-#.#.jar` file.
-- Add the shardID info into `clients.json`
-
-> ```json
+ > ```json
 > "shard_id": {
 >   "region": "us-east-1",
 >   "clientAccountId": "663117128738",
@@ -96,6 +53,60 @@
 >   }
 > },
 > ```
+
+</details>
+
+<details>
+<summary>For versions 3.13 and prior:</summary>
+
+> ```json
+> "example": {
+>   "region": "us-east-1",
+>   "masterRegion": "us-east-1",
+>   "shardId": "Example",
+>   "clientAccountId": "663117128738",
+>   "clientRoleArn": "arn:aws:iam::663117128738:role/Combine-Provisioning-Role",
+>   "bucketEncryptionKey": "",
+>   "hasUserManagementAccount": "false",
+>   "followerType": "None",
+>   "buildTS": "true",
+>   "buildS": "true",
+>   "buildGovCloud": "false",
+>   "certificateName": "Example",
+>   "templateParameters": {
+>     "combine.yaml": {
+>     },
+>     "combine-policy.yaml": {
+>     },
+>     "combine-vpc.yaml": {
+>     }
+>   }
+> }
+> ```
+
+</details>
+
+- Note that `"Combine-Example"` will be the final stack name for the 3.13 configuration above.
+  - For 3.14 the stack name should be `"Combine-Shard_id"`
+- The `shardId` field will have the string `Combine-` prepended to it upon creation.  
+- **Remember** to add a leading or trailing comma to the JSON if used inside a larger structure.
+
+
+### 3. Build and deploy the Combine components:
+
+<details>
+<summary>For version 3.14:</summary>
+
+- Check that the proper version of `node.js` is installed
+  - List the versions of node present
+    - `nvm ls`
+  - If there is no `16.20.2` installed, then install it
+    - `nvm install 16.20.2`
+  - Use version 16.20.2
+    - `nvm use 16.20.2`
+    - Version 16.20.2 satisfies angular requirements for the tap dashboard
+- Perform a `mvn clean package install` in the `combine-aws` directory. This will build most Combine components and package them as needed.
+- Perform a `mvn clean install` in the `combine-aws/combine-account-automation` directory. This will build the `combine-tomcat-#.#.jar` file.
 
 - Perform the actual deploy:
   - On Mac/Linux:
