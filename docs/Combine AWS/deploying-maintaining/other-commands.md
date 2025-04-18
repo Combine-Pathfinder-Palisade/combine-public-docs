@@ -65,4 +65,4 @@ You can confirm this by navigating to the `combine-devops` bucket in the custome
 
 The new certificates have overwritten the outdated ones.
 
-From here, you need to perform an [instance refresh](../developing/architecture#instance-refresh) on the TAP autoscaling group, which will run the launch template on the new TAP instances and pull down the new certificates.
+From here, you need to perform an [instance refresh](#) (Restricted Access) on the TAP autoscaling group, which will run the launch template on the new TAP instances and pull down the new certificates.

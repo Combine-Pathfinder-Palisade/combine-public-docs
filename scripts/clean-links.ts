@@ -3,12 +3,13 @@ import path from 'path';
 
 // Define path
 const docsDir = path.join(__dirname, '../docs'); 
-const markdownLinkRegex = /\[([^\]]+)\]\((\/[^\)]+)\)/g; // Matches [text](link)
+const markdownLinkRegex = /\[([^\]]+)\]\((?!http)([^)]+)\)/g; // Matches [text](link) + relative links
 
 // Function to check if a file exists in docs
-const linkExists = (link: string): boolean => {
-  const filePath = path.join(docsDir, link.replace(/^\//, '') + '.md');
-  return fs.existsSync(filePath);
+const linkExists = (baseDir: string, link: string): boolean => {
+  const withoutHash = link.split('#')[0]; // remove pound if present
+  const potentialPath = path.resolve(baseDir, withoutHash + (path.extname(withoutHash) ? '' : '.md'));
+  return fs.existsSync(potentialPath);
 };
 
 //Replace "broken links" with Restricted
@@ -25,7 +26,7 @@ const processFiles = (dir: string): void => {
       updatedContent = updatedContent.replace(
         markdownLinkRegex, 
         (match: string, text: string, link: string): string => {
-        if (!linkExists(link)) {
+        if (!linkExists(path.dirname(fullPath), link)) {
           console.log(`❌ Broken link found: ${link} in ${file} → Replacing with Restricted Access.`);
           return `[${text}](#) (Restricted Access)`;
         }
