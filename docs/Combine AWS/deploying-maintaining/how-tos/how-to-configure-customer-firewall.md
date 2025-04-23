@@ -12,7 +12,7 @@
 3. **Locate Network Firewall Rule Groups**
    - In the VPC Dashboard, go to **Network Firewall > Network Firewall Rule Groups**.
    - Find one of the following rule groups:
-     - `Combine-Private-Rule-Allow-Default`
+     - `Combine-Custom-Overrides`
      - `Combine-Custom-Rule-Group`
      - _Note: The age of the deployment will dictate the name of the rule set._
 
