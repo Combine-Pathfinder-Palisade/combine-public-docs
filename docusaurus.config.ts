@@ -46,7 +46,10 @@ const config: Config = {
           routeBasePath: '/',
           path: 'docs',
           showLastUpdateAuthor: true,
-          showLastUpdateTime: true
+          showLastUpdateTime: true,
+          exclude: [
+            '**/Combine-AWS-Onboarding-Guide.md',
+          ]
         },
         blog: {
           showReadingTime: true,
