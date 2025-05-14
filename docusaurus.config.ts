@@ -41,8 +41,7 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/Combine-Pathfinder-Palisade/combine-docs/blob/main',
+          // editUrl: 'https://github.com/Combine-Pathfinder-Palisade/combine-docs/blob/main',
           routeBasePath: '/',
           path: 'docs',
           showLastUpdateAuthor: true,
@@ -59,8 +58,7 @@ const config: Config = {
           },
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/Combine-Pathfinder-Palisade/combine-docs',
+          // editUrl: 'https://github.com/Combine-Pathfinder-Palisade/combine-docs',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
