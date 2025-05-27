@@ -1,4 +1,4 @@
-# How To: Deploy a Hotfix Release
+# Deploy a Hotfix Release
 
 (more detail coming!)
 

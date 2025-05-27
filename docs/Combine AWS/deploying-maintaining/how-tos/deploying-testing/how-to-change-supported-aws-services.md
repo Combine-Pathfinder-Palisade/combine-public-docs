@@ -1,4 +1,4 @@
-# How To : Change Additional AWS Services
+# Change Additional AWS Services
 
 ### Allowing Additional AWS Service
 

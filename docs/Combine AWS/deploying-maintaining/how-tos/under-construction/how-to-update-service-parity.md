@@ -1,4 +1,4 @@
-# How To: Update Combine Service Parity Definitions
+# Update Combine Service Parity Definitions
 
 ## Policy Updates
 

@@ -1,4 +1,4 @@
-# How To: Verify Combine Deployment Integrity
+# Verify Combine Deployment Integrity
 
 There are a few ways to verify whether Combine is up and functioning properly.
 
@@ -9,11 +9,11 @@ This is the easiest to check for.
 
 Simply navigate to the cloudformation console, begin a new 'Drift Detection' check:
 
-![Check CloudFormation Stack Drift Detection](#) (Restricted Access)
+![Check CloudFormation Stack Drift Detection](/aws/integrity-check-stack-drift.png)
 
 Once you initiate a Drift Detection, you'll see a blue notification at the top of the console. Once it is completed, return to the same stack and select 'View drift results':
 
-![Check CloudFormation Stack Drift Detection](#) (Restricted Access)
+![Check CloudFormation Stack Drift Detection](/aws/integrity-view-drift-results.png)
 
 You can sort by Drift Status to see which Combine resources have been modified or deleted.
 
@@ -39,7 +39,7 @@ An easy way to determine whether the Endpoints server is up and listening for re
 
 To check Endpoints Server logs, navigate to the CloudWatch Console, look for the log group named `Combine_Endpoint_Log_Group_Endpoint`:
 
-![Endpoints Log Group](#) (Restricted Access)
+![Endpoints Log Group](/aws/integrity-endpoints-log-group.png)
 
 Click on the Log Group and select 'Search Log Group' on the top right.
 

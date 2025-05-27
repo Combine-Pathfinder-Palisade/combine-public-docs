@@ -1,4 +1,4 @@
-# How To: Tail a Customer Firewall to Check for Dropped Traffic
+# Tail a Customer Firewall to Check for Dropped Traffic
 
 ## Steps
 

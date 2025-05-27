@@ -1,4 +1,4 @@
-# How To: View Combine Logs
+# View Combine Logs
 
 ## Overview
 

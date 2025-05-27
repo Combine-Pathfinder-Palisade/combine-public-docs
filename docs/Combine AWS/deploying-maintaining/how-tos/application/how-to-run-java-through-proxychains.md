@@ -1,4 +1,4 @@
-# How To: Run Java Through Socks Proxy with proxychains
+# Run Java Through Socks Proxy with proxychains
 
 ### **Steps to Get the `cap-credentials-provider` Java Application to Work with ProxyChains**  
 

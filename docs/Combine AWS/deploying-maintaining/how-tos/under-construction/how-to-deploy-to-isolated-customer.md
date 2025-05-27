@@ -1,4 +1,4 @@
-# How To: Deploy Combine to an Isolated Customer
+# Deploy Combine to an Isolated Customer
 
 ## Prequisites
 

@@ -1,0 +1,8 @@
+{
+  "label": "Deploying and Testing",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "How to do regular deployments, tests, and hotfixes."
+  }
+}

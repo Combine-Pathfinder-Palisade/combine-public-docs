@@ -1,17 +1,33 @@
-# How To: Configure AirGap Layer
+# Configure AirGap Layer
 
-There are several options to control the AirGap layer behavior in Combine. These are configured via configuration parameters in the `combine-vpc.yaml` template. 
+There are several options to control the AirGap Layer behavior in Combine. These are configured via configuration parameters in the `combine-vpc.yaml` template. 
 
-The Private Firewall (sometimes just called Firewall) handles outbound traffic for private subnets. The Public Firewall handles outbound traffic for public subnets. The configuration options are the same for both.
+The Private Firewall (sometimes just called Firewall) handles outbound traffic for private subnets. 
+
+The Public Firewall handles outbound traffic for public subnets. 
+
+The configuration options are the same for both.
 
 ## Build/Destroy Firewall
 
-This is the most dramatic option. In the `combine-vpc.yaml` template there is a configuration parameter pair:
+In the `combine-vpc.yaml` template there is a configuration parameter pair:
 
 `CombineFirewallPrivateBuild`
 `CombineFirewallPublicBuild`
 
 Setting either of these to `false` completely destroys the respective Firewall and Firewall resources and routes outbound traffic directly to the NAT Gateway / IGW.
+
+### Public Firewall Configuration
+
+The Public Firewall is set to `false` by default. If you would like to have Public Subnets that are inside the AirGap Layer you should set this to `true`. By default it will create an Ingress Route Table for the IGW. 
+
+If you only plan to use the Default Customer Public Subnets (by setting `VpcCustomerSubnetsBuildPublic` to `true`) no additional action is needed. 
+
+If you intend to create your own public subnets you will need to manually create a custom Ingress Route Table and supply that Route Table ID as the `IngressRouteTableOverride` parameter. This Ingress Route Table should have routes for each subnet that resemble:
+
+`<public subnet cidr block> -> <combine public firewall vpc endpoint id>`
+
+This will allow return traffic to the IGW to route back through the Firewall before returning to the originator. 
 
 ## Enable/Disable Firewall ("Dropping the AirGap Layer")
 
@@ -19,7 +35,7 @@ You have the option to stop routing outbound traffic through a Firewall through 
 
 `EnableAirgap`
 
-Setting this to `false` leaves Firewall resources instact but chains the route table so outbound traffic bypasses its respective Firewall and routes directly to the NAT Gateway / IGW.
+Setting this to `false` leaves Private/Public Firewall resources instact but changes the route table so outbound traffic bypasses its respective Firewall and routes directly to the NAT Gateway / IGW.
 
 ## Enable/Disable Firewall Permissive Mode
 
@@ -27,9 +43,9 @@ You have the option to allow all outbound traffic but still log each outbound co
 
 `EnableAirgapPermissiveMode`
 
-Setting this to `true` while the Firewall is in operation (assuming the build flag and `EnableAirgap` configuration parameters are `true`) allows all outbound traffic but still throws a Violation for each outbound call.
+Setting this to `true` while the Private/Public Firewall is in operation (assuming the build flag and `EnableAirgap` configuration parameters are `true`) allows all outbound traffic but still throws a Violation for each outbound call.
 
-## Add Exeception List
+## Firewall Exception List 
 
 You have the option to create an exception list for each Firewall. This allows individual domains to be exempted from the airgap layer. 
 
@@ -76,6 +92,6 @@ CombineFirewallPrivateAuxiliaryRuleGroup
 CombineFirewallPublicAuxiliaryRuleGroup
 ```
 
-### Set Exemption Rule
+### Set Exemption Rules
 
 Exemptions can be added to the override rule group via the template described above.

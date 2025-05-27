@@ -1,4 +1,4 @@
-# How To: Modify Customer Firewall Rules
+# Modify Customer Firewall Rules
 
 ## Steps
 

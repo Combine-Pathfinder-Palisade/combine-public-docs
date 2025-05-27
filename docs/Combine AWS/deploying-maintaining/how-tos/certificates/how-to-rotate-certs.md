@@ -1,4 +1,4 @@
-# How To: Rotate the Combine CA and Signer Certificates
+# Rotate the Combine CA and Signer Certificates
 
 On reserved regions, the CA and Signer certificates expire every few years. Therefore it is a useful exercise to roleplay and even work through rotation of these certificates while your workload is running in Combine.
 

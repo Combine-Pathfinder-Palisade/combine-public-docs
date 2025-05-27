@@ -1,4 +1,4 @@
-# How To: Delete/Uninstall a Combine Deployment
+# Delete/Uninstall a Combine Deployment
 
 - Remove any resources you created within each Combine VPC.
 - Goto the [Amazon S3 console](https://us-east-1.console.aws.amazon.com/s3/) and empty the `combine-<shard id>-app-storage-<account number>` and `combine-<shard id>-app-storage-<account number>-public` buckets.
