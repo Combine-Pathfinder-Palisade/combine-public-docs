@@ -30,9 +30,6 @@ Now that you know a little more about Combine, let's get started using it. Here'
 3. [Technical details](#technical-details) - Lastly, we'll give some technical detail about how it all works.
 4. [Your Workload](#your-workload) - This is where _we_ hear from _you_ - what AWS services does your workload utilize?
 
-We also have an [Appendix](#appendix) for miscellaneous information.
-
-
 
 ****
 
@@ -156,26 +153,21 @@ If you have installed the certificates successfully, browse to the User Portal U
 
 ****
 
-## SSH access
+## SSH access via Bastion
 
-To access your servers via SSH, you will first need to connect to the Combine Proxy server. You can think of this as a "bastion" or jump host. 
+To access the Combine Bastion server (usually used to access a server you have deployed into a private subnet) you may use the EC2 Instance Connect or Session Manager option through the AWS Console.
 
-From the Proxy server, you can SSH to servers within your private subnets.
+Browse to EC2 Dashboard.
 
-Let's get you connected:
+Select the Combine Bastion server. (It is usually named "Combine-Bastion" but uses the default Name Tag pattern `<ShardId>-<VPC Name>-Bastion` unless you have specified a custom Name Tag.)
 
-  1. The SSH key is the `Combine.pem` or `Combine.ppk` file provided in your credential package.
+Click "Connect".
 
-  2. The Linux User and Public IP address are found in the `bastion.txt` file provided in your credential package.
+Choose either the EC2 Instance Connect or Session Manager options.
 
-Once you grab those credentials, you will want to run a command similar to this one:
+Click "Connect".
 
-```shell 
-ssh -i Combine.pem {user}@{public ip}
-```
-Welcome to the Combine Proxy machine!
-
-(Alternatively, you could setup an SSH alias by performing [the following steps, referenced in the appendix](#setting-up-an-ssh-alias)).
+If you would like to use an external SSH Client, you may contact Combine Support for instructions on how to specify an SSH KeyPair, an External Access Security Group, and optionally an Elastic IP Address to enable external SSH access.
 
 ### SSH best practices
 
@@ -260,38 +252,3 @@ Please help us onboard and support you and your team by answering these question
 - Are you planning to use Combine at scale with a multi-account setup?
 
 Any other additional information about your team and your workload would be appreciated by our team.
-
-
-
-****
-
-## Appendix
-
-
-### Setting up an SSH Alias
-
-Here's how to set up an SSH alias:
-
-1. Open the `bastion.txt` file in your credential package and make a note of the **IP** and **User** values.
-2. The Combine bastion SSH key is found in the `Combine.pem` file provided in your credential package. Copy the file to the `/username/.ssh` directory on your workstation.
-3. Navigate to the previously created `/.ssh` directory, and create a `config` file. Configure the Combine bastion connection as follows:
-
-    * **Host** - Alias for the bastion server.
-    * **Hostname** - The **IP** address found in the `bastion.txt` file.
-    * **IdentityFile** - `path/to/Combine.pem`
-    * **User** - The **User** name found in the `bastion.txt` file.
-
-    Example:
-
-    ```shell
-    Host combine-bastion
-            Hostname        IP from `bastion.txt`
-            IdentityFile    ~/.ssh/combine.pem
-            User            User from `bastion.txt`
-    ```
-4. Open your CLI tool and connect to the Combine bastion server:
-
-    ```shell
-    ssh combine-bastion
-    ```
-Otherwise, you can connect with a service like `PuTTY`.
