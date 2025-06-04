@@ -122,7 +122,7 @@ There are additional command line options including:
 - `--config-store-profile` - Sets the profile to use to load configuration.
 - `--skip-bucket-block-public-access` - Skips attempts to set a block public access block. Use this if your environment has a policy that prohibits changing block public access settings.
 
-### Performing Deployment
+### Performing Deployment (New Account)
 
 To deploy a new instance of Combine executing the following Combine automation tool command:
 
@@ -138,7 +138,7 @@ The build will attempt to load artifacts into S3, build a Certificate Authority 
 
 If the build fails, we recommend that you empty the `combine-devops-<account id>-<region id>` bucket and then delete the `Combine` and `CombineRestricted` SSH KeyPairs before reattempting. (If you set a Shard ID they will have the names `Combine<ShardId>` and `Combine<ShardId>Restricted`.) This cleanup will be eliminated in the 3.14 release.
 
-### Performing Deployment Upgrade
+### Performing Deployment Upgrade (Existing Account)
 
 To deploy a new instance of Combine executing the following Combine automation tool command:
 
@@ -146,9 +146,7 @@ To deploy a new instance of Combine executing the following Combine automation t
 java -classpath "lib/*:combine-aws-account-automation-3.13.x.jar" com.sequoia.combine.accounts.CombineCommandExecutor update --config-store-profile <profile> --bricks-release-version bricks_v_x_x_x
 ```
 
-Be certain to provide the name of your Combine JAR File and the profile you wish to use. For Bricks Release Version you can actually provide any value since it is only used to create a unique path in S3. However we recommend a version number that follows this pattern:
-
-`bricks_v_x_x_x` - For example: `bricks_v_3_13_7`
+Be certain to provide the name of your Combine JAR File and the profile you wish to use. For Bricks Release Version you can actually provide any value since it is only used to create a unique path in S3. However we recommend a version number that follows the pattern `bricks_v_x_x_x` (such as: `bricks_v_3_13_7`).
 
 The build will attempt to load artifacts into S3.
 
@@ -175,4 +173,4 @@ If all templates are updated successfully you may proceed to the final step. Ini
 
 ## Combine 3.14.x
 
-Under Developement.
+Under Development.
