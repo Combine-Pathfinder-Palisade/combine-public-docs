@@ -1,8 +1,8 @@
 {
-  "label": "Deploying and Testing",
-  "position": 2,
+  "label": "Deploying",
+  "position": 1,
   "link": {
     "type": "generated-index",
-    "description": "How to do regular deployments, tests, and hotfixes."
+    "description": "Documentation on how to perform deployments."
   }
 }

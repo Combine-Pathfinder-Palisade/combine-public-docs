@@ -1,8 +1,8 @@
 {
   "label": "Firewall, Networking and Airgapping",
-  "position": 2,
+  "position": 4,
   "link": {
     "type": "generated-index",
-    "description": "How to manage firewall, networking, and airgapping with Combine."
+    "description": "Documentation on how to manage Combine AirGap Layer and Network Firewall."
   }
 }
