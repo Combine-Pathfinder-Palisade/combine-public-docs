@@ -35,7 +35,7 @@ Now that you know a little more about Combine, let's get started using it. Here'
 
 ## Account preparation
 
-Click [this link](https://combine-public.s3.amazonaws.com/combine-provisioning.yaml) to download the Combine Provisioning Template. 
+Click [this link](https://combine-public.s3.amazonaws.com/combine-provisioning.yaml) (you must be signed in to an AWS account) to download the Combine Provisioning Template. 
 
 You can run this in AWS CloudFormation to configure the account, like this:
 
