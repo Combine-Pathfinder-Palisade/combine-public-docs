@@ -1,51 +1,20 @@
-import clsx from 'clsx';
-import Link from '@docusaurus/Link';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
-// import HomepageFeatures from '@site/src/components/HomepageFeatures';
-import Heading from '@theme/Heading';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
-import styles from './index.module.css';
+import Header from '../components/Header/Header';
+import WhatIsCombine from '../components/WhatIsCombine/WhatIsCombine';
+import PillarsSection from '../components/PillarsSection/PillarsSection';
+import SupportSection from '../components/SupportSection/SupportSection';
 
-function HomepageHeader() {
+export default function Home() {
   const { siteConfig } = useDocusaurusContext();
   return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
-      <div className="container">
-        <Heading as="h1" className="hero__title">
-          Welcome to the {siteConfig.title}!
-        </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        {/* <div className={styles.buttons}>
-          <Link
-            className="button button--secondary button--lg"
-            to="/category/onboarding">
-            🚀 Get Onboarded
-          </Link>
-        </div> */}
-        <br></br>
-        <div>
-          <Link
-            className="button button--secondary button--lg"
-            to="/category/start-here-">
-            🚀 Get Onboarded
-          </Link>
-        </div>
-      </div>
-      
-    </header>
-  );
-}
-
-export default function Home(): JSX.Element {
-  const { siteConfig } = useDocusaurusContext();
-  return (
-    <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
-      <HomepageHeader />
+    <Layout title={`Hello from ${siteConfig.title}`} description="Explore Combine Docs">
+      <Header />
       <main>
-        {/* <HomepageFeatures /> */}
+        <WhatIsCombine />
+        <PillarsSection />
+        <SupportSection />
       </main>
     </Layout>
   );
