@@ -1,0 +1,84 @@
+.support {
+    background-color: #1f232a;
+    color: white;
+    padding: 6rem 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: left;
+    min-height: 100vh;
+}
+
+.supportContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6rem;
+    max-width: 1200px;
+    width: 100%;
+}
+
+.supportText {
+    flex: 1;
+}
+
+.supportHeading {
+    font-size: 3rem;
+    font-weight: 500;
+    margin-bottom: 2rem;
+}
+
+.supportParagraph {
+    font-size: 1.5rem;
+    line-height: 1.8;
+    margin-bottom: 2.5rem;
+    max-width: 520px;
+}
+
+.supportButton {
+    background: transparent;
+    border: 2px solid #4ade80;
+    color: #ffffff;
+    padding: 16px 36px;
+    border-radius: 9999px;
+    font-size: 1.1rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.supportButton:hover {
+    background-color: #374151;
+    color: white;
+}
+
+.supportIcons {
+    position: relative;
+    width: 500px;
+    height: 320px;
+    flex-shrink: 0;
+}
+
+.supportIcons img {
+    position: absolute;
+    width: 150px;
+    height: auto;
+}
+
+.supportIcons img:nth-child(1) {
+    top: 0;
+    left: 60px;
+    transform: rotate(-5deg);
+}
+
+.supportIcons img:nth-child(2) {
+    top: 120px;
+    left: 160px;
+    transform: rotate(8deg);
+}
+
+.supportIcons img:nth-child(3) {
+    top: 240px;
+    left: 80px;
+    transform: rotate(-6deg); }
