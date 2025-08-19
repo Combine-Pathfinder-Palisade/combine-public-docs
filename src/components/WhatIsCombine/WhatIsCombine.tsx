@@ -13,7 +13,7 @@ export default function WhatIsCombine() {
             air-gapped cloud regions.
           </p>
           <div className={styles.buttonGroup}>
-            <Link className={styles.primaryButton} to="/category/start-here-">Docs</Link>
+            <Link className={styles.primaryButton} to="/category/start-here">Docs</Link>
             <a className={styles.secondaryButton} href="mailto:service-request@sequoiainc.com">Contact Us</a>
           </div>
         </div>
