@@ -1,8 +1,9 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
+title: Architecture / Networking
 ---
 
-# Networking
+# Architecture
 
 :::tip[Work-In-Progress]
 

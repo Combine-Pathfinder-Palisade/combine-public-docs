@@ -1,8 +1,10 @@
 ---
-sidebar_position: 4
+sidebar_position: 6
+title: EKS Support
+
 ---
 
-# EKS Emulation
+# EKS Support
 
 Combine supports EKS emulation. There are a few gotchas to keep in mind when standing up your EKS cluster.
 

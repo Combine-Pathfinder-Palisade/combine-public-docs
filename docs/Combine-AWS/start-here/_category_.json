@@ -1,8 +1,8 @@
 {
-  "label": "Start Here 👋",
+  "label": "Start Here",
   "position": 1,
   "link": {
     "type": "generated-index",
-    "description": "Just getting started with Combine? Look no further."
+    "description": "Need help getting started with Combine?"
   }
 }
