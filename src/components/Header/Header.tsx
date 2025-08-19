@@ -18,7 +18,7 @@ export default function Header() {
           Discover the power of our Combine Emulator
         </p>
           <div className={styles.buttonGroup}>
-          <Link className={styles.primaryButton} to="/category/start-here-">
+          <Link className={styles.primaryButton} to="/category/start-here">
             Onboarding
           </Link>
           <Link className={styles.primaryButton} to="/category/how-tos">
