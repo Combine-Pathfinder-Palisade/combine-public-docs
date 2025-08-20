@@ -5,29 +5,30 @@ title: Architecture / Networking
 
 # Architecture
 
-:::tip[Work-In-Progress]
+## VPC Overview
 
-🚧 This page is actively being updated.
+## Access
 
-:::
+# What IS NOT part of the Emulation?
 
-# Combine Networking
+## Default Subnets
 
-Now that you've achieved access into the Combine bastion, how do you actually get your workload into the environment?
+If you elected to have default subnets created then you will see subnets prefixed with `Combine-AZ-`. These were created by default for your convenience. These are not generally provided by default by the production environment';s sponsor but can usually be created yourself or requested prior to production deployment.
 
-----
+## `WLDEVELOPER` EC2 Role
 
-## Networking Basics
+In many Combine deployments there is a `<prefix>-WLDEVELOPER-EC2` role. This is created by default for convenience. This is not generally provided by default by the production environment's sponsor but can usually be requested prior to production deployment.
 
-**We highly recommend deleting the default VPC that AWS provisions in the account, as traffic within that VPC cannot be emulated by Combine.**
+# What IS part of the Emulation?
 
-Combine deploys its own VPC, inside of which your workload should go.
+# What can you use/change?
 
-Here's a Combine VPC resource map:
+# What can you NOT use/change?
+
+## `RESTRICTED_` Subnets
+
+Please do not attempt to create any resources inside the subnets with the `RESTRICTED_` prefix. Those subnets are reserved for Combine resources and are generally not within the AirGap Emulation.
+
+# Combine VPC Diagram
+
 ![Combine VPC Resource Map](/aws/vpc-resource-map.png)
-
-Please do not provision any resources inside the subnets with the `RESTRICTED` suffix, as those subnets are reserved for Combine's infrastructure.
-
-You are free to provision in any of the other subnets, named after the Availability Zones you'll have access to in the reserved regions. Note that Combine can optionally not provision the subnets for your workload if you prefer.
-
----

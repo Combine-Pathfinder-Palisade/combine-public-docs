@@ -33,8 +33,30 @@ You will need to decide on your VPC configuration and layout in the AWS Partitio
     - By default we create 6 **private** subnets across 3 Availability Zones.
     - By default we create 3 **public** subnets across 3 Availabilit Zones if public subnet support is enabled.
     - You may instead choose to create your own subnets. If so **you must use the provided Combine route tables to enable airgap emulation**.
+- What CIDR Block can Combine reserve to deploy Combine resources?
+    - By default we use `10.0.254.0/24` and `10.0.255.0/24`. We require at least a pair of `/24` CIDR Blocks.
 
 ### VPC Configuration - Optional
 
 There are several optional VPC Configuration options that are not required but that you may want to be aware of:
 
+- We can specify a custom security group to restrict public access to the Combine Dashboard / Bastion.
+    - You create this security group and provide us the Security Group ID. You can then control access to the Combine Dashboard / Bastion via that Security Group once it has been applied to Combine via our AWS CloudFormation templates.
+- We can schedule the shutdown of some Combine resources during off hours using a `cron` expression.
+    - By default this is `disabled` but can be enabled and scheduled at your request.
+- We can modify the AirGap Emulation be more permissive depending on your Team's needs.
+    - By default the AirGap Emulation blocks all outbound traffic.
+    - It can be modified to allow outbound calls to a specific set of domains and/or in accordance with a set of firewall rules.
+    - It can be modified to allow outbound calls to any domain but still report each outbound call as an Alert.
+
+### Emulation Configuration - Optional
+
+There are many many optional Emulation Configuration options that can be adjusted to conform Combine to your production environment's sponsor. For example:
+
+- We can allow/restrict additional AWS Services.
+- We can allow/restrict additional features of AWS Services.
+- We can allow/restrict additional means of Authentication/Authorization to AWS IAM.
+- For CAP/SCAP enabled emulations we can adjust the duration of the CAP/SCAP Token used to log into the AWS Dashboard.
+    - By default this is 60 minutes in the production environment but can be extended by request to up to 12 hours. However this requires approval from the production environment's sponsor.
+
+Almost any aspect of the emulation can be configured or extended so please let the Combine Support Team if you have any questions.
