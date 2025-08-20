@@ -1,6 +1,6 @@
 {
   "label": "Combine Network Architecture",
-  "description":"Overview of each supported Combine Network Architecture."
+  "description":"Overview of Combine VPC Network Architecture.",
   "position": 2,
   "link": {
     "type": "generated-index",
