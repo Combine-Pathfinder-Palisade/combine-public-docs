@@ -3,15 +3,15 @@ sidebar_position: 3
 title: Topology - Multiple VPC
 ---
 
-# Architecture Diagram
-
-![Multiple VPC Architecture](/aws/combine_network_architecture_multiple_vpc.png)
-
 # Architecture
 
 This architecture is for when your workload is more complex and spans multiple VPCs (and even multiple AWS Accounts).
 
 In this architecture Combine is deployed to each workload VPC. Route 53 Private DNS entries redirect all emulated endpoint traffic to local Combine Endpoint servers.
+
+# Architecture Diagram
+
+![Multiple VPC Architecture](/aws/combine_network_architecture_multiple_vpc.png)
 
 # Advantages
 

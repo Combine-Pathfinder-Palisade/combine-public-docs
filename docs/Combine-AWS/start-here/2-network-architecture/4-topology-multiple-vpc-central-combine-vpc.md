@@ -3,13 +3,15 @@ sidebar_position: 4
 title: Topology - Multiple VPC - Central Combine VPC
 ---
 
-![Multiple VPC Architecture with Central Combine VPC](/aws/combine_network_architecture_multiple_vpc_central_combine_vpc.png)
-
 # Architecture
 
 This architecture is for when your workload is more complex and spans multiple VPCs (and even multiple AWS Accounts).
 
 In this architecture Combine is deployed to a single VPC. Your workload is deployed to separate VPCs. Route 53 Private DNS entries redirect all emulated endpoint traffic to the Combine VPC through a VPC interconnect.
+
+# Architecture Diagram
+
+![Multiple VPC Architecture with Central Combine VPC](/aws/combine_network_architecture_multiple_vpc_central_combine_vpc.png)
 
 # Advantages
 

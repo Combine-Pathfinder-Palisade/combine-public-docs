@@ -1,21 +1,17 @@
 ---
-sidebar_position: 3
-title: Architecture / Networking
+sidebar_position: 4
+title: Using Combine VPC
 ---
 
-# Architecture
-
-## VPC Overview
-
-## Access
+# Access
 
 # What IS NOT part of the Emulation?
 
-## Default Subnets
+### Default Subnets
 
 If you elected to have default subnets created then you will see subnets prefixed with `Combine-AZ-`. These were created by default for your convenience. These are not generally provided by default by the production environment';s sponsor but can usually be created yourself or requested prior to production deployment.
 
-## `WLDEVELOPER` EC2 Role
+### `WLDEVELOPER` EC2 Role
 
 In many Combine deployments there is a `<prefix>-WLDEVELOPER-EC2` role. This is created by default for convenience. This is not generally provided by default by the production environment's sponsor but can usually be requested prior to production deployment.
 
