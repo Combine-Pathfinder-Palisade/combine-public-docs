@@ -16,7 +16,7 @@ If this is not allowed, then we can provide support to your Team to use our auto
 
 ### Network Architecture
 
-You may choose your Combine VPC Topology. See [Network Architecture](/category/combine-network-architecture) page for more detail. By default we will deploy a Single VPC topology.
+You may choose your Combine VPC Topology. See [Network Architecture](/category/network-architecture) page for more detail. By default we will deploy a Single VPC topology.
 
 ### VPC Configuration
 

@@ -24,7 +24,3 @@ In many Combine deployments there is a `<prefix>-WLDEVELOPER-EC2` role. This is 
 ## `RESTRICTED_` Subnets
 
 Please do not attempt to create any resources inside the subnets with the `RESTRICTED_` prefix. Those subnets are reserved for Combine resources and are generally not within the AirGap Emulation.
-
-# Combine VPC Diagram
-
-![Combine VPC Resource Map](/aws/vpc-resource-map.png)

@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1
-title: Overview
+title: VPC Network Architecture
 ---
 
 # Overview
@@ -9,11 +9,7 @@ Each Combine VPC emulates one or more restricted regions.
 
 The network architecture of the Combine VPC is discussed below.
 
-The external network architecture of one or more Combine VPCs working in a topology is discussed here:
-
-    - [Combine VPC Toplogy - Single VPC](/Combine-AWS/start-here/network-architecture/topology-single-vpc)
-    - [Combine VPC Toplogy - Multiple VPC](/Combine-AWS/start-here/network-architecture/topology-multiple-vpc)
-    - [Combine VPC Toplogy - Multiple VPC - Central Combine VPC](/Combine-AWS/start-here/network-architecture/topology-multiple-vpc-central-combine-vpc)
+The network architecture of one or more Combine VPCs working in a topology is [discussed here](/category/network-topology).
 
 ## Combine VPC Architecture
 
