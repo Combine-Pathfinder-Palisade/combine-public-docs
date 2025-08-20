@@ -20,7 +20,7 @@ In the screenshot above, note that the 'Source' of the EKS Cluster's Security Gr
 
 ### Additional Considerations
 
-- We highly recommend using infrastructure to provision your EKS clusters. ClickOps has not shown to be reliably reproduced, and there are console offerings in the Commercial regions which are not present on the reserved regions, and that Combine is not able to block.
+- We recommend using IaC (Infrastructure as Code) to provision your EKS Cluster(s). ClickOps has been shown to not be reliably reproducible. There are AWS Console offerings in the AWS and AWS GovClud partitions which are not present in the emualted regions.
 - We recommend using version 1.33 or greater of the <a href="https://github.com/kubernetes-sigs/aws-ebs-csi-driver" target="_blank">AWS EBS CSI driver</a>, 
 - Some plugins' helm charts will need to be modified.
 - Your Combine instance must have Permissions Boundaries and IAM Self Service enabled. If you are not sure if this is enabled on your account, please reach out to a Combine Team member via <a href="mailto:service-request@sequoiainc.com">email</a>.

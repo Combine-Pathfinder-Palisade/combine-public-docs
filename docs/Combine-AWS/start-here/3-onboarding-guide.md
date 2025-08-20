@@ -1,11 +1,11 @@
 ---
 sidebar_position: 2
-title: Onboarding
+title: Onboarding Guide
 ---
 
 <img src="/aws/onboarding-images/sequoia-logo.png" width="250"></img>
 
-# Combine Onboarding guide
+# Combine Onboarding Guide
 
 We are excited to onboard your team to Combine AWS!
 
