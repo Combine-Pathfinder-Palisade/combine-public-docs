@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 title: Onboarding Guide
 description: Walkthrough on how to prepare for deployment and onboard into your Combine Account.
 ---

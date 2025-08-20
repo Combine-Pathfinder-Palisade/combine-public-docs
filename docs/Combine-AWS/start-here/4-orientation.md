@@ -1,6 +1,6 @@
 ---
 sidebar_position: 4
-title: Using Combine VPC
+title: Orientation
 ---
 
 # Access
