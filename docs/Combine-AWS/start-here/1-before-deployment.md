@@ -25,7 +25,7 @@ By default we will deploy Combine VPC(s) according to your specifications. There
 You will need to decide on your VPC configuration and layout in the AWS Partition (AWS or AWS GovCloud) that is hosting Combine.
 
 - What region(s) should Combine emulated? Which host region should each emulated region be hosted in?
-    - By default we will deploy the primary emulated region Combine into `us-east-1` for AWS or `us-gov-west-1` for AWS GovCloud.
+    - By default we will deploy the primary emulated region into `us-east-1` for AWS or `us-gov-west-1` for AWS GovCloud.
 - How many VPCs should Combine create? What VPC CIDR ranges should Combine create for each VPC?
     - By default we will deploy a single VPC with a 10.0.0.0/16 VPC CIDR Block.
 - For each VPC do you want to enable **public subnet support** for your workload?

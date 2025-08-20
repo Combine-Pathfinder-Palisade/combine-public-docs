@@ -9,20 +9,15 @@ export default function Header() {
   const { siteConfig } = useDocusaurusContext();
   return (
     <header className={clsx(styles.heroBanner)}>
-      <img src="/img/forest-bg.jpg" className={styles.heroBg} alt="Forest background" />
+      <img src="/img/forest-bg.jpg" className={styles.heroBg} alt="Forest Background" />
       <div className={styles.heroContent}>
         <Heading as="h1" className={styles.heroTitle}>
-          Welcome to the Combine Docs
+          Welcome to the Combine Documentation
         </Heading>
-        <p className={styles.heroSubtitle}>
-          Discover the power of our Combine Emulator
-        </p>
-          <div className={styles.buttonGroup}>
+
+        <div className={styles.buttonGroup}>
           <Link className={styles.primaryButton} to="/category/start-here">
-            Onboarding
-          </Link>
-          <Link className={styles.primaryButton} to="/category/how-tos">
-            How Tos
+            Start Here
           </Link>
         </div>
       </div>

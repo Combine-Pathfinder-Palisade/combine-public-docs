@@ -9,7 +9,7 @@ import SupportSection from '../components/SupportSection/SupportSection';
 export default function Home() {
   const { siteConfig } = useDocusaurusContext();
   return (
-    <Layout title={`Hello from ${siteConfig.title}`} description="Explore Combine Docs">
+    <Layout title={`Hello from ${siteConfig.title}`} description="Explore Combine Documentation">
       <Header />
       <main>
         <WhatIsCombine />

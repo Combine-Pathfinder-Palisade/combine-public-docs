@@ -5,8 +5,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'Combine Docs',
-  tagline: 'Combine Docs and Guidelines to get you going',
+  title: 'Combine Documentation',
+  tagline: 'Combine Documention',
   favicon: 'img/favicon.png',
 
   // Set the production url of your site here
@@ -78,18 +78,12 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'Combine Docs',
+      title: 'Combine Documentation',
       logo: {
         alt: 'Combine Logo',
         src: 'img/favicon.png',
       },
       items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
-          position: 'left',
-          label: 'The Docs',
-        }
       ],
     },
 
