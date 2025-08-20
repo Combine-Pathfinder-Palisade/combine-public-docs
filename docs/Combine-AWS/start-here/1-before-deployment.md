@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Before Deployment
+description: Decisions for a Combine Customer before deploying Combine.
 ---
 
 # Before Deployment
@@ -8,7 +9,7 @@ title: Before Deployment
 
 There are several decisions to make prior to deploying Combine. Where not directed otherwise the Combine Team will apply sensible defaults.
 
-### Access
+### AWS Account Access
 
 The first decision is who should perform the Combine Deployment? The Combine Team will typically perform the Combine Deployment based on a shared role we assume in your account.
 

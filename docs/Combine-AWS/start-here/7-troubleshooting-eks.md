@@ -1,23 +1,24 @@
 ---
 sidebar_position: 6
-title: EKS Support
+title: Troubleshooting - EKS
 
 ---
 
 # EKS Support
 
-Combine supports EKS emulation. There are a few gotchas to keep in mind when standing up your EKS cluster.
+Combine has support for integrating AWS EKS into an emulated region. However, due to limitations of the AWS EKS architecture there are a several issues to be aware of when standing up your EKS cluster.
 
-### Add Combine's Endpoint Server Security Group to your Cluster's Security Group
+### EKS Security Group
+
+Since Combine is proxying traffic from clients to your EKS cluster it must be granted access to the EKS API.
+
+If you Cluster is open to all traffic within the VPC this is not necessary. If not, at a minimum you will need to give the Combine Endpoint Server Security Group access on your Cluster's Security Group.
 
 ![EKS Cluster Security Group](/aws/eks-cluster-sg.png)
 
-**You will need to add the Endpoint Server's security group to your cluster so that Combine can interact with it,** unless your cluster is open to all traffic.
+In the screenshot above, note that the 'Source' of the EKS Cluster's Security Group's first rule references itself. You will need to add a rule patterned after the second rule above which references Combine Endpoint Server's Security Group.
 
-In the screenshot above, note that the 'Source' of the cluster's security group's first rule references itself; you will need to add a rule like the second one, referencing the Combine Endpoints Server's security group.
-
-
-## Other Gotchas
+### Additional Considerations
 
 - We highly recommend using infrastructure to provision your EKS clusters. ClickOps has not shown to be reliably reproduced, and there are console offerings in the Commercial regions which are not present on the reserved regions, and that Combine is not able to block.
 - We recommend using version 1.33 or greater of the <a href="https://github.com/kubernetes-sigs/aws-ebs-csi-driver" target="_blank">AWS EBS CSI driver</a>, 
