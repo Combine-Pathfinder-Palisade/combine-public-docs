@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: Onboarding Guide
+description: Walkthrough on how to prepare for deployment and onboard into your Combine Account.
 ---
 
 <img src="/aws/onboarding-images/sequoia-logo.png" width="250"></img>

@@ -1,7 +1,8 @@
 # Feature: VPC Wrapping
 
-This feature of Combine allows us to deploy Combine to an existing VPC and/or VPC Networking Infrastructure.
+Combine can support a VPC deployment model in which Combine will "wrap" an existing VPC instead of creating a VPC itself.
 
 ## Configuration Parameters
 
 ## Considerations
+

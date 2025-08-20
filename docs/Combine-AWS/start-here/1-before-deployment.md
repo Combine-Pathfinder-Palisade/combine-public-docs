@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: Before Deployment
-description: Decisions for a Combine Customer before deploying Combine.
+description: What to decide before deploying Combine.
 ---
 
 # Before Deployment
