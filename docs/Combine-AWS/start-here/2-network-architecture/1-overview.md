@@ -5,11 +5,11 @@ title: Overview
 
 # Overview
 
-Each Combine VPC provides emulation of a restricted region.
+Each Combine VPC emulates one or more restricted regions.
 
 The network architecture of the Combine VPC is discussed below.
 
-The external network architecture of combining one or more Combine VPCs into a topology is discussed here:
+The external network architecture of one or more Combine VPCs working in a topology is discussed here:
 
     - [Combine VPC Toplogy - Single VPC](/Combine-AWS/start-here/network-architecture/topology-single-vpc)
     - [Combine VPC Toplogy - Multiple VPC](/Combine-AWS/start-here/network-architecture/topology-multiple-vpc)
@@ -43,10 +43,10 @@ Combine uses a Route 53 Private Hosted Zone to implement the DNS for each emulat
 
 Each Combine VPC is configured with at least a pair of `/24` CIDR Blocks. It divides these into several groups of subnets:
 
-- Combine Private Subnets. Used to deploy Combine TAP/Endpoint servers and their Load Balancers.
-- Combine Public Subnets. Used to deploy Combine TAP Public Load Balancer and the Combine Bastion server.
-- Combine Private Firewall Subnets. Used to house the Private Combine Firewall (controls egress for Private Subnets).
-- Combine Public Firewall Subnets. Used to house the Public Combine Firewall (controls egress for Public Subnets).
+- _Combine Private Subnets_ - Used to deploy Combine TAP/Endpoint servers and their Load Balancers.
+- _Combine Public Subnets_ - Used to deploy Combine TAP Public Load Balancer and the Combine Bastion server.
+- _Combine Private Firewall Subnets_ - Used to house the Private Combine Firewall (controls egress for Private Subnets).
+- _Combine Public Firewall Subnets_ - Used to house the Public Combine Firewall (controls egress for Public Subnets).
 
 ### Internal Architecture Diagram
 

@@ -36,4 +36,4 @@ Combine supports several different VPC interconnects to allow traffic to move fr
 - **VPC Peering**
 - **Transit Gateway** - This also requires you to create/maintain additional route tables within the Combine VPC to route traffic to/from the Transit Gateway.
 - **PrivateLink** - Combine can expose an AWS PrivateLink services for all emulated endpoints. A Workload VPC can instantiate a AWS PrivateLink VPC Endpoint to communicate with Combine. _NOTE: This does not provide AirGap emulation to the Workload VPC._
-- **Public Load Balancer** - Combine can expose a public load balancer that allows. This is supported but not recommended.
+- **Public Load Balancer** - Combine can expose a public load balancer that allows. This is not recommended.
