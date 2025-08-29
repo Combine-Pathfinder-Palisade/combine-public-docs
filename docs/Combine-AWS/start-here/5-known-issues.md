@@ -36,3 +36,11 @@ In all other cases (_such as credentials issued by an EC2 Instance Profile_) Com
 Recommended Solution:
 
 - The Combine Team recommends that for generating the presigned `sts:GetCallerIdentity` call (and for that only) that you use the non-emulated region value. Combine will detect the use of a non-emulated credential for that call and will pass it on without attempting to resign the call.
+
+### RDS Endpoint Proxying
+
+Combine cannot directly proxy the SSL / Database Protocol connection between clients and an RDS Instance/Cluster. In the emulated regions however, these connections often use a proprietary Certificate Authority Chain.
+
+Recommended Solution:
+
+- The Combine Team recommends that you ensure that you allow the proprietary Certificate Authority Chain to be configured on clients that use RDS even if they use no other AWS Service.
