@@ -1,4 +1,4 @@
-# Modify Customer Firewall Rules
+# Modify Firewall Rules
 
 ## Steps
 
@@ -11,9 +11,8 @@
 
 3. **Locate Network Firewall Rule Groups**
    - In the VPC Dashboard, go to **Network Firewall > Network Firewall Rule Groups**.
-   - Find one of the following rule groups:
-     - `Combine-Custom-Overrides`
-     - `Combine-Custom-Rule-Group`
+   - Find the rule group with either `Overrides` or `Auxiliary` in the name
+     - _Note: Combine can optionally configure a public firewall - make sure you're editing the correct rule group!_
      - _Note: The age of the deployment will dictate the name of the rule set._
 
 4. **Edit the Rule Set**
