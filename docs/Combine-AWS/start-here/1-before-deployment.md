@@ -11,7 +11,7 @@ There are several decisions to make before Combine can be deployed.
 
 The first decision is who will perform the Combine Deployment?
 
-The typical path is for the Combine Team to perform the Combine Deployment based on a [shared IAM Role](2-before-deployment-shared-role) we assume in an AWS Account you provide. The Combine Team will perform a white glove installation in the account.
+The typical path is for the Combine Team to perform the Combine Deployment based on a [shared IAM Role](before-deployment-shared-role) we assume in an AWS Account you provide. The Combine Team will perform a white glove installation in the account.
 
 If this is not allowed, then the Combine Team can provide support to your Team to use our interal automation tool to perform the Combine Deployment. (Please note this will reduce the timeline of our Combine updates and also our response times for support issues.)
 
