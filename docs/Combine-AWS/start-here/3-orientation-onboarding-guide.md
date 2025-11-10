@@ -1,20 +1,17 @@
 ---
 sidebar_position: 3
 title: Onboarding Guide
-description: Walkthrough on how to prepare for deployment and onboard into your Combine Account.
 ---
 
 <img src="/aws/onboarding-images/sequoia-logo.png" width="250"></img>
 
 # Combine Onboarding Guide
 
-We are excited to onboard your team to Combine AWS!
+Welcome to Combine for AWS! Combine for AWS is an emulation environment that allows you to build/test/deploy your cloud workload as if you were actually in your production environment.
 
-Combine AWS is an emulation tool that allows you to build and test your systems as if you were in a classified environment.
+Software written for the commercial cloud partitions will not typically function in the secure cloud partitions of your production environment. Combine overcomes this problem by providing an emulated environment that acts as a sandbox for the regions of secure cloud partitions.
 
-Software written for the commercial, unclassified clouds will not work in the classified cloud regions. Combine overcomes this problem by providing a sandbox environment that emulates the classified, air-gapped cloud regions.
-
-It's like high-side for the low-side! Combine's dashboard will report problems which would prevent your solutions from working in classified cloud region, but you can do it from the comfort of your home or office.
+The Combine Dashboard will report problems which would prevent your solutions from working in classified cloud region, but you can do it from the comfort of your home or office.
 
 Our brains love lists, so here is a summary of the four ways Combine will assist you:
 1. **Access control** - Does your code have the permissions it needs to run in the classified cloud? Combine provides the same access control solution as your government customer.

@@ -1,0 +1,560 @@
+# Formatted with : https://codebeautify.org/yaml-beautifier
+#
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnablePermissionsFollowerAccountCredentials:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+  ProvisioningRoleNameOverride:
+    Type: String
+    Default: ""
+  PrincipalAccount:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
+  PrincipalAccountNumberOverride:
+    Type: String
+    Default: ""
+  PrincipalEC2:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+  ReadOnlyMode:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+  DeploymentId:
+    Type: String
+    Default: 1
+    Description: "Used to force reread of template in some DevOps integrations"
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Role Configuration"
+        Parameters:
+          - EnablePermissionsFollowerAccountCredentials
+          - ProvisioningRoleNameOverride
+      - Label:
+          default: "Role Configuration - Principal"
+        Parameters:
+          - PrincipalAccount
+          - PrincipalAccountNumberOverride
+          - PrincipalEC2
+      - Label:
+          default: "Customer Management"
+        Parameters:
+          - ReadOnlyMode
+      - Label:
+          default: "Integration"
+        Parameters:
+          - DeploymentId
+    ParameterLabels:
+      EnablePermissionsFollowerAccountCredentials:
+        default: "Enable Permissions - Follower Account Credentials"
+      ProvisioningRoleNameOverride:
+        default: "Provisioning Role - Name - Override"
+      PrincipalAccount:
+        default: "Trust Principal - Account"
+      PrincipalAccountNumberOverride:
+        default: "Trust Principal - Account - Account Number Override"
+      PrincipalEC2:
+        default: "Trust Principal - EC2"
+      ReadOnlyMode:
+        default: "Read Only Mode"
+      DeploymentId:
+        default: "Deployment ID"
+Conditions:
+  HasPermissionsFollowerAccountCredentials:
+    !And [
+      !Not [!Condition IsReadOnlyMode],
+      !Equals [!Ref EnablePermissionsFollowerAccountCredentials, "true"],
+    ]
+  HasPrincipalAccount: !Equals [!Ref PrincipalAccount, "true"]
+  HasPrincipalAccountNumberOverride:
+    !Not [!Equals [!Ref PrincipalAccountNumberOverride, ""]]
+  HasPrincipalEC2: !Equals [!Ref PrincipalEC2, "true"]
+  IsReadOnlyMode: !Equals [!Ref ReadOnlyMode, "true"]
+  HasProvisioningRoleNameOverride:
+    !Not [!Equals [!Ref ProvisioningRoleNameOverride, ""]]
+Resources:
+  ProvisioningRole:
+    Type: "AWS::IAM::Role"
+    DeletionPolicy: Retain
+    Properties:
+      RoleName:
+        !If [
+          HasProvisioningRoleNameOverride,
+          !Ref ProvisioningRoleNameOverride,
+          "Combine-Provisioning-Role",
+        ]
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !If
+                  - HasPrincipalAccount
+                  - !If
+                    - HasPrincipalAccountNumberOverride
+                    - !Ref PrincipalAccountNumberOverride
+                    - !FindInMap [TrustMap, !Ref "AWS::Partition", "trust"]
+                  - !Ref "AWS::NoValue"
+              Service:
+                - !If
+                  - HasPrincipalEC2
+                  - "ec2.amazonaws.com"
+                  - !Ref "AWS::NoValue"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - !If [
+            HasPermissionsFollowerAccountCredentials,
+            !Ref PolicyFollowerAccountCredentials,
+            !Ref "AWS::NoValue",
+          ]
+        - !If [
+            IsReadOnlyMode,
+            !Ref "AWS::NoValue",
+            !Ref PolicyMinimalPermission,
+          ]
+        - !If [
+            IsReadOnlyMode,
+            !Ref "AWS::NoValue",
+            !Ref PolicyMinimalPermissionEC2,
+          ]
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess"
+  ProvisioningRoleInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Condition: HasPrincipalEC2
+    Properties:
+      Path: /
+      InstanceProfileName:
+        !If [
+          HasProvisioningRoleNameOverride,
+          !Ref ProvisioningRoleNameOverride,
+          "Combine-Provisioning-Role",
+        ]
+      Roles:
+        - !Ref ProvisioningRole
+  PolicyMinimalPermission:
+    Type: "AWS::IAM::ManagedPolicy"
+    DeletionPolicy: Retain
+    Properties:
+      ManagedPolicyName: "Combine-Minimal-Permission"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloudformation:CancelUpdateStack"
+              - "cloudformation:ContinueUpdateRollback"
+              - "cloudformation:CreateChangeSet"
+              - "cloudformation:CreateStack"
+              - "cloudformation:CreateStackInstances"
+              - "cloudformation:CreateStackSet"
+              - "cloudformation:CreateUploadBucket"
+              - "cloudformation:DeleteChangeSet"
+              - "cloudformation:DeleteStack"
+              - "cloudformation:DeleteStackInstances"
+              - "cloudformation:DeleteStackSet"
+              - "cloudformation:Describe*"
+              - "cloudformation:DescribeAccountLimits"
+              - "cloudformation:DetectStackDrift"
+              - "cloudformation:DetectStackResourceDrift"
+              - "cloudformation:EstimateTemplateCost"
+              - "cloudformation:ExecuteChangeSet"
+              - "cloudformation:Get*"
+              - "cloudformation:List*"
+              - "cloudformation:SetStackPolicy"
+              - "cloudformation:SignalResource"
+              - "cloudformation:StopStackSetOperation"
+              - "cloudformation:TagResource"
+              - "cloudformation:UntagResource"
+              - "cloudformation:UpdateStack"
+              - "cloudformation:UpdateStackInstances"
+              - "cloudformation:UpdateStackSet"
+              - "cloudformation:UpdateTerminationProtection"
+              - "cloudformation:ValidateTemplate"
+              - "cloudwatch:DeleteAlarms"
+              - "cloudwatch:DeleteMetricStream"
+              - "cloudwatch:Describe*"
+              - "cloudwatch:DisableAlarmActions"
+              - "cloudwatch:EnableAlarmActions"
+              - "cloudwatch:Get*"
+              - "cloudwatch:List*"
+              - "cloudwatch:PutCompositeAlarm"
+              - "cloudwatch:PutMetricAlarm"
+              - "cloudwatch:PutMetricData"
+              - "cloudwatch:PutMetricStream"
+              - "cloudwatch:SetAlarmState"
+              - "cloudwatch:StartMetricStreams"
+              - "cloudwatch:StopMetricStreams"
+              - "cloudwatch:TagResource"
+              - "cloudwatch:UntagResource"
+              - "dynamodb:BatchGetItem"
+              - "dynamodb:BatchWriteItem"
+              - "dynamodb:ConditionCheckItem"
+              - "dynamodb:CreateTable"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:DeleteTable"
+              - "dynamodb:Describe*"
+              - "dynamodb:GetItem"
+              - "dynamodb:List*"
+              - "dynamodb:PutItem"
+              - "dynamodb:Query"
+              - "dynamodb:Scan"
+              - "dynamodb:TagResource"
+              - "dynamodb:UntagResource"
+              - "dynamodb:UpdateContinuousBackups"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:UpdateTable"
+              - "dynamodb:UpdateTimeToLive"
+              - "events:DeleteRule"
+              - "events:DisableRule"
+              - "events:EnableRule"
+              - "events:PutRule"
+              - "events:PutTargets"
+              - "events:RemoveTargets"
+              - "iam:CreateServiceLinkedRole"
+              - "iam:Get*"
+              - "iam:List*"
+              - "kinesis:DescribeLimits"
+              - "lambda:AddPermission"
+              - "lambda:CreateEventSourceMapping"
+              - "lambda:CreateFunction"
+              - "lambda:DeleteEventSourceMapping"
+              - "lambda:DeleteFunction"
+              - "lambda:Get*"
+              - "lambda:InvokeFunction"
+              - "lambda:List*"
+              - "lambda:PublishVersion"
+              - "lambda:RemovePermission"
+              - "lambda:TagResource"
+              - "lambda:UntagResource"
+              - "lambda:UpdateEventSourceMapping"
+              - "lambda:UpdateFunctionCode"
+              - "lambda:UpdateFunctionConfiguration"
+              - "logs:*Delivery*"
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:DeleteLogGroup"
+              - "logs:DeleteLogStream"
+              - "logs:DeleteMetricFilter"
+              - "logs:DeleteRetentionPolicy"
+              - "logs:DeleteSubscriptionFilter"
+              - "logs:Describe*"
+              - "logs:FilterLogEvents"
+              - "logs:Get*"
+              - "logs:List*"
+              - "logs:PutLogEvents"
+              - "logs:PutMetricFilter"
+              - "logs:PutResourcePolicy"
+              - "logs:PutRetentionPolicy"
+              - "logs:PutSubscriptionFilter"
+              - "logs:StartQuery"
+              - "logs:StopQuery"
+              - "logs:TagLogGroup"
+              - "logs:TagResource"
+              - "logs:TestMetricFilter"
+              - "logs:UntagLogGroup"
+              - "logs:UntagResource"
+              - "network-firewall:*"
+              - "rds:DescribeAccountAttributes"
+              - "route53:ChangeResourceRecordSets"
+              - "route53:ChangeTagsForResource"
+              - "route53:CreateHostedZone"
+              - "route53:DeleteHostedZone"
+              - "route53:Get*"
+              - "route53:List*"
+              - "route53:UpdateHostedZoneComment"
+              - "route53resolver:*"
+              - "s3:CreateBucket"
+              - "s3:DeleteBucket"
+              - "s3:DeleteBucketPolicy"
+              - "s3:DeleteObject"
+              - "s3:DeleteObjectTagging"
+              - "s3:DeleteObjectVersion"
+              - "s3:DeleteObjectVersionTagging"
+              - "s3:Describe*"
+              - "s3:Get*"
+              - "s3:List*"
+              - "s3:PutBucketAcl"
+              - "s3:PutBucketLogging"
+              - "s3:PutBucketPolicy"
+              - "s3:PutBucketPublicAccessBlock"
+              - "s3:PutBucketTagging"
+              - "s3:PutBucketVersioning"
+              - "s3:PutEncryptionConfiguration"
+              - "s3:PutLifecycleConfiguration"
+              - "s3:PutObject"
+              - "s3:PutObjectTagging"
+              - "s3:PutObjectVersionTagging"
+              - "secretsmanager:ListSecrets"
+              - "servicequotas:*"
+              - "sns:AddPermission"
+              - "sns:ConfirmSubscription"
+              - "sns:CreateTopic"
+              - "sns:DeleteTopic"
+              - "sns:Get*"
+              - "sns:List*"
+              - "sns:Publish"
+              - "sns:RemovePermission"
+              - "sns:SetSubscriptionAttributes"
+              - "sns:SetTopicAttributes"
+              - "sns:Subscribe"
+              - "sns:TagResource"
+              - "sns:Unsubscribe"
+              - "sns:UntagResource"
+              - "ssm:*Command*"
+              - "ssm:*Parameter*"
+              - "ssm:Describe*"
+              - "ssm:Get*"
+              - "ssm:StartSession"
+              - "ssm:TerminateSession"
+              - "sts:DecodeAuthorizationMessage"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "iam:AddRoleToInstanceProfile"
+              - "iam:AttachRolePolicy"
+              - "iam:CreateInstanceProfile"
+              - "iam:CreatePolicy"
+              - "iam:CreatePolicyVersion"
+              - "iam:CreateRole"
+              - "iam:DeleteInstanceProfile"
+              - "iam:DeletePolicy"
+              - "iam:DeletePolicyVersion"
+              - "iam:DeleteRole"
+              - "iam:DeleteRolePolicy"
+              - "iam:DetachRolePolicy"
+              - "iam:PassRole"
+              - "iam:PutRolePolicy"
+              - "iam:RemoveRoleFromInstanceProfile"
+              - "iam:SetDefaultPolicyVersion"
+              - "iam:TagRole"
+              - "iam:UntagRole"
+              - "iam:UpdateAssumeRolePolicy"
+              - "iam:UpdateRole"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*Combine*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*Combine*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*Combine*"
+
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*-WLDEVELOPER-*"
+
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*PolicyMinimalPermission*"
+          - Effect: Allow
+            Action:
+              - "secretsmanager:*"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:secretsmanager:*:${AWS::AccountId}:secret:combine/*"
+  PolicyMinimalPermissionEC2:
+    Type: "AWS::IAM::ManagedPolicy"
+    DeletionPolicy: Retain
+    Properties:
+      ManagedPolicyName: "Combine-Minimal-Permission-EC2"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "autoscaling:AttachInstances"
+              - "autoscaling:AttachLoadBalancers"
+              - "autoscaling:AttachLoadBalancerTargetGroups"
+              - "autoscaling:BatchDeleteScheduledAction"
+              - "autoscaling:BatchPutScheduledUpdateGroupAction"
+              - "autoscaling:CancelInstanceRefresh"
+              - "autoscaling:CompleteLifecycleAction"
+              - "autoscaling:CreateAutoScalingGroup"
+              - "autoscaling:CreateLaunchConfiguration"
+              - "autoscaling:CreateOrUpdateTags"
+              - "autoscaling:DeleteAutoScalingGroup"
+              - "autoscaling:DeleteLaunchConfiguration"
+              - "autoscaling:DeleteLifecycleHook"
+              - "autoscaling:DeleteNotificationConfiguration"
+              - "autoscaling:DeletePolicy"
+              - "autoscaling:DeleteScheduledAction"
+              - "autoscaling:DeleteTags"
+              - "autoscaling:Describe*"
+              - "autoscaling:DetachInstances"
+              - "autoscaling:DetachLoadBalancers"
+              - "autoscaling:DetachLoadBalancerTargetGroups"
+              - "autoscaling:DisableMetricsCollection"
+              - "autoscaling:EnableMetricsCollection"
+              - "autoscaling:EnterStandby"
+              - "autoscaling:ExecutePolicy"
+              - "autoscaling:ExitStandby"
+              - "autoscaling:GetPredictiveScalingForecast"
+              - "autoscaling:PutLifecycleHook"
+              - "autoscaling:PutNotificationConfiguration"
+              - "autoscaling:PutScalingPolicy"
+              - "autoscaling:PutScheduledUpdateGroupAction"
+              - "autoscaling:RecordLifecycleActionHeartbeat"
+              - "autoscaling:ResumeProcesses"
+              - "autoscaling:RollbackInstanceRefresh"
+              - "autoscaling:SetDesiredCapacity"
+              - "autoscaling:SetInstanceHealth"
+              - "autoscaling:SetInstanceProtection"
+              - "autoscaling:StartInstanceRefresh"
+              - "autoscaling:SuspendProcesses"
+              - "autoscaling:TerminateInstanceInAutoScalingGroup"
+              - "autoscaling:UpdateAutoScalingGroup"
+              - "ec2-instance-connect:*"
+              - "ec2:*InstanceConnectEndpoint*"
+              - "ec2:*VpcEndpoint*"
+              - "ec2:AllocateAddress"
+              - "ec2:AssignPrivateIpAddresses"
+              - "ec2:AssociateAddress"
+              - "ec2:AssociateDhcpOptions"
+              - "ec2:AssociateIamInstanceProfile"
+              - "ec2:AssociateRouteTable"
+              - "ec2:AssociateVpcCidrBlock"
+              - "ec2:AttachInternetGateway"
+              - "ec2:AttachNetworkInterface"
+              - "ec2:AttachVolume"
+              - "ec2:AuthorizeSecurityGroupEgress"
+              - "ec2:AuthorizeSecurityGroupIngress"
+              - "ec2:CreateDhcpOptions"
+              - "ec2:CreateFlowLogs"
+              - "ec2:CreateInternetGateway"
+              - "ec2:CreateKeyPair"
+              - "ec2:CreateLaunchTemplate"
+              - "ec2:CreateLaunchTemplateVersion"
+              - "ec2:CreateNatGateway"
+              - "ec2:CreateNetworkAcl"
+              - "ec2:CreateNetworkAclEntry"
+              - "ec2:CreateNetworkInterface"
+              - "ec2:CreateRoute"
+              - "ec2:CreateRouteTable"
+              - "ec2:CreateSecurityGroup"
+              - "ec2:CreateSubnet"
+              - "ec2:CreateTags"
+              - "ec2:CreateVolume"
+              - "ec2:CreateVpc"
+              - "ec2:DeleteDhcpOptions"
+              - "ec2:DeleteFlowLogs"
+              - "ec2:DeleteInternetGateway"
+              - "ec2:DeleteKeyPair"
+              - "ec2:DeleteLaunchTemplate"
+              - "ec2:DeleteLaunchTemplateVersions"
+              - "ec2:DeleteNatGateway"
+              - "ec2:DeleteNetworkAcl"
+              - "ec2:DeleteNetworkAclEntry"
+              - "ec2:DeleteNetworkInterface"
+              - "ec2:DeleteNetworkInterfacePermission"
+              - "ec2:DeleteRoute"
+              - "ec2:DeleteRouteTable"
+              - "ec2:DeleteSecurityGroup"
+              - "ec2:DeleteSubnet"
+              - "ec2:DeleteTags"
+              - "ec2:DeleteVolume"
+              - "ec2:DeleteVpc"
+              - "ec2:Describe*"
+              - "ec2:DetachInternetGateway"
+              - "ec2:DetachNetworkInterface"
+              - "ec2:DetachVolume"
+              - "ec2:DisassociateAddress"
+              - "ec2:DisassociateIamInstanceProfile"
+              - "ec2:DisassociateRouteTable"
+              - "ec2:DisassociateVpcCidrBlock"
+              - "ec2:Get*"
+              - "ec2:ModifyInstanceAttribute"
+              - "ec2:ModifyLaunchTemplate"
+              - "ec2:ModifyNetworkInterfaceAttribute"
+              - "ec2:ModifySubnetAttribute"
+              - "ec2:ModifyVpcAttribute"
+              - "ec2:RebootInstances"
+              - "ec2:ReleaseAddress"
+              - "ec2:ReplaceIamInstanceProfileAssociation"
+              - "ec2:ReplaceNetworkAclAssociation"
+              - "ec2:ReplaceNetworkAclEntry"
+              - "ec2:ReplaceRoute"
+              - "ec2:ReplaceRouteTableAssociation"
+              - "ec2:RevokeSecurityGroupIngress"
+              - "ec2:RunInstances"
+              - "ec2:StartInstances"
+              - "ec2:StopInstances"
+              - "ec2:TerminateInstances"
+              - "ec2-instance-connect:*"
+              - "elasticloadbalancing:AddListenerCertificates"
+              - "elasticloadbalancing:AddTags"
+              - "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer"
+              - "elasticloadbalancing:AttachLoadBalancerToSubnets"
+              - "elasticloadbalancing:ConfigureHealthCheck"
+              - "elasticloadbalancing:CreateListener"
+              - "elasticloadbalancing:CreateLoadBalancer"
+              - "elasticloadbalancing:CreateLoadBalancerListeners"
+              - "elasticloadbalancing:CreateLoadBalancerPolicy"
+              - "elasticloadbalancing:CreateRule"
+              - "elasticloadbalancing:CreateTargetGroup"
+              - "elasticloadbalancing:DeleteListener"
+              - "elasticloadbalancing:DeleteLoadBalancer"
+              - "elasticloadbalancing:DeleteLoadBalancerListeners"
+              - "elasticloadbalancing:DeleteLoadBalancerPolicy"
+              - "elasticloadbalancing:DeleteRule"
+              - "elasticloadbalancing:DeleteTargetGroup"
+              - "elasticloadbalancing:DeregisterInstancesFromLoadBalancer"
+              - "elasticloadbalancing:DeregisterTargets"
+              - "elasticloadbalancing:Describe*"
+              - "elasticloadbalancing:DetachLoadBalancerFromSubnets"
+              - "elasticloadbalancing:DisableAvailabilityZonesForLoadBalancer"
+              - "elasticloadbalancing:EnableAvailabilityZonesForLoadBalancer"
+              - "elasticloadbalancing:ModifyListener"
+              - "elasticloadbalancing:ModifyLoadBalancerAttributes"
+              - "elasticloadbalancing:ModifyRule"
+              - "elasticloadbalancing:ModifyTargetGroup"
+              - "elasticloadbalancing:ModifyTargetGroupAttributes"
+              - "elasticloadbalancing:RegisterInstancesWithLoadBalancer"
+              - "elasticloadbalancing:RegisterTargets"
+              - "elasticloadbalancing:RemoveListenerCertificates"
+              - "elasticloadbalancing:RemoveTags"
+              - "elasticloadbalancing:SetIpAddressType"
+              - "elasticloadbalancing:SetLoadBalancerListenerSSLCertificate"
+              - "elasticloadbalancing:SetRulePriorities"
+              - "elasticloadbalancing:SetSecurityGroups"
+              - "elasticloadbalancing:SetSubnets"
+              - "kms:CreateGrant"
+              - "kms:Decrypt"
+              - "kms:DescribeKey"
+              - "kms:Encrypt"
+              - "kms:GenerateDataKey*"
+              - "kms:ReEncrypt*"
+            Resource: "*"
+  PolicyFollowerAccountCredentials:
+    Type: "AWS::IAM::ManagedPolicy"
+    Condition: HasPermissionsFollowerAccountCredentials
+    DeletionPolicy: Retain
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "iam:*User*"
+              - "iam:*AccessKey*"
+            Resource: "arn:aws:iam::663117128738:user/combine-*"
+Mappings:
+  TrustMap:
+    "aws":
+      "trust": "arn:aws:iam::663117128738:root"
+    "aws-us-gov":
+      "trust": "arn:aws-us-gov:iam::542840125060:root"
+Outputs:
+  CombineId:
+    Description: "Used to identify a Combine template."
+    Value: "combine-provisioning"
+  DeploymentIdHook:
+    Description: Used to force reread of template in some DevOps integrations
+    Value: !Ref DeploymentId

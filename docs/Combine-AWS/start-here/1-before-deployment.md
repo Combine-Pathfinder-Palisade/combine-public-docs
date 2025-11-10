@@ -1,26 +1,31 @@
 ---
 sidebar_position: 1
 title: Before Deployment
-description: What to decide before deploying Combine.
 ---
 
 # Before Deployment
 
-There are several decisions you can make prior to deploying Combine.
+There are several decisions to make before Combine can be deployed.
 
 ### AWS Account Access
 
-The first decision is who should perform the Combine Deployment? The Combine Team will typically perform the Combine Deployment based on a shared role we assume in your account.
+The first decision is who will perform the Combine Deployment?
 
-If this is not allowed, then we can provide support to your Team to use our automation tool to perform the Combine Deployment. (Please note this will reduce the timeliness of our Combine updates and also our response to support issues.)
+The typical path is for the Combine Team to perform the Combine Deployment based on a [shared IAM Role](2-before-deployment-shared-role) we assume in an AWS Account you provide. The Combine Team will perform a white glove installation in the account.
+
+If this is not allowed, then the Combine Team can provide support to your Team to use our interal automation tool to perform the Combine Deployment. (Please note this will reduce the timeline of our Combine updates and also our response times for support issues.)
 
 ### Network Architecture
 
-You may choose your Combine VPC Topology. See [Network Architecture](/category/network-architecture) page for more detail. By default we will deploy a Single VPC topology.
+Based on a discussion with the Combine Team you will need to decide on a Combine VPC Topology. See [Network Architecture](/category/network-architecture) page for more detail.
+
+By default the Combine Deployment will use a Single VPC topology.
 
 ### VPC Configuration
 
-By default we will deploy Combine VPC(s) according to your specifications. There is an option to instead "wrap" an existing VPC with Combine. Please reach out to the Combine Support Team if you would like to explore that option.
+By default the Combine Deployment will create each Combine VPC according to any specifications you provided. This most commonly matches what while happen in the production environment as the production environment's sponsor typically controls VPC creation.
+
+There is an option to instead "wrap" an existing VPC with Combine. Please reach out to the Combine Support Team if you would like to explore that option.
 
 You may choose your VPC configuration and layout in the AWS Partition (AWS or AWS GovCloud) that is hosting Combine.
 
@@ -33,8 +38,8 @@ You may choose your VPC configuration and layout in the AWS Partition (AWS or AW
 - For each VPC do you want Combine to create default subnets for your convenience?
     - By default we create 6 **private** subnets across 3 Availability Zones.
     - By default we create 3 **public** subnets across 3 Availability Zones if public subnet support is enabled.
-    - You may choose instead to create your own subnets. _(NOTE: If so you must use the provided Combine Route Table(s) to enable airgap emulation.)
-- What CIDR Block can Combine reserve for itself to deploy Combine resources?
+    - You may choose instead to create your own subnets. _(NOTE: If so you must use the provided Combine Route Table(s) to enable airgap emulation.)_
+- What CIDR Block should Combine reserve for itself to deploy Combine's internal resources?
     - By default we use `10.0.254.0/24` and `10.0.255.0/24`. Combine requires at least a pair of `/24` CIDR Blocks.
 
 ### VPC Configuration - Optional
@@ -43,7 +48,7 @@ There are several optional VPC Configuration options that are not required but t
 
 - You can specify a custom security group to restrict public access to the Combine Dashboard / Bastion.
     - By default this is not set.
-    - You create this security group and provide us the Security Group ID. You can then control access to the Combine Dashboard / Bastion via that Security Group once it has been applied to Combine via our AWS CloudFormation templates.
+    - You create this security group and provide the Combine Team with the Security Group ID. You can then control access to the Combine Dashboard / Bastion via that Security Group once it has been applied to Combine via our AWS CloudFormation templates.
 - You can schedule the shutdown of most Combine resources during off hours using a `cron` expression.
     - By default this is `disabled`.
 - You can modify the AirGap Emulation be more permissive depending on your Team's needs.
