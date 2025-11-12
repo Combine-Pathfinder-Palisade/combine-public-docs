@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 title: Before Deployment
 ---
 
@@ -29,7 +29,7 @@ There is an option to instead "wrap" an existing VPC with Combine. Please reach 
 
 You may choose your VPC configuration and layout in the AWS Partition (AWS or AWS GovCloud) that is hosting Combine.
 
-- What region(s) should Combine emulate? Which host region should each emulated region be hosted in?
+- What region(s) should Combine emulate? Which host region should each emulated region be hosted within?
     - By default we will deploy the primary emulated region into `us-east-1` for AWS or `us-gov-west-1` for AWS GovCloud.
 - How many VPCs should Combine create? What VPC CIDR ranges should Combine create for each VPC?
     - By default we will deploy a single VPC with a 10.0.0.0/16 VPC CIDR Block.
@@ -39,19 +39,19 @@ You may choose your VPC configuration and layout in the AWS Partition (AWS or AW
     - By default we create 6 **private** subnets across 3 Availability Zones.
     - By default we create 3 **public** subnets across 3 Availability Zones if public subnet support is enabled.
     - You may choose instead to create your own subnets. _(NOTE: If so you must use the provided Combine Route Table(s) to enable airgap emulation.)_
-- What CIDR Block should Combine reserve for itself to deploy Combine's internal resources?
+- What VPC CIDR Block should Combine reserve for itself to deploy Combine's internal resources?
     - By default we use `10.0.254.0/24` and `10.0.255.0/24`. Combine requires at least a pair of `/24` CIDR Blocks.
 
 ### VPC Configuration - Optional
 
 There are several optional VPC Configuration options that are not required but that you may want to be aware of:
 
-- You can specify a custom security group to restrict public access to the Combine Dashboard / Bastion.
+- You may specify a custom security group to restrict public access to the Combine Dashboard / Bastion.
     - By default this is not set.
     - You create this security group and provide the Combine Team with the Security Group ID. You can then control access to the Combine Dashboard / Bastion via that Security Group once it has been applied to Combine via our AWS CloudFormation templates.
-- You can schedule the shutdown of most Combine resources during off hours using a `cron` expression.
+- You may schedule the shutdown of most Combine resources during off hours using a `cron` expression.
     - By default this is `disabled`.
-- You can modify the AirGap Emulation be more permissive depending on your Team's needs.
+- You may modify the AirGap Emulation be more permissive depending on your Team's needs.
     - By default the AirGap Emulation blocks all outbound traffic.
     - You can choose to allow outbound calls to a specific set of domains and/or in accordance with a set of firewall rules.
     - You can choose to allow outbound calls to any domain but still report each outbound call as an Alert. _(NOTE: This is referred to as Permissive Mode.)_

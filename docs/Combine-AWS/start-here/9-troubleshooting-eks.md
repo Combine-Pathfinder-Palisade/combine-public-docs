@@ -1,16 +1,16 @@
 ---
-sidebar_position: 7
+sidebar_position: 9
 title: Troubleshooting - EKS
 
 ---
 
 # Combine and EKS Support
 
-Combine has support for integrating AWS EKS into an emulated region. However, due to limitations of the AWS EKS architecture there are a several issues to be aware of when standing up your EKS cluster.
+Combine has support for integrating AWS EKS into an emulated region. However, due to limitations of the AWS EKS architecture, there are a several issues to be aware of when standing up your EKS cluster.
 
 ### Kubernetes Version
 
-Combine currently supports up to kubernetes version 1.33. We hope to surface this more easily on the Combine Dashboard, but until then you can check the configuration DynamoDb table (usually named `combine-configuration` or similar) for the config value named `combine.endpoints.aws.filter.eks.clusterVersion.aws_<ISO REGION NAME>.versions.allowed`.
+Combine enforces which Kubernetes Version are supported in the production environment.
 
 ### Combine and OIDC
 
