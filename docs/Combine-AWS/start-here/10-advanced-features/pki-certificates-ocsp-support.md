@@ -1,10 +1,10 @@
-# Feature: PKI Certificates: OCSP Support
+# PKI Certificates: OCSP Support
 
 Combine Version 3.13.2 added support for OCSP and provides an OCSP Responder Endpoint through the TAP Dashboard servers.
 
 ### Configuration
 
-To enable OCSP you [set the following](../../tutorials/deploying-testing/how-to-add-configs) configuration value to `true`:
+To enable OCSP you [set the following](../../tutorials/operations/how-to-edit-combine-configuration) configuration value to `true`:
 
 `combine.tap.certificates.ocsp`
 

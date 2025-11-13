@@ -1,4 +1,4 @@
-# Feature: VPC Wrapping
+# VPC Wrapping
 
 Combine will support deploying to an already existing VPC by "wrapping" it with Combine. This allows Combine to be deployed without permissions to create network resources.
 

@@ -1,8 +1,0 @@
-{
-  "label": "Certificates",
-  "position": 5,
-  "link": {
-    "type": "generated-index",
-    "description": "How to manage certificates with Combine."
-  }
-}

@@ -1,10 +1,10 @@
-# Feature: PKI Certificates: CSR Signing API
+# PKI Certificates: CSR Signing API
 
 Combine provides an API for Signing CSR Requests. This API is *not an emulation* and it is *not available in the production environment*. It solely exists to facilitate customers who want to use a CSR but also do not want to manually upload each CSR to Combine.
 
 ### Configuration
 
-To enable this API [set the following](../../tutorials/deploying-testing/how-to-add-configs) configuration value to `true` in the Combine Configuration table:
+To enable this API [set the following](../../tutorials/operations/how-to-edit-combine-configuration) configuration value to `true` in the Combine Configuration table:
 
 `combine.tap.api.certificates.signCustomCSR.enable`
 

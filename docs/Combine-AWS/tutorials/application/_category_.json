@@ -1,8 +1,0 @@
-{
-  "label": "Application Level",
-  "position": 2,
-  "link": {
-    "type": "generated-index",
-    "description": "How to manage common Java tasks/problems."
-  }
-}

@@ -25,7 +25,7 @@ By default the Combine Deployment will use a Single VPC topology.
 
 By default the Combine Deployment will create each Combine VPC according to any specifications you provided. This most commonly matches what while happen in the production environment as the production environment's sponsor typically controls VPC creation.
 
-There is an option to instead ["wrap"](advanced-features/feature-vpc-wrapping) an existing VPC with Combine. Please reach out to the Combine Support Team if you would like to explore that option.
+There is an option to instead ["wrap"](advanced-features/vpc-wrapping) an existing VPC with Combine. Please reach out to the Combine Support Team if you would like to explore that option.
 
 You may choose your VPC configuration and layout in the AWS Partition (AWS or AWS GovCloud) that is hosting Combine.
 
