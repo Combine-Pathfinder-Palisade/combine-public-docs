@@ -5,7 +5,7 @@ title: Topology - Multiple VPC - Central Combine VPC
 
 # Architecture
 
-This architecture is for when your workload is more complex and spans multiple VPCs (and even multiple AWS Accounts).
+This Combine Network Architecture is used when your workload must span multiple VPCs (and even multiple AWS Accounts) at a very very large scale.
 
 In this architecture Combine is deployed to a single VPC. Your workload is deployed to separate VPCs. Route 53 Private DNS entries redirect all emulated endpoint traffic to the Combine VPC through a VPC interconnect.
 
@@ -15,7 +15,7 @@ In this architecture Combine is deployed to a single VPC. Your workload is deplo
 
 # Advantages
 
-- This architecture is very very scalable. (The Combine Support Team has supported up to 200 AWS Accounts on a single Combine instance.)
+- This architecture is very very scalable. (The Combine Support Team has supported up to 200 AWS Accounts attached to a single Combine instance.)
 - This architecture is cost effective for large workloads.
 
 # Disadvantages

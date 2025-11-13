@@ -9,6 +9,8 @@ Now that you have been onboarding to your Combine environment there are a couple
 
 # AWS API - Certificate Authority Trust
 
+Combine will require that you configure the private Certificate Authority in your Trust Chain before you can call an AWS API Endpoint. This can be accomplished
+
 # AWS API - Rewriting
 
 Combine will require that valid production environment specfic values are present in AWS API Calls.
@@ -31,6 +33,30 @@ and would expect all ARN Values to use the Partition ID that matches the product
 
 `arn:aws-iso:...`
 
+### Rewriting
+
+You might wonder how Combine supports these production environment specific values? Combine acts as a proxy for AWS API calls. The calls that you make to the emulated AWS API Endpoints are routed to a Combine server which then makes _a new call_ to the AWS API Endpoint in the hosted region. During this proxy transaction Combine will alter the request/response values in the AWS API call. Values in the request are changed from emulated values to values for the host region. Values in the response are changed in the reverse.
+
+From the context of a client inside Combine, all that is seen are emulated values, making it appear that you are actually operating in the emulated Region/Partition. Under the covers hwoever, these calls are rewritten before reaching the host Region/Partition.
+
+This has a few side effects that you should be aware of:
+
+- The AWS Console will show hosted Region/Partition values since it is outside of the Combine emulation. If you browse around your account in the AWS Console you will see only hosted Region/Partition values as normal. (In fact, if you see an emulated value it might be an indication that an emulated value has unintentionally been transmitted to the hosted Region/Partition. This should be communicated to the Combine Support Team for investigation.)
+- Due to the AWS API's use of Request Signatures Combine must send a new AWS API call (the "proxy" call) to the hosted Region/Partition during the proxy transaction. It does not forward the AWS API call that it received (the "client" call.) This itself has several side effects:
+    - Combine must _infer_ the credentials used to sign the proxy call. This process is complicated but works for most common cases. However, if Combine cannot infer credentials, it will use a default role instead. This can cause the "caller identity" to change in those situations.
+    - Combine must send the proxy call from the Combine Endpoint servers. This means that the network traffic will originate from Combine Endpoint servers not the original client servers so the IP Address of the traffic will differ.
+
+Combine can predictably infer the AWS Credentials used to sign an AWS API call in the following situations:
+
+- Credentials were issued through a CAP/SCAP service provided by Combine.
+- Credentials were issued via an IAM User assuming that IAM User is registered in the Combine system. (_NOTE: This is very very rare._)
+- Credentials were issued via an `sts:AssumeRole` AWS API call made within Combine.
+- Credentials were issued via an `sts:AssumeRoleWithWebIdentity` AWS API call made within Combine.
+- Credentials were issued by an EC2 Instance Profile that meets the following conditions:
+    - The client server's Private IP of the request is visible in the HTTP Request and is unique in the AWS Account.
+    - The client server's EC2 Instance Profile has a trust policy that allows Combine to also assume the role. (_NOTE: If the permission to create an IAM Role is enabled in your Combine environment, then Combine will automatically inject the necessary trust policy via Rewriting at role creation time. This trust policy will be masked to prevent tools like TerraForm from having invalid state._)
+
+If none of these conditions are met then Combine will use the default role to sign the proxy request. This can result in the "caller identity" changing from the perspective of the client.
 
 # What IS NOT part of the Emulation?
 

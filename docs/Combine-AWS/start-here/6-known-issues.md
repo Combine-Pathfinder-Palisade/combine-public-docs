@@ -63,11 +63,15 @@ _NOTE: Combine is developing a CloudFormation Template Analyzer that will static
 
 These are unique situational things to be aware of as you deploy into your production environment.
 
+### Caller Identity
+
+Please consult the Rewriting section of the [Orientation page](orientation) for an explanation of "caller identity" changes that can occur when Combine proxies a transaction.
+
 ### Alert Events Suppressed by Default
 
 Due to the shear volume of some Alert Events (formerly Violations) that can be thrown in certain situations (drowning out useful findings), there are several Alert Events that are suppressed by default in Combine:
 
-- Calls to commerical `SSM` endpoint. (The SSM Agent is enabled by default on various AMI images. See [here](../deploying-maintaining/how-tos/deploying-testing/how-to-configure-ssm-agent) for a tutorial on how to properly configure the SSM Agent.)
+- Calls to commerical `SSM` endpoint. (The SSM Agent is enabled by default on various AMI images. See [here](../tutorials/deploying-testing/how-to-configure-ssm-agent) for a tutorial on how to properly configure the SSM Agent.)
 - Calls to `UDP` Port `123`. (This is the default port for NTP that is enabled on various AMI images.)
 - Calls to emphemeral Ports `49152` to `65535`. (In some network configurations the ephemeral port traffic return traffic is incorrectly routed through the AirGap Firewall causing many many false positives.)
 

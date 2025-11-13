@@ -5,7 +5,7 @@ title: Topology - Single VPC
 
 # Architecture
 
-This is the most commonly used Combine Network Architecture. Combine is deployed to a single VPC. Route 53 Private DNS entries redirect all emulated endpoint traffic to local Combine Endpoint servers.
+This is the most commonly used Combine Network Architecture. In this topology Combine is deployed to a single VPC. Route 53 Private DNS entries redirect all emulated endpoint traffic to local Combine Endpoint servers.
 
 # Architecture Diagram
 
@@ -17,7 +17,7 @@ This is the most commonly used Combine Network Architecture. Combine is deployed
 
 # Disadvantages
 
-- None. If your workload spans a single VPC this is the ideal configuration.
+- None inherently. If your workload spans a single VPC this is the ideal configuration. If your workload spans more than one VPCs then you must use a different topology.
 
 # Shared Responsibilities
 
