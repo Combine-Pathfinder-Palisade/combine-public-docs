@@ -9,7 +9,13 @@ Now that you have been onboarding to your Combine environment there are a couple
 
 # AWS API - Certificate Authority Trust
 
-Combine will require that you configure the private Certificate Authority in your Trust Chain before you can call an AWS API Endpoint. This can be accomplished
+Combine will require that you configure the private Certificate Authority in your Trust Chain before you can call an AWS API Endpoint. The process to do this varies based on your server tooling and server operating system.
+
+If you would like to quickly test this using the AWS CLI you can set a temporary environment variable like this:
+
+`export AWS_CA_BUNDLE=<path to ca-chain.cert.pem>`
+
+This will allow you run AWS CLI commands against the emulated AWS API Endpoints to confirm your network configuration is healthy.
 
 # AWS API - Rewriting
 
@@ -58,6 +64,36 @@ Combine can predictably infer the AWS Credentials used to sign an AWS API call i
 
 If none of these conditions are met then Combine will use the default role to sign the proxy request. This can result in the "caller identity" changing from the perspective of the client.
 
+# What IS part of the Emulation?
+
+Restrictions in Combine fall into three broad categories:
+
+- Restrictions that represent physical constraints. These cannot be changed.
+- Restrictions that represent your production environment sponsor's policy constraints. These can be changed if you have an exception from your production environment sponsor.
+- Restrictions that protect the Combine Emulation.
+
+### Production Environment Sponsor Restrictions
+
+While your exact configuration will vary based on your specific production environment's sponsor below are some actions that are commonly _not allowed_ across most sponsors:
+
+- You generally cannot create IAM resources (IAM Policy, IAM User, IAM User Group, IAM Role and so forth.)
+- You generally cannot create a VPC.
+- You generally cannot create a VPC interconnect (Transit Gateway, VPC Peering Connection, and so forth.)
+
+With a few exceptions, you are generally _allowed_ to take actions like:
+
+- Create a VPC Subnet.
+- Create a VPC Subnet Route Table.
+- Create a VPC Security Group (although at least one sponsor prohibit this.)
+- Assign an existing EC2 Instance Profile to a server.
+
+and any other AWS API action not otherwise prohibited.
+
+Combine limits a few actions by default in order to either protect the emulation itself or to prevent you from accidentally stepping outside the emulation:
+
+- Combine will block all AWS API actions in any other Region except those hosting Combine.
+- Combine will prevent you from creating an AWS Lambda function outside of a VPC. (This is because it would be outside the Combine AirGap and unable to reach the Combine Emulated Endpoints. This restriction can be lifted in conjunction with the Combine Support Team.)
+
 # What IS NOT part of the Emulation?
 
 ### Default Subnets
@@ -69,10 +105,6 @@ If you elected to have default subnets created when Combine was deployed then yo
 In Combine accounts that are implementing a production environment which uses the `WLDEVELOPER` series of enterprise IAM Roles there is a `<prefix>-WLDEVELOPER-EC2` role. This is created by default for convenience.
 
 This is not generally _not_ provided by default by the production environment's sponsor, however it can generally be requested prior to your production deployment.
-
-# What IS part of the Emulation?
-
-_Under development._
 
 # What can you use/change?
 
