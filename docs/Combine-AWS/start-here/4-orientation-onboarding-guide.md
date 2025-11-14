@@ -97,7 +97,7 @@ If you receive an error when attempting to authenticate to the Combine Dashboard
 1. Try hitting the Dashboard in an incognito window. Oftentimes even modern browsers like Chrome cache client-side ssl certs for a few days. If you've mistyped the password to either the your personal certificate or your local computer, the unsuccessful attempt is saved for a long time. An incognito window bypasses the cached state.
 2. Try deleting and reinstalling your personal certificate. The cert can become outdated if your Dashboard Admin(s) have rotated all the user certificates, especially if you have had Combine for a few years.
 
-If not, please reach out to the team via slack or our [email](service-request@sequoiainc.com) for more assistance. The team can attempt to log in with your personal certificate to determine whether it's an issue on your browser/network or the dashboard itself.
+If not, please reach out to the team via slack or our [email](mailto:service-request@sequoiainc.com) for more assistance. The team can attempt to log in with your personal certificate to determine whether it's an issue on your browser/network or the dashboard itself.
 
 ****
 
