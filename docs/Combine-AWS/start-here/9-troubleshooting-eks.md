@@ -35,13 +35,14 @@ In the screenshot above, note that the 'Source' of the EKS Cluster's Security Gr
 ### Nodes Joining the Cluster
 
 If your nodes are unable to join the cluster, you have several routes to troubleshoot:
-- Your Combine 
-
+- Your Combine Deployment may need the `EnableAirgapAccessEKS` on the Combine Policy stack set to `true`. This needs to be set for the nodes to communicate with the cluster's API server. The API server lives in AWS's network space, outside of the VPC, so Combine is not able to proxy that traffic over the high side endpoints.
+- More suggestions forthcoming.
 
 ### Additional Considerations
 
 - We recommend using IaC (Infrastructure as Code) to provision your EKS Cluster(s). ClickOps has been shown to not be reliably reproducible. There are AWS Console offerings in the AWS and AWS GovClud partitions which are not present in the emulated regions.
 - We recommend using version 1.33 or greater of the <a href="https://github.com/kubernetes-sigs/aws-ebs-csi-driver" target="_blank">AWS EBS CSI driver</a>.
+- On EC2 instances, including EKS worker nodes, there is a setting on the instance metadata options called `HTTP PUT response hop limit`. This controls how many network hops a response from the EC2 Instance Metadata Service (IMDS) is allowed to take..It needs to be set to at least `2`. More information on the [AWS docs here](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_ModifyInstanceMetadataOptions.html?utm_source=chatgpt.com#API_ModifyInstanceMetadataOptions_RequestParameters).
 - Note that Combine does not fully support EKS clusters provisioned with the [terraform AWS EKS module version 21.3.1](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/21.3.1). We anticipate supporting this very soon!
 - The Helm Chart for some Plugins may need to be modified, particularly for AWS commercial ARNs, regions, and availability zones.
 - Your Combine instance must have Permissions Boundaries and IAM Self Service enabled. If you are not sure if this is enabled on your account, please reach out to a Combine Team member via <a href="mailto:service-request@sequoiainc.com">email</a>.
