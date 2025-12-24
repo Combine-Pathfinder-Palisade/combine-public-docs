@@ -4,9 +4,11 @@ title: Troubleshooting - EKS
 
 ---
 
-# Combine and EKS Support
+# Combine EKS Support
 
 Combine has support for integrating AWS EKS into an emulated region. However, due to limitations of the AWS EKS architecture, there are a several issues to be aware of when standing up your EKS cluster.
+
+Mention Combine running on EKS here?
 
 ### Kubernetes Version
 
@@ -37,6 +39,47 @@ In the screenshot above, note that the 'Source' of the EKS Cluster's Security Gr
 If your nodes are unable to join the cluster, you have several routes to troubleshoot:
 - Your Combine Deployment may need the `EnableAirgapAccessEKS` on the Combine Policy stack set to `true`. This needs to be set for the nodes to communicate with the cluster's API server. The API server lives in AWS's network space, outside of the VPC, so Combine is not able to proxy that traffic over the high side endpoints.
 - More suggestions forthcoming.
+
+
+### Recommended EBS CSI Driver Configuration
+
+Use a recent EBS CSI Driver version and ensure IMDS is reachable from pods.
+
+**Recommended setup:**
+- Use **AWS EBS CSI Driver v1.33+** (newer versions like 1.53 are fine)
+- Ensure worker nodes:
+  - Have IMDS **enabled**
+  - Have **HTTP PUT response hop limit ≥ 2**
+- Ensure the CSI controller has credentials via:
+  - Node IAM role (IMDS), or
+  - IRSA (if supported and configured)
+- Do **not** assume emulator limitations for IMDS-related errors
+
+With this configuration, dynamic EBS-backed PersistentVolumes can be provisioned successfully in emulated EKS clusters.
+
+
+### PersistentVolumeClaims (PVCs) stuck in `Pending` when using the AWS EBS CSI Driver
+
+ 
+Most likely, pods cannot reach the EC2 Instance Metadata Service (IMDS), preventing the EBS CSI driver from obtaining credentials. The root cause is usually an incorrect IMDS hop limit.
+
+**Detailed answer:**  
+When deploying the AWS EBS CSI Driver in an EKS cluster running inside an emulated region:
+
+- PVCs may remain in `Pending` with messages like:
+  - `Waiting for first consumer`
+  - `ExternalProvisioning`
+- Logs may show errors such as:
+  - `GetInstanceIdentityDocument` timing out
+  - `failed to refresh cached credentials`
+  - `no EC2 IMDS role found`
+
+The specific misconfiguration in this case would be:
+- **IMDS HTTP PUT response hop limit set to 1**
+- Pods require a hop limit of **at least 2** to reach IMDS from within the node network namespace
+
+Once the hop limit is increased to `2` on the worker nodes, pods should able to access IMDS, credentials should be retrieved successfully, and PVCs should be bound as expected.
+
 
 ### Additional Considerations
 
