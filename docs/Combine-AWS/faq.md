@@ -1,7 +1,7 @@
-# Frequently Asked Questions 🙋‍♂️
+# FAQs 🙋‍♂️
 
 
-## Can applications running in Top Secret environments use APIs secured with non-AWS (e.g., Nutanix) certificates?
+## Can applications running in Top Secret environments use APIs secured with non-AWS (e.g., your own) certificates?
 
 **Short answer:**  
 **Yes for internal traffic, no for AWS service calls—unless additional trust or authentication mechanisms are used.**
@@ -10,13 +10,13 @@
 If your applications are running in a Top Secret (TS) or classified AWS environment:
 
 - **Internal application-to-application traffic**  
-  Using your own Certificate Authority (CA), such as Nutanix-issued certificates, **can be acceptable** when the traffic is strictly internal (between your own nodes). There is precedent for this being approved and accredited, provided it is clearly scoped to internal communication.
+  Using your own Certificate Authority (CA), such as your own-issued certificates, **can be acceptable** when the traffic is strictly internal (between your own nodes). There is precedent for this being approved and accredited, provided it is clearly scoped to internal communication.
 
 - **Calls to AWS services (e.g., EC2, S3, STS)**  
   AWS services in classified regions present TLS certificates issued by a **U.S. Government–controlled CA**, not public CAs like DigiCert or VeriSign.  
   For your application to successfully call AWS APIs:
   - Your client **must trust the government CA** used by AWS services.
-  - If your trust store only includes Nutanix-issued certificates, TLS verification will fail.
+  - If your trust store only includes your own-issued certificates, TLS verification will fail.
 
 - **Authentication vs. certificate trust**  
   This is not about *who* you are (authentication), but about whether your client trusts the **issuer of the server’s certificate**. Without that trust, the connection is rejected before authentication even happens.
