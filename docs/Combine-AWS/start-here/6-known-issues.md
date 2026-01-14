@@ -12,6 +12,8 @@ These are temporary / transient issues that are currently unsolved but for which
 
 - Some versions of the TerraForm AWS Provider will not create an Application Load Balancers because it always sends a value for the Desync Mitigation Mode attribute. Since Desync Mitigation Mode is not supported on the high side these calls always fail.
 
+- `TerraForm AWS Provider version 5.46.0 and above` : Tries to always invoke `ec2:DescribeAddressesAttribute` when managing an Elastic IP resource. This call gives an error on the high side. Combine allows you to stop blocking this call but the problem is persistant requiring a TerraForm Provider change or rearchitecture.
+
 # Known Limitations
 
 These are fundamental limitations of Combine that prevent us from emulating specific behavior or infrastructure.
