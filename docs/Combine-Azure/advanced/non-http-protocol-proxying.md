@@ -30,8 +30,9 @@ At a high level, the flow looks like this:
 
 From inside the VNet, Redis is accessed via the Combine-managed DNS name:
 
+```
 <redis-namespace>.redis.cache.cloudapi.scombine.database.scloud
-
+```
 
 This hostname ultimately resolves to the private endpoint IP of the Redis instance.
 
@@ -49,9 +50,7 @@ Key notes:
 
 Example hostname: `mycache.redis.cache.windows.net`
 
-📸 **Screenshot reference:**  
-*Azure Cache for Redis overview showing the Redis hostname*  
-![Redis Cache Overview](./redis-cache-commercial-endpoint.png)
+![Redis Cache Overview](/azure/redis-cache-commercial-endpoint.png)
 
 ---
 
@@ -69,12 +68,10 @@ An `A` record is added similar to:
 mycache → 10.3.104.4
 ```
 
-
-📸 **Screenshot references:**  
 - Private Endpoint attached to Redis  
-  ![Redis Private Endpoint](./redis-cache-private-endpoint.png)
+  ![Redis Private Endpoint](/azure/redis-cache-private-endpoint.png)
 - Private DNS zone created by Azure  
-  ![Redis Private DNS Zone](./redis-cache-private-dns-zone.png)
+  ![Redis Private DNS Zone](/azure/redis-cache-private-dns-zone.png)
 
 At this point, workloads inside the VNet can already resolve `mycache.privatelink.redis.cache.windows.net`, but of course this is not ideal since you would rather not use the commercial endpoints.
 
@@ -88,15 +85,15 @@ The Combine team deploys (or updates) a **Combine-managed Private DNS Zone**: `s
 Within this zone, an `A` record is created:
 
 ```
-<redis-namespace>.redis.cache.cloudapi → 10.3.104.4
+mycache.redis.cache.cloudapi → 10.3.104.4
 ```
 
 
 This DNS zone is linked to the same VNet(s) where Combine and customer workloads run.
 
-📸 **Screenshot reference:**  
+
 *Combine-managed Private DNS zone with custom A record*  
-![Combine Additional DNS Zone](./scombine-database-scloud-additional-dns-zone.png)
+![Combine Additional DNS Zone](/azure/scombine-database-scloud-additional-dns-zone.png)
 
 > This is the key indirection step:  
 > Combine does **not** proxy Redis traffic, but provides a stable DNS namespace that resolves privately to the service.
