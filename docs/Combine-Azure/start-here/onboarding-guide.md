@@ -11,7 +11,6 @@ We are excited to onboard your team to Combine Azure!
 ## Disclaimers
 - Unless you'd like a different region, Combine will be deployed in either the '**US East**' or '**US Gov Virginia**' region, depending on which Azure Cloud your subscription is located in.
 - The cost to run Combine in your subscription will run between $200 and $350 dollars per month; we are working to lower this cost and anticipate steep savings in the near future.
-- Combine can be deployed with either an [Azure Bastion](https://azure.microsoft.com/en-us/products/azure-bastion) or with both a Linux and Windows Jumpbox VM. The Bastion costs a little more than the jumpboxes but is easier to use, as it requires one less network hop to get to a virtual machine within the Combine network.
 - Combine's policies will considerably restrict resource creation in the subscription; for this reason we recommend Combine be deployed in a subscription which is not used for active development and/or testing.
   - Optionally, we can restrict policy creation to one or more resource groups, provided they exist before Combine is deployed. If you give us the resource IDs of the groups you plan to test your workload in, we will assign our policies to include only those groups.
 - By default Combine will deploy one Virtual Network with the following properties:
@@ -148,7 +147,6 @@ The Combine team will need the following choices for your deployment:
 - Which Azure region you'd like us to deploy in. Combine can be deploye in any region, but please note that US East is the most stable.
 - The source and target regions of your workload. We support Commercial to Government, Commercial to Secret,
  Commercial to Top Secret, Government to Secret and Government to Top Secret.
-- Azure Bastion OR Windows + Linux Jumpboxes
 - Whether to enable cost savings on Compute instances - it will save some money but startup time for the instances will take a few seconds
 - Policy Assignments applied to the subscription OR a particular set of resource group(s)
 - The Subnet Schema as presented above OR modified as per your workload's needs
