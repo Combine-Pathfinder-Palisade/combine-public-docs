@@ -144,13 +144,14 @@ If Rocky Linux 9 is not an option for your subscription we are happy to work wit
 
 The Combine team will need the following choices for your deployment:
 
-- Which Azure region you'd like us to deploy in. Combine can be deploye in any region, but please note that US East is the most stable.
-- The source and target regions of your workload. We support Commercial to Government, Commercial to Secret,
- Commercial to Top Secret, Government to Secret and Government to Top Secret.
+- Which Azure region you'd like us to deploy in. Combine can be deployed in any region, but please note that US East is the most stable. We have recently seen capacity issues with all Azure regions.
+- The source and target regions of your workload. We support **Commercial to Government**, **Commercial to Secret**,
+ **Commercial to Top Secret**, **Government to Secret** and **Government to Top Secret**.
 - Whether to enable cost savings on Compute instances - it will save some money but startup time for the instances will take a few seconds
-- Policy Assignments applied to the subscription OR a particular set of resource group(s)
+- Policy Assignments applied to the subscription OR a particular set of existing resource group(s)
 - The Subnet Schema as presented above OR modified as per your workload's needs
 - Which Azure services your workload is likely to use (ACR, AKS, ACA, Function Apps, etc).
+- [Which network topology your workload will want to use](/category/network-topologies).
 
 Also, please let us know if your organization has any security policies or restrictions that we need to be aware of, i.e. whitelisted IPs or compute instance requirements, etc.
 

@@ -13,6 +13,8 @@ In this architecture Combine is deployed to each of the VPCs in your workload. R
 
 ![Multiple VPC Architecture](/aws/combine_network_architecture_multiple_vpc.png)
 
+_Note that this diagram is for Combine AWS but is analogous to Combine Azure from a networking perspective._
+
 # Advantages
 
 - This architecture is simple and very very predictable.

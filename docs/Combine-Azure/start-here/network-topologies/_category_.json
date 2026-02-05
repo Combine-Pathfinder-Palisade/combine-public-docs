@@ -1,0 +1,8 @@
+{
+  "label": "Network Topologies",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Combine Azure's potential network shapes"
+  }
+}
