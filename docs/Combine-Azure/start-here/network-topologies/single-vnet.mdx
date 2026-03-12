@@ -3,6 +3,8 @@ sidebar_position: 1
 title: Topology - Single VNet
 ---
 
+import { CombineAzureArchitecture } from '@site/src/components/Diagrams/combine-azure-architecture';
+
 # Architecture
 
 This is the most commonly used Combine Network Architecture. In this topology Combine is deployed to a single VNet. Private DNS entries redirect all emulated endpoint traffic to local Combine Endpoint servers. The 'Customer' subnets (reserved for your use) are routed to Combine's Proxy machine which acts as an airgap.
