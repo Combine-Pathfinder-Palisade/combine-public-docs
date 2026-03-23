@@ -12,7 +12,11 @@ These are temporary / transient issues that are currently unsolved but for which
 
 - Some versions of the TerraForm AWS Provider will not create an Application Load Balancers because it always sends a value for the Desync Mitigation Mode attribute. Since Desync Mitigation Mode is not supported on the high side these calls always fail.
 
-- `TerraForm AWS Provider version 5.46.0 and above` : Tries to always invoke `ec2:DescribeAddressesAttribute` when managing an Elastic IP resource. This call gives an error on the high side. Combine allows you to stop blocking this call but the problem is persistant requiring a TerraForm Provider change or rearchitecture.
+- `TerraForm AWS Provider version 5.46.0 and above` : Tries to always invoke `ec2:DescribeAddressesAttribute` when managing an Elastic IP resource. This call gives an error on the high side. Combine allows you to stop blocking this call but the problem is persistant requiring a TerraForm Provider change or rearchitecture. 
+
+### CBOR Support for AWS API Calls
+
+- Some versions of the AWS SDK have started using the Concise Binary Objection Representation (CBOR) for AWS API call request/response body encoding. This is not yet supported in Combine. In some cases it can be disabled. (See [AWS Documentation](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/client-creation-defaults.html).) However, in the latest SDK Version, the CloudWatch SDK Client only uses CBOR.
 
 # Known Limitations
 
