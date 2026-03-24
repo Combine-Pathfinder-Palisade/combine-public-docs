@@ -71,12 +71,12 @@ If you have installed the certificates successfully, browse to the URL of your C
 
     ![](/aws/onboarding-images/mac-manage-certs.png)
 3. When prompted, enter your MacOS system password.
-4. Locate **System Keychains** menu and click **System**.
+4. Locate **Login Keychains** menu and click **Login**.
 
     * _NOTE: Do not choose **System Roots**_
 
     ![](/aws/onboarding-images/mac-keychain-system.png)
-5. Import the `certificates/ca.cert.pem` file by dragging it from your Credential Package folder to the **System** keychain dialog.
+5. Import the `certificates/ca.cert.pem` file by dragging it from your Credential Package folder to the **Login** keychain dialog.
 6. Confirm import by entering your MacOS system password.
 
     If the import is successful you will see an entry for `Combine CA - <your company name>` in the list of certificates.
