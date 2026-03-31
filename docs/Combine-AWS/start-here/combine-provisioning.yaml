@@ -89,7 +89,6 @@ Conditions:
 Resources:
   ProvisioningRole:
     Type: "AWS::IAM::Role"
-    DeletionPolicy: Retain
     Properties:
       RoleName:
         !If [
@@ -150,7 +149,6 @@ Resources:
         - !Ref ProvisioningRole
   PolicyMinimalPermission:
     Type: "AWS::IAM::ManagedPolicy"
-    DeletionPolicy: Retain
     Properties:
       ManagedPolicyName: "Combine-Minimal-Permission"
       PolicyDocument:
@@ -236,6 +234,10 @@ Resources:
               - "lambda:CreateFunction"
               - "lambda:DeleteEventSourceMapping"
               - "lambda:DeleteFunction"
+              - "lambda:PutFunctionConcurrency"
+              - "lambda:DeleteFunctionConcurrency"
+              - "lambda:PutProvisionedConcurrencyConfig"
+              - "lambda:DeleteProvisionedConcurrencyConfig"
               - "lambda:Get*"
               - "lambda:InvokeFunction"
               - "lambda:List*"
@@ -355,6 +357,7 @@ Resources:
               - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*-WLDEVELOPER-*"
 
               - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*PolicyMinimalPermission*"
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*PolicyFollowerAccountCredentials*"
           - Effect: Allow
             Action:
               - "secretsmanager:*"
@@ -362,7 +365,6 @@ Resources:
               - !Sub "arn:${AWS::Partition}:secretsmanager:*:${AWS::AccountId}:secret:combine/*"
   PolicyMinimalPermissionEC2:
     Type: "AWS::IAM::ManagedPolicy"
-    DeletionPolicy: Retain
     Properties:
       ManagedPolicyName: "Combine-Minimal-Permission-EC2"
       PolicyDocument:
@@ -535,7 +537,6 @@ Resources:
   PolicyFollowerAccountCredentials:
     Type: "AWS::IAM::ManagedPolicy"
     Condition: HasPermissionsFollowerAccountCredentials
-    DeletionPolicy: Retain
     Properties:
       PolicyDocument:
         Version: "2012-10-17"
@@ -545,6 +546,11 @@ Resources:
               - "iam:*User*"
               - "iam:*AccessKey*"
             Resource: "arn:aws:iam::663117128738:user/combine-*"
+          - Effect: Allow
+            Action:
+              - "iam:AttachUserPolicy"
+              - "iam:DetachUserPolicy"
+            Resource: "*"
 Mappings:
   TrustMap:
     "aws":

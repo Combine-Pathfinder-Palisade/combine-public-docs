@@ -13,7 +13,7 @@ This is provided as an [AWS CloudFormation Template](./combine-provisioning.yaml
 
 Please deploy the AWS CloudFormation Template above as a AWS CloudFormation Stack preferrably in the same AWS Region that Combine will be deployed in.
 
-(For help deploying the AWS CloudFormation Tempalte please see the relevant [AWS Documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-console-create-stack.html).)
+(For help deploying the AWS CloudFormation Template please see the relevant [AWS Documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-console-create-stack.html).)
 
 The AWS CloudFormation Stack has been succcessfully deployed please provide the Combine Support Team with the AWS Account ID of the AWS Account.
 
