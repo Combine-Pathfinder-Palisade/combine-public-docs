@@ -57,4 +57,57 @@ For example:
 
 Combine Configuration Values are cached for a configurable duration (default is 60 seconds). Some Combine Configuration Values require a server restart to take affect.
 
+### Example - Changing Configuration Values
+
+If your Combine account is on version 3.13 or later, you can edit configuration values within the TAP Dashboard. If you're on an older version you'll need to update them via the DynamoDb console.
+
+#### Changing Configuration Values via the TAP Dashboard
+
+Note that to change a config value, you must be an `Admin` on the dashboard.
+
+
+Say you wanted to update the session duration for CAP credentials, as well as the login timeout on the TAP Dashboard. These are both handled by one configuration, `combine.tap.users.session.duration.limit`. Here's you you'd do it!
+
+Navigate to the Metadata Page on the Dashboard.
+
+![Navigate to the Metadata Page on the Dashboard.](/aws/change-config-metadata-page.png)
+
+Click on the 'Configurations' Tab.
+
+![Click on the 'Configurations' Tab.](/aws/change-config-config-tab.png)
+
+Type in a subset of the configuration vlaue `parameter_name`.
+
+![Type in a subset of the configuration value `parameter_name`.](/aws/change-config-search.png)
+
+Enter in the new value.
+
+![Enter in the new value.](/aws/change-config-change-values.png)
+
+Press 'Enter' to persist the changes.
+
+#### Changing Configuration Values via the DynamoDb Console
+
+Navigate to your Combine configuration table in the DynamoDb console. Click 'Explore table items.'
+
+![](/aws/change-config-dynamodb-table.png)
+
+
+Expand 'Filters', then enter `parameter_name` in the Attributes field, change the Condition to 'Contains', and type in and a subset of the configuration value name. Then click 'Run'.
+
+![](/aws/change-config-dynamodb-search.png)
+
+Click 'Edit' if the configuration value exists; if not, you'll have to click 'Create Item'.
+
+Edit the config to the desired value.
+
+![](/aws/change-config-dynamodb-edit.png)
+
+If creating, create a new config value according to the schema described above. Please ensure the `parameter_value` is a string.
+
+![](/aws/change-config-dynamodb-create.png)
+
+Whether creating or editing, the change will take effect in 3-5 minutes.
+
+
 Please contact your Combine Support Team for additional information!
