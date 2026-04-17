@@ -2,6 +2,12 @@
 
 Combine Azure uses [Squid Cache](https://www.squid-cache.org/) OpenSSL proxy to achieve airgapping.
 
+:::tip[This is handled on the Dashboard in new versions]
+
+If you are on Combine Azure version 5.3.6 or later (released February 2026), you're in luck! You can edit the whitelist from the 'Airgap Configuration' page on your Dashboard instead of following the steps below.
+
+:::
+
 To edit the whitelist, you can follow these steps:
 
 ## 1. Connect to the `Combine-Proxy` virtual machine
