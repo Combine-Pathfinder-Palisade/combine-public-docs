@@ -151,7 +151,7 @@ The Combine team will need the following choices for your deployment:
 - Policy Assignments applied to the subscription OR a particular set of existing resource group(s)
 - The Subnet Schema as presented above OR modified as per your workload's needs
 - Which Azure services your workload is likely to use (ACR, AKS, ACA, Function Apps, etc).
-- [Which network topology your workload will want to use](/category/network-topologies).
+- [Which network topology your workload will want to use](/Combine-Azure/start-here/network-topologies).
 
 Also, please let us know if your organization has any security policies or restrictions that we need to be aware of, i.e. whitelisted IPs or compute instance requirements, etc.
 
