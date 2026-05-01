@@ -43,9 +43,9 @@ Recommended Solution:
 
 - The Combine Team recommends that for generating the presigned `sts:GetCallerIdentity` call (and for that only) that you use the non-emulated Region value. Combine will detect the use of a non-emulated credential for that call and will pass it on without attempting to resign the call.
 
-### RDS Endpoint Proxying
+### RDS and other non-HTTP/s Endpoint Proxying
 
-Combine cannot directly proxy the SSL / Database Protocol connection between clients and an RDS Instance/Cluster. In the emulated regions however, these connections often use a proprietary Certificate Authority Chain.
+Combine cannot directly proxy the SSL / Database Protocol connection between clients and an RDS Instance/Cluster. In the emulated regions however, these connections often use a proprietary Certificate Authority Chain. This applies as well to any other non-HTTP/s based protocol, like Elasticache.
 
 Recommended Solution:
 
