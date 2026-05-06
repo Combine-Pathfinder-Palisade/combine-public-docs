@@ -5,11 +5,13 @@ import Header from '../components/Header/Header';
 import WhatIsCombine from '../components/WhatIsCombine/WhatIsCombine';
 import PillarsSection from '../components/PillarsSection/PillarsSection';
 import SupportSection from '../components/SupportSection/SupportSection';
+import OnboardingTour from '../components/OnboardingTour/OnboardingTour';
 
 export default function Home() {
   const { siteConfig } = useDocusaurusContext();
   return (
     <Layout title={`Hello from ${siteConfig.title}`} description="Explore Combine Documentation">
+      <OnboardingTour />
       <Header />
       <main>
         <WhatIsCombine />
