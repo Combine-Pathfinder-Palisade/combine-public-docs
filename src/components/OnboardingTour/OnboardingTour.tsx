@@ -54,9 +54,9 @@ export default function OnboardingTour() {
         attachTo: { element: '.navbar__search', on: 'bottom' },
         buttons: [
           {
-            text: 'Got it! ✓',
+            text: 'Next →',
             classes: 'shepherd-button-primary',
-            action: () => tour.complete(),
+            action: () => tour.next(),
           },
         ],
         beforeShowPromise() {
@@ -70,6 +70,19 @@ export default function OnboardingTour() {
             document.querySelector('.navbar__search')?.classList.remove('tour-search-sparkle');
           },
         },
+      });
+
+      tour.addStep({
+        id: 'farewell',
+        title: "You're all set! 🎉",
+        text: `The docs are here whenever you need them.<br><br>Welcome aboard — we're glad to have you!`,
+        buttons: [
+          {
+            text: 'Start Exploring',
+            classes: 'shepherd-button-primary',
+            action: () => tour.complete(),
+          },
+        ],
       });
 
       tour.on('cancel', () => localStorage.setItem(TOUR_KEY, 'true'));
