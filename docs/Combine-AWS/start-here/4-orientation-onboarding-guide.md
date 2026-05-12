@@ -75,7 +75,7 @@ If you have installed the certificates successfully, browse to the URL of your C
 
     * _NOTE: Do not choose **System Roots**_
 
-    ![](/aws/onboarding-images/mac-keychain-system.png)
+    ![](/aws/onboarding-images/mac-keychain-login.png)
 5. Import the `certificates/ca.cert.pem` file by dragging it from your Credential Package folder to the **Login** keychain dialog.
 6. Confirm import by entering your MacOS system password.
 
