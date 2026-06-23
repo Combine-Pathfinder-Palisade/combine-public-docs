@@ -39,6 +39,17 @@ To access the Combine Dashboard, you will need to install:
 - Combine Trust Chain - This is (usually) just the Public Certificate of the Certificate Authority. (We also provide the Public Certificate of the Certificate Authority Signer in case it is also needed.) This is available in your Credential Package at `certificates/ca.cert.pem` or `certificates/ca.cert.der` depending on the file format you prefer.
 - Personal Certificate - This is the Public Certificate and Private Key of a Certificate issued to you by the Certificate Authority. This is available in your Credential Package at `certificates/<username>.p12`.
 
+_NOTE: Our team will access your Combine version and list of users via this static ip range. In some cases your security guardrails might trigger when we access through these IP addresses. Please whitelist the following Domain/Public IP Addresses to ensure no false alarms:_
+
+```
+
+Public IP Addresses Ranges:
+
+104.44.161.128/28
+52.161.201.160/28
+```
+
+
 See the steps below to install these into the Chrome Browser.
 
 ### Certificate Installation - Windows
