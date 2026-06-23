@@ -46,4 +46,4 @@ Logs are written to a DynamoDB table. The table name can be configured:
 
 ## Setting Configuration Values
 
-All configuration values above are set in the Combine Configuration DynamoDB table (`combine-configuration`). See [Edit Combine Configuration Values](../../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions on how to update configuration values.
+All configuration values above are set in the Combine Configuration DynamoDB table (`combine-configuration`). See [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions on how to update configuration values.

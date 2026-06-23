@@ -35,6 +35,6 @@ Additional DNS Subject Alternative Names (SANs) can be added to TAP and Endpoint
 
 ## Setting Configuration Values
 
-All configuration values above are set in the Combine Configuration DynamoDB table (`combine-configuration`). See [Edit Combine Configuration Values](../../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions.
+All configuration values above are set in the Combine Configuration DynamoDB table (`combine-configuration`). See [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions.
 
 _NOTE: Changes to certificate parameters require a certificate rebuild to take effect. Contact your Combine Support Team for assistance with certificate rotation._

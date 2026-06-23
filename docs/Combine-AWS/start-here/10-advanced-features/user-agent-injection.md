@@ -12,4 +12,4 @@ User-Agent injection is disabled by default. Enable it by setting the following 
 
 ## Setting Configuration Values
 
-This configuration value is set in the Combine Configuration DynamoDB table (`combine-configuration`). See [Edit Combine Configuration Values](../../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions.
+This configuration value is set in the Combine Configuration DynamoDB table (`combine-configuration`). See [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions.
