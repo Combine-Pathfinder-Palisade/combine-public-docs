@@ -77,6 +77,16 @@ Due to the shear volume of some Alert Events (formerly Violations) that can be t
 - Calls to `UDP` Port `123`. (This is the default port for NTP that is enabled on various AMI images.)
 - Calls to emphemeral Ports `49152` to `65535`. (In some network configurations the ephemeral port traffic return traffic is incorrectly routed through the AirGap Firewall causing many many false positives.)
 
+### Consistent Use of Service Principals
+
+Combine cannot track the use of Service Principals across requests. For example, if you include a Service Principal such as `ec2.c2s.ic.gov` in an IAM Policy document, Combine can ensure the response reflects the value you sent. However, it cannot guarantee that a subsequent call — such as `GetPolicy` — will use the same Service Principal. In the absence of an explicit Service Principal in a request, Combine will default to a specific value.
+
+This means that customers must consistently use the same Service Principal across all related API calls. Mixing Service Principals across requests will produce inconsistent results from Combine.
+
+Recommended Solution:
+
+- Choose a single Service Principal and use it consistently across all IAM calls within a given workflow.
+
 ### `WLDEVELOPER` Role
 
 If you are in a production environment that uses the `WLDEVELOPER` series enterprise IAM Roles then you might encounter a discrepancy between Combine's `WLDEVELOPER` definition and your production environment's `WLDEVELOPER` definition.
