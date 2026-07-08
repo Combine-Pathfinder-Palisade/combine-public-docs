@@ -126,12 +126,32 @@ Resources:
         - !If [
             IsReadOnlyMode,
             !Ref "AWS::NoValue",
-            !Ref PolicyMinimalPermission,
+            !Ref PolicyMinimalPermissionDeployment,
           ]
         - !If [
             IsReadOnlyMode,
             !Ref "AWS::NoValue",
-            !Ref PolicyMinimalPermissionEC2,
+            !Ref PolicyMinimalPermissionIAM,
+          ]
+        - !If [
+            IsReadOnlyMode,
+            !Ref "AWS::NoValue",
+            !Ref PolicyMinimalPermissionApplicationNetworking,
+          ]
+        - !If [
+            IsReadOnlyMode,
+            !Ref "AWS::NoValue",
+            !Ref PolicyMinimalPermissionApplicationCompute,
+          ]
+        - !If [
+            IsReadOnlyMode,
+            !Ref "AWS::NoValue",
+            !Ref PolicyMinimalPermissionApplicationStorage,
+          ]
+        - !If [
+            IsReadOnlyMode,
+            !Ref "AWS::NoValue",
+            !Ref PolicyMinimalPermissionApplication,
           ]
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess"
   ProvisioningRoleInstanceProfile:
@@ -147,10 +167,13 @@ Resources:
         ]
       Roles:
         - !Ref ProvisioningRole
-  PolicyMinimalPermission:
+  # ---------------------------------------------------------------------------
+  # Deployment — CloudFormation, Service Quotas, SSM, STS, EC2 Instance Connect
+  # ---------------------------------------------------------------------------
+  PolicyMinimalPermissionDeployment:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      ManagedPolicyName: "Combine-Minimal-Permission"
+      ManagedPolicyName: "Combine-Minimal-Permission-Deployment"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -185,140 +208,11 @@ Resources:
               - "cloudformation:UpdateStackSet"
               - "cloudformation:UpdateTerminationProtection"
               - "cloudformation:ValidateTemplate"
-              - "cloudwatch:DeleteAlarms"
-              - "cloudwatch:DeleteMetricStream"
-              - "cloudwatch:Describe*"
-              - "cloudwatch:DisableAlarmActions"
-              - "cloudwatch:EnableAlarmActions"
-              - "cloudwatch:Get*"
-              - "cloudwatch:List*"
-              - "cloudwatch:PutCompositeAlarm"
-              - "cloudwatch:PutMetricAlarm"
-              - "cloudwatch:PutMetricData"
-              - "cloudwatch:PutMetricStream"
-              - "cloudwatch:SetAlarmState"
-              - "cloudwatch:StartMetricStreams"
-              - "cloudwatch:StopMetricStreams"
-              - "cloudwatch:TagResource"
-              - "cloudwatch:UntagResource"
-              - "dynamodb:BatchGetItem"
-              - "dynamodb:BatchWriteItem"
-              - "dynamodb:ConditionCheckItem"
-              - "dynamodb:CreateTable"
-              - "dynamodb:DeleteItem"
-              - "dynamodb:DeleteTable"
-              - "dynamodb:Describe*"
-              - "dynamodb:GetItem"
-              - "dynamodb:List*"
-              - "dynamodb:PutItem"
-              - "dynamodb:Query"
-              - "dynamodb:Scan"
-              - "dynamodb:TagResource"
-              - "dynamodb:UntagResource"
-              - "dynamodb:UpdateContinuousBackups"
-              - "dynamodb:UpdateItem"
-              - "dynamodb:UpdateTable"
-              - "dynamodb:UpdateTimeToLive"
-              - "events:DeleteRule"
-              - "events:DisableRule"
-              - "events:EnableRule"
-              - "events:PutRule"
-              - "events:PutTargets"
-              - "events:RemoveTargets"
-              - "iam:CreateServiceLinkedRole"
-              - "iam:Get*"
-              - "iam:List*"
-              - "kinesis:DescribeLimits"
-              - "lambda:AddPermission"
-              - "lambda:CreateEventSourceMapping"
-              - "lambda:CreateFunction"
-              - "lambda:DeleteEventSourceMapping"
-              - "lambda:DeleteFunction"
-              - "lambda:PutFunctionConcurrency"
-              - "lambda:DeleteFunctionConcurrency"
-              - "lambda:PutProvisionedConcurrencyConfig"
-              - "lambda:DeleteProvisionedConcurrencyConfig"
-              - "lambda:Get*"
-              - "lambda:InvokeFunction"
-              - "lambda:List*"
-              - "lambda:PublishVersion"
-              - "lambda:RemovePermission"
-              - "lambda:TagResource"
-              - "lambda:UntagResource"
-              - "lambda:UpdateEventSourceMapping"
-              - "lambda:UpdateFunctionCode"
-              - "lambda:UpdateFunctionConfiguration"
-              - "logs:*Delivery*"
-              - "logs:CreateLogGroup"
-              - "logs:CreateLogStream"
-              - "logs:DeleteLogGroup"
-              - "logs:DeleteLogStream"
-              - "logs:DeleteMetricFilter"
-              - "logs:DeleteRetentionPolicy"
-              - "logs:DeleteSubscriptionFilter"
-              - "logs:Describe*"
-              - "logs:FilterLogEvents"
-              - "logs:Get*"
-              - "logs:List*"
-              - "logs:PutLogEvents"
-              - "logs:PutMetricFilter"
-              - "logs:PutResourcePolicy"
-              - "logs:PutRetentionPolicy"
-              - "logs:PutSubscriptionFilter"
-              - "logs:StartQuery"
-              - "logs:StopQuery"
-              - "logs:TagLogGroup"
-              - "logs:TagResource"
-              - "logs:TestMetricFilter"
-              - "logs:UntagLogGroup"
-              - "logs:UntagResource"
-              - "network-firewall:*"
-              - "rds:DescribeAccountAttributes"
-              - "route53:ChangeResourceRecordSets"
-              - "route53:ChangeTagsForResource"
-              - "route53:CreateHostedZone"
-              - "route53:DeleteHostedZone"
-              - "route53:Get*"
-              - "route53:List*"
-              - "route53:UpdateHostedZoneComment"
-              - "route53resolver:*"
-              - "s3:CreateBucket"
-              - "s3:DeleteBucket"
-              - "s3:DeleteBucketPolicy"
-              - "s3:DeleteObject"
-              - "s3:DeleteObjectTagging"
-              - "s3:DeleteObjectVersion"
-              - "s3:DeleteObjectVersionTagging"
-              - "s3:Describe*"
-              - "s3:Get*"
-              - "s3:List*"
-              - "s3:PutBucketAcl"
-              - "s3:PutBucketLogging"
-              - "s3:PutBucketPolicy"
-              - "s3:PutBucketPublicAccessBlock"
-              - "s3:PutBucketTagging"
-              - "s3:PutBucketVersioning"
-              - "s3:PutEncryptionConfiguration"
-              - "s3:PutLifecycleConfiguration"
-              - "s3:PutObject"
-              - "s3:PutObjectTagging"
-              - "s3:PutObjectVersionTagging"
-              - "secretsmanager:ListSecrets"
-              - "servicequotas:*"
-              - "sns:AddPermission"
-              - "sns:ConfirmSubscription"
-              - "sns:CreateTopic"
-              - "sns:DeleteTopic"
-              - "sns:Get*"
-              - "sns:List*"
-              - "sns:Publish"
-              - "sns:RemovePermission"
-              - "sns:SetSubscriptionAttributes"
-              - "sns:SetTopicAttributes"
-              - "sns:Subscribe"
-              - "sns:TagResource"
-              - "sns:Unsubscribe"
-              - "sns:UntagResource"
+              - "ec2-instance-connect:*"
+              - "servicequotas:GetAWSDefaultServiceQuota"
+              - "servicequotas:GetServiceQuota"
+              - "servicequotas:ListAWSDefaultServiceQuotas"
+              - "servicequotas:ListServiceQuotas"
               - "ssm:*Command*"
               - "ssm:*Parameter*"
               - "ssm:Describe*"
@@ -326,6 +220,41 @@ Resources:
               - "ssm:StartSession"
               - "ssm:TerminateSession"
               - "sts:DecodeAuthorizationMessage"
+              - "servicequotas:RequestServiceQuotaIncrease"
+            Resource: "*"
+          # S3 — scoped to cf-templates-* buckets (CloudFormation template staging)
+          - Effect: Allow
+            Action:
+              - "s3:CreateBucket"
+              - "s3:DeleteObject"
+              - "s3:DeleteObjectTagging"
+              - "s3:DeleteObjectVersion"
+              - "s3:DeleteObjectVersionTagging"
+              - "s3:Describe*"
+              - "s3:Get*"
+              - "s3:List*"
+              - "s3:PutObject"
+              - "s3:PutObjectTagging"
+              - "s3:PutObjectVersionTagging"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::cf-templates-*"
+              - !Sub "arn:${AWS::Partition}:s3:::cf-templates-*/*"
+
+  # ---------------------------------------------------------------------------
+  # IAM — role/policy/instance-profile management scoped to Combine resources
+  # ---------------------------------------------------------------------------
+  PolicyMinimalPermissionIAM:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: "Combine-Minimal-Permission-IAM"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "iam:CreateServiceLinkedRole"
+              - "iam:Get*"
+              - "iam:List*"
             Resource: "*"
           - Effect: Allow
             Action:
@@ -353,20 +282,109 @@ Resources:
               - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*Combine*"
               - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*Combine*"
               - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*Combine*"
-
               - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*-WLDEVELOPER-*"
-
               - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*PolicyMinimalPermission*"
               - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*PolicyFollowerAccountCredentials*"
-          - Effect: Allow
-            Action:
-              - "secretsmanager:*"
-            Resource:
-              - !Sub "arn:${AWS::Partition}:secretsmanager:*:${AWS::AccountId}:secret:combine/*"
-  PolicyMinimalPermissionEC2:
+  # ---------------------------------------------------------------------------
+  # Application Networking — VPC, Network Firewall, Route 53, Route 53 Resolver
+  # ---------------------------------------------------------------------------
+  PolicyMinimalPermissionApplicationNetworking:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      ManagedPolicyName: "Combine-Minimal-Permission-EC2"
+      ManagedPolicyName: "Combine-Minimal-Permission-App-Networking"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "ec2:*InstanceConnectEndpoint*"
+              - "ec2:*VpcEndpoint*"
+              - "ec2:AllocateAddress"
+              - "ec2:AssignPrivateIpAddresses"
+              - "ec2:AssociateAddress"
+              - "ec2:AssociateDhcpOptions"
+              - "ec2:AssociateRouteTable"
+              - "ec2:AssociateVpcCidrBlock"
+              - "ec2:AttachInternetGateway"
+              - "ec2:AttachNetworkInterface"
+              - "ec2:AuthorizeSecurityGroupEgress"
+              - "ec2:AuthorizeSecurityGroupIngress"
+              - "ec2:CreateDhcpOptions"
+              - "ec2:CreateFlowLogs"
+              - "ec2:CreateInternetGateway"
+              - "ec2:CreateNatGateway"
+              - "ec2:CreateNetworkAcl"
+              - "ec2:CreateNetworkAclEntry"
+              - "ec2:CreateNetworkInterface"
+              - "ec2:CreateRoute"
+              - "ec2:CreateRouteTable"
+              - "ec2:CreateSecurityGroup"
+              - "ec2:CreateSubnet"
+              - "ec2:CreateTags"
+              - "ec2:CreateVpc"
+              - "ec2:DeleteDhcpOptions"
+              - "ec2:DeleteFlowLogs"
+              - "ec2:DeleteInternetGateway"
+              - "ec2:DeleteNatGateway"
+              - "ec2:DeleteNetworkAcl"
+              - "ec2:DeleteNetworkAclEntry"
+              - "ec2:DeleteNetworkInterface"
+              - "ec2:DeleteNetworkInterfacePermission"
+              - "ec2:DeleteRoute"
+              - "ec2:DeleteRouteTable"
+              - "ec2:DeleteSecurityGroup"
+              - "ec2:DeleteSubnet"
+              - "ec2:DeleteTags"
+              - "ec2:DeleteVpc"
+              - "ec2:Describe*"
+              - "ec2:DetachInternetGateway"
+              - "ec2:DetachNetworkInterface"
+              - "ec2:DisassociateAddress"
+              - "ec2:DisassociateRouteTable"
+              - "ec2:DisassociateVpcCidrBlock"
+              - "ec2:Get*"
+              - "ec2:ModifyNetworkInterfaceAttribute"
+              - "ec2:ModifySubnetAttribute"
+              - "ec2:ModifyVpcAttribute"
+              - "ec2:ReleaseAddress"
+              - "ec2:ReplaceNetworkAclAssociation"
+              - "ec2:ReplaceNetworkAclEntry"
+              - "ec2:ReplaceRoute"
+              - "ec2:ReplaceRouteTableAssociation"
+              - "ec2:RevokeSecurityGroupIngress"
+              - "network-firewall:*"
+              - "route53:ChangeResourceRecordSets"
+              - "route53:ChangeTagsForResource"
+              - "route53:CreateHostedZone"
+              - "route53:DeleteHostedZone"
+              - "route53:Get*"
+              - "route53:List*"
+              - "route53:UpdateHostedZoneComment"
+              - "route53resolver:AssociateResolverRule"
+              - "route53resolver:CreateResolverEndpoint"
+              - "route53resolver:CreateResolverRule"
+              - "route53resolver:DeleteResolverEndpoint"
+              - "route53resolver:DeleteResolverRule"
+              - "route53resolver:DisassociateResolverRule"
+              - "route53resolver:GetResolverEndpoint"
+              - "route53resolver:GetResolverRule"
+              - "route53resolver:GetResolverRuleAssociation"
+              - "route53resolver:ListResolverEndpoints"
+              - "route53resolver:ListResolverRuleAssociations"
+              - "route53resolver:ListResolverRules"
+              - "route53resolver:ListTagsForResource"
+              - "route53resolver:TagResource"
+              - "route53resolver:UntagResource"
+              - "route53resolver:UpdateResolverEndpoint"
+              - "route53resolver:UpdateResolverRule"
+            Resource: "*"
+  # ---------------------------------------------------------------------------
+  # Application Compute — EC2 instances, Auto Scaling, Load Balancing, Lambda
+  # ---------------------------------------------------------------------------
+  PolicyMinimalPermissionApplicationCompute:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: "Combine-Minimal-Permission-App-Compute"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -413,83 +431,28 @@ Resources:
               - "autoscaling:SuspendProcesses"
               - "autoscaling:TerminateInstanceInAutoScalingGroup"
               - "autoscaling:UpdateAutoScalingGroup"
-              - "ec2-instance-connect:*"
-              - "ec2:*InstanceConnectEndpoint*"
-              - "ec2:*VpcEndpoint*"
-              - "ec2:AllocateAddress"
-              - "ec2:AssignPrivateIpAddresses"
-              - "ec2:AssociateAddress"
-              - "ec2:AssociateDhcpOptions"
               - "ec2:AssociateIamInstanceProfile"
-              - "ec2:AssociateRouteTable"
-              - "ec2:AssociateVpcCidrBlock"
-              - "ec2:AttachInternetGateway"
-              - "ec2:AttachNetworkInterface"
               - "ec2:AttachVolume"
-              - "ec2:AuthorizeSecurityGroupEgress"
-              - "ec2:AuthorizeSecurityGroupIngress"
-              - "ec2:CreateDhcpOptions"
-              - "ec2:CreateFlowLogs"
-              - "ec2:CreateInternetGateway"
               - "ec2:CreateKeyPair"
               - "ec2:CreateLaunchTemplate"
               - "ec2:CreateLaunchTemplateVersion"
-              - "ec2:CreateNatGateway"
-              - "ec2:CreateNetworkAcl"
-              - "ec2:CreateNetworkAclEntry"
-              - "ec2:CreateNetworkInterface"
-              - "ec2:CreateRoute"
-              - "ec2:CreateRouteTable"
-              - "ec2:CreateSecurityGroup"
-              - "ec2:CreateSubnet"
               - "ec2:CreateTags"
               - "ec2:CreateVolume"
-              - "ec2:CreateVpc"
-              - "ec2:DeleteDhcpOptions"
-              - "ec2:DeleteFlowLogs"
-              - "ec2:DeleteInternetGateway"
               - "ec2:DeleteKeyPair"
               - "ec2:DeleteLaunchTemplate"
               - "ec2:DeleteLaunchTemplateVersions"
-              - "ec2:DeleteNatGateway"
-              - "ec2:DeleteNetworkAcl"
-              - "ec2:DeleteNetworkAclEntry"
-              - "ec2:DeleteNetworkInterface"
-              - "ec2:DeleteNetworkInterfacePermission"
-              - "ec2:DeleteRoute"
-              - "ec2:DeleteRouteTable"
-              - "ec2:DeleteSecurityGroup"
-              - "ec2:DeleteSubnet"
               - "ec2:DeleteTags"
               - "ec2:DeleteVolume"
-              - "ec2:DeleteVpc"
-              - "ec2:Describe*"
-              - "ec2:DetachInternetGateway"
-              - "ec2:DetachNetworkInterface"
               - "ec2:DetachVolume"
-              - "ec2:DisassociateAddress"
               - "ec2:DisassociateIamInstanceProfile"
-              - "ec2:DisassociateRouteTable"
-              - "ec2:DisassociateVpcCidrBlock"
-              - "ec2:Get*"
               - "ec2:ModifyInstanceAttribute"
               - "ec2:ModifyLaunchTemplate"
-              - "ec2:ModifyNetworkInterfaceAttribute"
-              - "ec2:ModifySubnetAttribute"
-              - "ec2:ModifyVpcAttribute"
               - "ec2:RebootInstances"
-              - "ec2:ReleaseAddress"
               - "ec2:ReplaceIamInstanceProfileAssociation"
-              - "ec2:ReplaceNetworkAclAssociation"
-              - "ec2:ReplaceNetworkAclEntry"
-              - "ec2:ReplaceRoute"
-              - "ec2:ReplaceRouteTableAssociation"
-              - "ec2:RevokeSecurityGroupIngress"
               - "ec2:RunInstances"
               - "ec2:StartInstances"
               - "ec2:StopInstances"
               - "ec2:TerminateInstances"
-              - "ec2-instance-connect:*"
               - "elasticloadbalancing:AddListenerCertificates"
               - "elasticloadbalancing:AddTags"
               - "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer"
@@ -527,13 +490,205 @@ Resources:
               - "elasticloadbalancing:SetRulePriorities"
               - "elasticloadbalancing:SetSecurityGroups"
               - "elasticloadbalancing:SetSubnets"
+            Resource: "*"
+          # Lambda — scoped to Combine_* functions
+          - Effect: Allow
+            Action:
+              - "lambda:AddPermission"
+              - "lambda:CreateEventSourceMapping"
+              - "lambda:CreateFunction"
+              - "lambda:DeleteEventSourceMapping"
+              - "lambda:DeleteFunction"
+              - "lambda:Get*"
+              - "lambda:InvokeFunction"
+              - "lambda:List*"
+              - "lambda:PublishVersion"
+              - "lambda:PutFunctionConcurrency"
+              - "lambda:DeleteFunctionConcurrency"
+              - "lambda:PutProvisionedConcurrencyConfig"
+              - "lambda:DeleteProvisionedConcurrencyConfig"
+              - "lambda:RemovePermission"
+              - "lambda:TagResource"
+              - "lambda:UntagResource"
+              - "lambda:UpdateEventSourceMapping"
+              - "lambda:UpdateFunctionCode"
+              - "lambda:UpdateFunctionConfiguration"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:Combine_*"
+              - !Sub "arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:event-source-mapping:*"
+  # ---------------------------------------------------------------------------
+  # Application Storage — DynamoDB, S3, RDS
+  # ---------------------------------------------------------------------------
+  PolicyMinimalPermissionApplicationStorage:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: "Combine-Minimal-Permission-App-Storage"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # DynamoDB — scoped to combine-* tables
+          - Effect: Allow
+            Action:
+              - "dynamodb:BatchGetItem"
+              - "dynamodb:BatchWriteItem"
+              - "dynamodb:ConditionCheckItem"
+              - "dynamodb:CreateTable"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:DeleteTable"
+              - "dynamodb:Describe*"
+              - "dynamodb:GetItem"
+              - "dynamodb:List*"
+              - "dynamodb:PutItem"
+              - "dynamodb:Query"
+              - "dynamodb:Scan"
+              - "dynamodb:TagResource"
+              - "dynamodb:UntagResource"
+              - "dynamodb:UpdateContinuousBackups"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:UpdateTable"
+              - "dynamodb:UpdateTimeToLive"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:dynamodb:*:${AWS::AccountId}:table/combine-*"
+              - !Sub "arn:${AWS::Partition}:dynamodb:*:${AWS::AccountId}:table/combine-*/index/*"
+          # S3 — scoped to combine-* buckets
+          - Effect: Allow
+            Action:
+              - "s3:CreateBucket"
+              - "s3:DeleteBucket"
+              - "s3:DeleteBucketPolicy"
+              - "s3:DeleteObject"
+              - "s3:DeleteObjectTagging"
+              - "s3:DeleteObjectVersion"
+              - "s3:DeleteObjectVersionTagging"
+              - "s3:Describe*"
+              - "s3:Get*"
+              - "s3:List*"
+              - "s3:PutBucketAcl"
+              - "s3:PutBucketLogging"
+              - "s3:PutBucketPolicy"
+              - "s3:PutBucketPublicAccessBlock"
+              - "s3:PutBucketTagging"
+              - "s3:PutBucketVersioning"
+              - "s3:PutEncryptionConfiguration"
+              - "s3:PutLifecycleConfiguration"
+              - "s3:PutObject"
+              - "s3:PutObjectTagging"
+              - "s3:PutObjectVersionTagging"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::combine-*"
+              - !Sub "arn:${AWS::Partition}:s3:::combine-*/*"
+          - Effect: Allow
+            Action:
+              - "rds:DescribeAccountAttributes"
+            Resource: "*"
+  # ---------------------------------------------------------------------------
+  # Application — CloudWatch, Logs, SNS, Events, Secrets Manager, KMS, Kinesis
+  # ---------------------------------------------------------------------------
+  PolicyMinimalPermissionApplication:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: "Combine-Minimal-Permission-Application"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloudwatch:Describe*"
+              - "cloudwatch:Get*"
+              - "cloudwatch:List*"
+              - "cloudwatch:PutMetricData"
+              - "events:DeleteRule"
+              - "events:DisableRule"
+              - "events:EnableRule"
+              - "events:PutRule"
+              - "events:PutTargets"
+              - "events:RemoveTargets"
+              - "kinesis:DescribeLimits"
               - "kms:CreateGrant"
               - "kms:Decrypt"
               - "kms:DescribeKey"
               - "kms:Encrypt"
               - "kms:GenerateDataKey*"
               - "kms:ReEncrypt*"
+              - "logs:Describe*"
+              - "logs:FilterLogEvents"
+              - "logs:Get*"
+              - "logs:List*"
+              - "logs:StartQuery"
+              - "logs:StopQuery"
+              - "logs:TestMetricFilter"
+              - "secretsmanager:ListSecrets"
+              - "sns:Get*"
+              - "sns:List*"
             Resource: "*"
+          # CloudWatch Alarms — scoped to Combine-* and *-ASG-* alarms
+          - Effect: Allow
+            Action:
+              - "cloudwatch:DeleteAlarms"
+              - "cloudwatch:DeleteMetricStream"
+              - "cloudwatch:DisableAlarmActions"
+              - "cloudwatch:EnableAlarmActions"
+              - "cloudwatch:PutCompositeAlarm"
+              - "cloudwatch:PutMetricAlarm"
+              - "cloudwatch:PutMetricStream"
+              - "cloudwatch:SetAlarmState"
+              - "cloudwatch:StartMetricStreams"
+              - "cloudwatch:StopMetricStreams"
+              - "cloudwatch:TagResource"
+              - "cloudwatch:UntagResource"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:cloudwatch:*:${AWS::AccountId}:alarm:Combine-*"
+              - !Sub "arn:${AWS::Partition}:cloudwatch:*:${AWS::AccountId}:alarm:*-ASG-*"
+          # CloudWatch Logs — scoped to Combine* log groups
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:DeleteLogGroup"
+              - "logs:DeleteLogStream"
+              - "logs:DeleteMetricFilter"
+              - "logs:DeleteRetentionPolicy"
+              - "logs:DeleteSubscriptionFilter"
+              - "logs:PutLogEvents"
+              - "logs:PutMetricFilter"
+              - "logs:PutResourcePolicy"
+              - "logs:PutRetentionPolicy"
+              - "logs:PutSubscriptionFilter"
+              - "logs:TagLogGroup"
+              - "logs:TagResource"
+              - "logs:UntagLogGroup"
+              - "logs:UntagResource"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:Combine*"
+              - !Sub "arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:Combine*:*"
+          - Effect: Allow
+            Action:
+              - "logs:*Deliver*"
+            Resource:
+              - "*"
+          # SNS — scoped to Combine-* topics
+          - Effect: Allow
+            Action:
+              - "sns:AddPermission"
+              - "sns:ConfirmSubscription"
+              - "sns:CreateTopic"
+              - "sns:DeleteTopic"
+              - "sns:Publish"
+              - "sns:RemovePermission"
+              - "sns:SetSubscriptionAttributes"
+              - "sns:SetTopicAttributes"
+              - "sns:Subscribe"
+              - "sns:TagResource"
+              - "sns:Unsubscribe"
+              - "sns:UntagResource"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:sns:*:${AWS::AccountId}:Combine-*"
+          # Secrets Manager — scoped to combine/* secrets
+          - Effect: Allow
+            Action:
+              - "secretsmanager:*"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:secretsmanager:*:${AWS::AccountId}:secret:combine/*"
   PolicyFollowerAccountCredentials:
     Type: "AWS::IAM::ManagedPolicy"
     Condition: HasPermissionsFollowerAccountCredentials
@@ -545,7 +700,7 @@ Resources:
             Action:
               - "iam:*User*"
               - "iam:*AccessKey*"
-            Resource: "arn:aws:iam::663117128738:user/combine-*"
+            Resource: !Sub "arn:${AWS::Partition}:iam::663117128738:user/combine-*"
           - Effect: Allow
             Action:
               - "iam:AttachUserPolicy"
