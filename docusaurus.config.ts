@@ -1,6 +1,7 @@
 import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -41,6 +42,8 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
           path: 'docs',
+          // Renders OpenAPI pages with the API theme; regular docs fall back to the default item.
+          docItemComponent: '@theme/ApiItem',
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
           exclude: [
@@ -70,13 +73,38 @@ const config: Config = {
   ],
 
   plugins: [
-    require.resolve('docusaurus-lunr-search')
+    require.resolve('docusaurus-lunr-search'),
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: 'openapi',
+        docsPluginId: 'default',
+        config: {
+          tap: {
+            specPath: 'openapi/openapi.yaml',
+            outputDir: 'docs/combine-api',
+            hideSendButton: true,
+            externalJsonProps: true,
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+              categoryLinkSource: 'tag',
+            },
+          } satisfies OpenApiPlugin.Options,
+        },
+      },
+    ],
   ],
 
+  themes: ['docusaurus-theme-openapi-docs'],
 
   themeConfig: {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
+    api: {
+      schemaExpansion: {
+        default: 1,
+      },
+    },
     navbar: {
       title: 'Combine Documentation',
       logo: {
