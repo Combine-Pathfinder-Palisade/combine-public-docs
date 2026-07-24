@@ -10,6 +10,9 @@
 .docusaurus
 .cache-loader
 
+# Generated OpenAPI docs
+/docs/combine-api/
+
 # Misc
 .DS_Store
 .env.local

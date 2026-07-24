@@ -1,0 +1,3830 @@
+openapi: 3.1.0
+info:
+  title: Combine TAP API
+  description: |-
+    The Combine TAP API manages users, servers, groups, AWS role assignments, certificates, alert events, configuration, metadata, and operational tools for a Combine deployment. It also provides CAP and SCAP-compatible endpoints for issuing temporary AWS credentials.
+
+    All requests must use HTTPS. Except where explicitly noted, requests require mutual TLS with a valid client certificate issued for the deployment. Requests that modify data must include the X-Requested-By header; this applies to all methods except GET, HEAD, and OPTIONS. Administrative operations require an account with the admin role.
+  version: "3.15"
+servers:
+  - url: "https://{host}"
+    description: Base URL for a shard's TAP API.
+    variables:
+      host:
+        description: External TAP load balancer DNS name for the shard.
+        default: tap.example.com
+security:
+  - mutualTLS: []
+tags:
+  - name: Users
+    description: Manage user accounts and their credential bundles.
+  - name: Servers
+    description: Manage server accounts and their certificates.
+  - name: Groups
+    description: Manage groups and their memberships.
+  - name: AWS Roles
+    description: Manage the AWS roles available for assignment.
+  - name: CAP / SCAP
+    description: Issue temporary AWS credentials and list the accounts a caller may
+      access.
+  - name: Certificates
+    description: Sign certificates and check certificate status.
+  - name: Alert Events
+    description: View and manage security alert events.
+  - name: Configuration
+    description: View and update the application configuration.
+  - name: Administration
+    description: Administrative operations such as sending mass email and rebuilding
+      credential bundles.
+  - name: Metadata
+    description: "Application metadata, reference data, and deployment information."
+  - name: Documentation
+    description: "Reference lookups for supported instance types, versions, and endpoints."
+  - name: Tools
+    description: "Utilities such as CloudFormation template analysis, workload health,\
+      \ and firewall rules."
+  - name: System
+    description: Service health checks.
+paths:
+  /tap/api/v1/alerts/events:
+    get:
+      tags:
+        - Alert Events
+      summary: List alert events
+      description: "Returns alert events, optionally filtered by date range, summary\
+        \ text, ignored state, and group."
+      operationId: getAlertEvents
+      parameters:
+        - name: dateStart
+          in: query
+          description: "Inclusive lower bound for the event date, in epoch seconds."
+          schema:
+            type: string
+            default: ""
+        - name: dateEnd
+          in: query
+          description: "Inclusive upper bound for the event date, in epoch seconds."
+          schema:
+            type: string
+            default: ""
+        - name: summary
+          in: query
+          description: Case-sensitive substring to match against the event summary.
+          schema:
+            type: string
+            default: ""
+        - name: showIgnored
+          in: query
+          description: "When \"true\", include ignored events; otherwise only open events\
+            \ are returned."
+          schema:
+            type: string
+            default: ""
+        - name: groupId
+          in: query
+          description: Restrict results to events matching the given group's account
+            IDs and CIDR blocks.
+          schema:
+            type: string
+            default: ""
+      responses:
+        "200":
+          description: Matching alert events.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertEventListResponse"
+        "404":
+          description: The requested group was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Alert Events
+      summary: Delete all alert events
+      description: Permanently deletes every alert event. Requires the admin role.
+      operationId: deleteAlertEvents
+      responses:
+        "200":
+          description: All alert events were deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          description: The user is not authorized to perform this action.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The alert events could not be deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/alerts/events/export:
+    get:
+      tags:
+        - Alert Events
+      summary: Export all alert events
+      description: Returns every alert event as a downloadable JSON attachment.
+      operationId: exportAlertEvents
+      responses:
+        "200":
+          description: JSON attachment containing all alert events.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlertEvent"
+        "500":
+          description: The export could not be generated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/alerts/events/{id}:
+    get:
+      tags:
+        - Alert Events
+      summary: Get an alert event
+      description: Returns a single alert event by its identifier.
+      operationId: getAlertEvent
+      parameters:
+        - name: id
+          in: path
+          description: Identifier of the alert event.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The requested alert event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertEventResponse"
+        "404":
+          description: No alert event exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The alert event could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags:
+        - Alert Events
+      summary: Reopen an alert event
+      description: Sets the state of the given alert event to "open".
+      operationId: openAlertEvent
+      parameters:
+        - name: id
+          in: path
+          description: Identifier of the alert event.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The alert event was reopened.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "500":
+          description: The alert event could not be reopened.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Alert Events
+      summary: Ignore an alert event
+      description: Sets the state of the given alert event to "ignored".
+      operationId: ignoreAlertEvent
+      parameters:
+        - name: id
+          in: path
+          description: Identifier of the alert event.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The alert event was ignored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "500":
+          description: The alert event could not be ignored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v2/user/accesslist:
+    get:
+      tags:
+        - CAP / SCAP
+      summary: List the caller's access
+      description: "Returns the AWS accounts and roles the caller may access, grouped\
+        \ by account. Authenticated with a client certificate. Requires the CAP API\
+        \ to be enabled."
+      operationId: getCredentialsList
+      responses:
+        "200":
+          description: The caller's accessible accounts and roles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapAccessListEntry"
+        "500":
+          description: The access list could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+  /api/v1/credentials:
+    get:
+      tags:
+        - CAP / SCAP
+      summary: Get temporary AWS credentials
+      description: Returns temporary AWS credentials for an assumed role. Authenticated
+        with a client certificate. Credentials are issued only for roles assigned
+        to the caller. Requires the CAP API to be enabled.
+      operationId: getAccess
+      parameters:
+        - name: duration
+          in: query
+          description: Requested session duration in seconds. Must be between 900 and
+            the configured maximum. Defaults to the configured value when omitted.
+          schema:
+            type: string
+        - name: policy
+          in: query
+          description: Optional IAM policy that further restricts the session.
+          schema:
+            type: string
+        - name: agency
+          in: query
+          description: Agency the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: mission
+          in: query
+          description: Mission the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: role
+          in: query
+          description: Name of the role to assume.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The temporary credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialsResponse"
+        "400":
+          description: A required parameter is missing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "403":
+          description: The caller is not authorized to assume the requested role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "404":
+          description: No role matches the requested parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "500":
+          description: The credentials could not be issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+  /api/v1/accounts/{accountId}:
+    get:
+      tags:
+        - CAP / SCAP
+      summary: Echo the account identifier
+      description: Returns a plain-text confirmation of the account identifier.
+      operationId: base
+      parameters:
+        - name: accountId
+          in: path
+          description: AWS account number.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Confirmation of the account identifier.
+          content:
+            text/plain:
+              schema:
+                example: Account ID is 123456789012
+  /api/v1/accounts/{accountId}/activity:
+    get:
+      tags:
+        - CAP / SCAP
+      summary: List account activity
+      description: Returns a per-user summary of AWS access to the account. Requires
+        the CAP API to be enabled.
+      operationId: getActivity
+      parameters:
+        - name: accountId
+          in: path
+          description: AWS account number.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The account's access summary.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapTrailSummary"
+  /api/v1/accounts/{accountId}/trailevents:
+    get:
+      tags:
+        - CAP / SCAP
+      summary: List account trail events
+      description: Returns a paginated list of AWS access trail events for the account.
+        Requires the CAP API to be enabled.
+      operationId: getTrailEvents
+      parameters:
+        - name: accountId
+          in: path
+          description: AWS account number.
+          required: true
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          description: "Inclusive lower bound for the event time, as a UTC ISO8601 timestamp.\
+            \ Defaults to 7 days before now when omitted."
+          schema:
+            type: string
+        - name: stop_time
+          in: query
+          description: "Inclusive upper bound for the event time, as a UTC ISO8601 timestamp.\
+            \ Defaults to now when omitted."
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: "Page number to return, starting at 1."
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: page_size
+          in: query
+          description: "Number of events per page, between 10 and 500."
+          schema:
+            type: integer
+            format: int32
+            default: 100
+        - name: sort
+          in: query
+          description: Sort order by event time. Either asc or desc.
+          schema:
+            type: string
+            default: desc
+      responses:
+        "200":
+          description: The matching trail events.
+          headers:
+            X-Returned-Rows:
+              description: Number of events returned in this page.
+              style: simple
+              schema: {}
+            X-Total-Rows:
+              description: Total number of matching events.
+              style: simple
+              schema: {}
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapTrailEvent"
+        "400":
+          description: A query parameter is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+  /cap/gxCAP/getAccessList:
+    get:
+      tags:
+        - CAP / SCAP
+      summary: List the caller's access
+      description: "Returns the AWS accounts and roles the caller may access, grouped\
+        \ by account. Authenticated with a client certificate. Requires the SCAP API\
+        \ to be enabled."
+      operationId: getCredentialsList_1
+      responses:
+        "200":
+          description: The caller's accessible accounts and roles.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScapAccessListResponse"
+        "500":
+          description: The access list could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+  /cap/gxCAP/getTemporaryCredentials:
+    get:
+      tags:
+        - CAP / SCAP
+      summary: Get temporary AWS credentials
+      description: Returns temporary AWS credentials for an assumed role. Authenticated
+        with a client certificate. Credentials are issued only for roles assigned
+        to the caller. Requires the SCAP API to be enabled.
+      operationId: getTemporaryCredentials
+      parameters:
+        - name: duration
+          in: query
+          description: Requested session duration in seconds. Must be between 900 and
+            the configured maximum. Defaults to the configured value when omitted.
+          schema:
+            type: string
+        - name: policy
+          in: query
+          description: Optional IAM policy that further restricts the session.
+          schema:
+            type: string
+        - name: agency
+          in: query
+          description: Agency the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: accountName
+          in: query
+          description: Name of the account.
+          required: true
+          schema:
+            type: string
+        - name: roleName
+          in: query
+          description: Name of the role to assume.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The temporary credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialsResponse"
+        "400":
+          description: A required parameter is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "403":
+          description: The caller is not authorized to assume the requested role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "404":
+          description: "The agency, account, or role is not registered or is disabled."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "500":
+          description: The credentials could not be issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+  /tap/api/v1/login:
+    get:
+      tags:
+        - CAP / SCAP
+      summary: Log in to the AWS console
+      description: Redirects to an AWS console federated sign-in URL for the assumed
+        role. Authenticated with a client certificate. The caller may sign in only
+        with roles assigned to them.
+      operationId: login
+      parameters:
+        - name: environment
+          in: query
+          description: Cloud environment the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: agency
+          in: query
+          description: Agency the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: account
+          in: query
+          description: Name of the account.
+          required: true
+          schema:
+            type: string
+        - name: role
+          in: query
+          description: Name of the role to assume.
+          required: true
+          schema:
+            type: string
+      responses:
+        "307":
+          description: Redirect to the AWS console federated sign-in URL.
+          headers:
+            Location:
+              description: AWS console federated sign-in URL.
+              style: simple
+              schema: {}
+        "500":
+          description: The login could not be completed.
+  /tap/api/v1/login/credentials:
+    get:
+      tags:
+        - CAP / SCAP
+      summary: Get AWS console login credentials
+      description: Returns temporary AWS credentials for the dashboard login flow.
+        Authenticated with a client certificate. Credentials are issued only for roles
+        assigned to the caller.
+      operationId: loginCredentials
+      parameters:
+        - name: environment
+          in: query
+          description: Cloud environment the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: agency
+          in: query
+          description: Agency the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: account
+          in: query
+          description: Name of the account.
+          required: true
+          schema:
+            type: string
+        - name: role
+          in: query
+          description: Name of the role to assume.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The temporary credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialsResponse"
+        "500":
+          description: The credentials could not be issued.
+  /combine/api/health:
+    get:
+      tags:
+        - System
+      summary: Check service health
+      description: Returns a successful response when the service is available.
+      operationId: healthCheck
+      responses:
+        "200":
+          description: The service is available.
+  /tap/api/v1/admin/bundle:
+    post:
+      tags:
+        - Administration
+      summary: Rebuild all credential bundles
+      description: Rebuilds the certificate bundles for every user and server. Requires
+        the admin role.
+      operationId: rebuildAllBundles
+      requestBody:
+        content:
+          "*/*":
+            schema:
+              type: string
+      responses:
+        "200":
+          description: The bundles were rebuilt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          description: The user is not authorized to rebuild credential bundles.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The bundles could not be rebuilt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/admin/{userId}/email:
+    put:
+      tags:
+        - Administration
+      summary: Send a mass email
+      description: Sends an email to a selection of users. Requires the admin role.
+      operationId: sendMassEmail
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: The recipients and content of the email.
+        content:
+          "*/*":
+            schema:
+              $ref: "#/components/schemas/MassEmailRequest"
+        required: true
+      responses:
+        "200":
+          description: The email was sent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Email integration is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to send a mass email.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The email could not be sent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/aws-roles:
+    get:
+      tags:
+        - AWS Roles
+      summary: List AWS roles
+      description: Returns all AWS roles.
+      operationId: all
+      responses:
+        "200":
+          description: A list of AWS roles.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwsRoleListResponse"
+    post:
+      tags:
+        - AWS Roles
+      summary: Create an AWS role
+      description: Creates an AWS role. Requires the admin role.
+      operationId: createRole
+      requestBody:
+        description: The role to create.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AwsRole"
+        required: true
+      responses:
+        "200":
+          description: The created AWS role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwsRoleResponse"
+        "400":
+          description: "The role is missing a required value, has an invalid environment,\
+            \ or already exists."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/aws-roles/{roleId}:
+    get:
+      tags:
+        - AWS Roles
+      summary: Get an AWS role
+      description: Returns a single AWS role by its identifier. Requires the admin
+        role.
+      operationId: getRole
+      parameters:
+        - name: roleId
+          in: path
+          description: Identifier of the role.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The requested AWS role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwsRoleResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No role exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags:
+        - AWS Roles
+      summary: Update an AWS role
+      description: Updates an AWS role. Requires the admin role.
+      operationId: updateRole
+      parameters:
+        - name: roleId
+          in: path
+          description: Identifier of the role.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: The role values to apply.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AwsRole"
+        required: true
+      responses:
+        "200":
+          description: The updated AWS role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwsRoleResponse"
+        "400":
+          description: The role has an invalid value or already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No role exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - AWS Roles
+      summary: Delete an AWS role
+      description: Deletes an AWS role and removes it from any users and servers that
+        hold it. Requires the admin role.
+      operationId: deleteRole
+      parameters:
+        - name: roleId
+          in: path
+          description: Identifier of the role.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        "200":
+          description: The role was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AwsRoleDeleteResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No role exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/admin/certificate/custom:
+    post:
+      tags:
+        - Certificates
+      summary: Sign a custom certificate signing request
+      description: Signs a PEM-encoded PKCS#10 certificate signing request and returns
+        the signed certificate. Requires the admin role. Requires custom CSR signing
+        to be enabled.
+      operationId: signCustomCsrRequest
+      requestBody:
+        description: The PEM-encoded PKCS#10 certificate signing request.
+        content:
+          text/plain:
+            schema:
+              example: |-
+                -----BEGIN CERTIFICATE REQUEST-----
+                ...
+                -----END CERTIFICATE REQUEST-----
+        required: true
+      responses:
+        "200":
+          description: The signed certificate in PEM format.
+          content:
+            text/plain:
+              schema:
+                example: |-
+                  -----BEGIN CERTIFICATE-----
+                  ...
+                  -----END CERTIFICATE-----
+        "403":
+          description: The user is not authorized to sign a custom certificate signing
+            request.
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The certificate signing request could not be signed.
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/config/application:
+    get:
+      tags:
+        - Configuration
+      summary: Get the application configuration
+      description: Returns the application configuration.
+      operationId: getApplicationConfiguration
+      responses:
+        "200":
+          description: The application configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationConfigurationResponse"
+        "500":
+          description: The application configuration could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags:
+        - Configuration
+      summary: Update the application configuration
+      description: Updates the application configuration. Requires the admin role.
+      operationId: updateApplicationConfiguration
+      requestBody:
+        description: The application configuration to apply.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationConfiguration"
+        required: true
+      responses:
+        "200":
+          description: The updated application configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationConfigurationUpdateResponse"
+        "403":
+          description: The user is not authorized to update the application configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The application configuration could not be updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/config/application/email-integration:
+    get:
+      tags:
+        - Configuration
+      summary: Get the email integration status
+      description: Returns whether email integration is enabled.
+      operationId: getEmailIntegrationFlag
+      responses:
+        "200":
+          description: Whether email integration is enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailIntegrationResponse"
+        "500":
+          description: The email integration status could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/config/application/item:
+    put:
+      tags:
+        - Configuration
+      summary: Update an application configuration item
+      description: Updates a single application configuration item by name. Requires
+        the admin role.
+      operationId: updateApplicationConfigurationItem
+      requestBody:
+        description: The configuration item to set.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfigurationItemRequest"
+        required: true
+      responses:
+        "200":
+          description: The configuration item was updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "403":
+          description: The user is not authorized to update the application configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The configuration item could not be updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/partitions/getActivePartition:
+    get:
+      tags:
+        - Configuration
+      summary: Get the active partition
+      description: "Returns the currently active cloud partition, or an empty object\
+        \ when no partition is active."
+      operationId: getActivePartition
+      responses:
+        "200":
+          description: The active cloud partition.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Partition"
+  /tap/api/v1/partitions/getPartitions:
+    get:
+      tags:
+        - Configuration
+      summary: List partitions
+      description: Returns the available cloud partitions.
+      operationId: getPartitions
+      responses:
+        "200":
+          description: The available cloud partitions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Partition"
+  /tap/api/v1/admin/metadata:
+    get:
+      tags:
+        - Metadata
+      summary: Get dashboard metadata
+      description: Returns metadata for the administrator dashboard. Requires the
+        admin role.
+      operationId: getDashboardMetadata
+      responses:
+        "200":
+          description: The dashboard metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardMetadataResponse"
+        "403":
+          description: The user is not authorized to access dashboard metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The dashboard metadata could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/certificate/certificate-expiration-date:
+    get:
+      tags:
+        - Certificates
+      summary: Get certificate authority expiration dates
+      description: Returns the expiration dates of the signer and root certificate
+        authority certificates.
+      operationId: getCertificateExpirationDates
+      responses:
+        "200":
+          description: The certificate authority expiration dates.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CertificateExpirationResponse"
+  /tap/api/v1/certificate/ocsp:
+    post:
+      tags:
+        - Certificates
+      summary: Process an OCSP request
+      description: Checks the revocation status of the certificates in a DER-encoded
+        OCSP request and returns a signed OCSP response. Requires the OCSP responder
+        to be enabled.
+      operationId: handleRequest
+      requestBody:
+        description: The DER-encoded OCSP request.
+        content:
+          application/ocsp-request:
+            schema:
+              format: binary
+        required: true
+      responses:
+        "200":
+          description: The signed OCSP response.
+          content:
+            application/ocsp-response:
+              schema:
+                format: binary
+        "500":
+          description: The OCSP request could not be processed.
+  /tap/api/v1/documentation/service-endpoints:
+    get:
+      tags:
+        - Documentation
+      summary: List service endpoints
+      description: "Returns the service endpoint URLs for each region, keyed by region\
+        \ and then by service name."
+      operationId: getAllServiceEndpoints
+      responses:
+        "200":
+          description: "The service endpoint URLs for each region, keyed by region\
+            \ and then by service name."
+          content:
+            application/json:
+              schema: {}
+  /tap/api/v1/documentation/supported-vpce-service-names:
+    get:
+      tags:
+        - Documentation
+      summary: List supported VPC endpoint service names
+      description: Returns the supported VPC endpoint service names for each region.
+      operationId: getAllServiceNames
+      responses:
+        "200":
+          description: The supported VPC endpoint service names.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportedServiceNames"
+  /tap/api/v1/documentation/supported-instance-types:
+    get:
+      tags:
+        - Documentation
+      summary: List supported instance types
+      description: Returns the supported instance types for each service in each environment.
+      operationId: getAllSupportedInstanceTypes
+      responses:
+        "200":
+          description: The supported instance types.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportedInstanceTypes"
+  /tap/api/v1/documentation/supported-eks-cluster-versions:
+    get:
+      tags:
+        - Documentation
+      summary: List supported EKS cluster versions
+      description: Returns the supported EKS cluster versions for each environment.
+      operationId: getEksClusterVersions
+      responses:
+        "200":
+          description: The supported EKS cluster versions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportedEksClusterVersions"
+  /tap/api/v1/documentation/supported-rds-engine-versions:
+    get:
+      tags:
+        - Documentation
+      summary: List supported RDS engine versions
+      description: Returns the supported RDS engine versions for each engine in each
+        environment.
+      operationId: getRdsEngineVersions
+      responses:
+        "200":
+          description: The supported RDS engine versions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportedRdsEngineVersions"
+  /tap/api/v1/groups:
+    get:
+      tags:
+        - Groups
+      summary: List all groups
+      description: "Returns every group, sorted by name. Requires the admin role."
+      operationId: getAllGroups
+      responses:
+        "200":
+          description: All groups.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupListResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Groups
+      summary: Create a group
+      description: Creates a new group. Requires the admin role.
+      operationId: createGroup
+      requestBody:
+        description: Group to create.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupCreateRequest"
+        required: true
+      responses:
+        "200":
+          description: The created group.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "400":
+          description: The group name is missing or blank.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The group could not be created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/groups/{groupId}:
+    get:
+      tags:
+        - Groups
+      summary: Get a group
+      description: Returns a single group by its identifier. Requires the admin role.
+      operationId: getGroup
+      parameters:
+        - name: groupId
+          in: path
+          description: Identifier of the group.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The requested group.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No group exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags:
+        - Groups
+      summary: Update a group
+      description: Updates a group. Only the fields present in the request body are
+        changed. Requires the admin role.
+      operationId: updateGroup
+      parameters:
+        - name: groupId
+          in: path
+          description: Identifier of the group.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Fields to change; omitted fields are left unchanged.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: The updated group.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "400":
+          description: The group name was provided but empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No group exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The group could not be updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Groups
+      summary: Delete a group
+      description: Deletes a group by its identifier. Requires the admin role.
+      operationId: deleteGroup
+      parameters:
+        - name: groupId
+          in: path
+          description: Identifier of the group.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The group was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No group exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The group could not be deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/groups/{groupId}/members:
+    get:
+      tags:
+        - Groups
+      summary: List group members
+      description: Returns the members of a group. Requires the admin role.
+      operationId: getMembers
+      parameters:
+        - name: groupId
+          in: path
+          description: Identifier of the group.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The group's members.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMembershipListResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No group exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Groups
+      summary: Add members to a group
+      description: Adds one or more users to a group. Users already in the group are
+        skipped. Requires the admin role.
+      operationId: addMembers
+      parameters:
+        - name: groupId
+          in: path
+          description: Identifier of the group.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: "Users to add, specified as userId or userIds."
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddMembersRequest"
+        required: true
+      responses:
+        "200":
+          description: The memberships that were created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddMembersResponse"
+        "400":
+          description: The request body is missing user IDs or contains an invalid
+            ID.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The group or one of the users was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The members could not be added.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/groups/{groupId}/members/{userId}:
+    delete:
+      tags:
+        - Groups
+      summary: Remove a member from a group
+      description: Removes a user from a group. Requires the admin role.
+      operationId: removeMember
+      parameters:
+        - name: groupId
+          in: path
+          description: Identifier of the group.
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          description: Identifier of the user to remove.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The member was removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The group was not found or the user is not a member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The member could not be removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/groups/user/{userId}:
+    get:
+      tags:
+        - Groups
+      summary: List a user's groups
+      description: Returns the groups a user belongs to. Allowed for an admin or the
+        user themselves.
+      operationId: getGroupsForUser
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The user's groups.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupListResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/groups/me:
+    get:
+      tags:
+        - Groups
+      summary: List my groups
+      description: Returns the groups the authenticated user belongs to.
+      operationId: getMyGroups
+      responses:
+        "200":
+          description: The caller's groups.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupListResponse"
+        "401":
+          description: The user is not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/groups/user/{userId}/memberships:
+    put:
+      tags:
+        - Groups
+      summary: Replace a user's memberships
+      description: Sets the complete set of groups a user belongs to; memberships
+        not listed are removed. Requires the admin role.
+      operationId: setMembershipsForUser
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: The complete set of group IDs the user should belong to.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMembershipsRequest"
+        required: true
+      responses:
+        "200":
+          description: The memberships were updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: "The user ID is not a valid number, or the request body is\
+            \ missing groupIds or is malformed."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The user or one of the groups was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The memberships could not be updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/information/vpc-proxy-information:
+    get:
+      tags:
+        - Metadata
+      summary: Get VPC proxy information
+      description: Returns the VPCs available to the proxy and their bastion hosts.
+      operationId: getFilteredVpcsWithInstances
+      responses:
+        "200":
+          description: The VPCs and their bastion hosts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VpcProxyInformationResponse"
+        "400":
+          description: The shard identifier is not configured.
+          content:
+            text/plain:
+              schema: {}
+        "500":
+          description: The VPC information could not be retrieved.
+          content:
+            text/plain:
+              schema: {}
+  /tap/api/v1/metadata/all-configurations:
+    get:
+      tags:
+        - Metadata
+      summary: Get all configuration
+      description: Returns the full API configuration.
+      operationId: getAllConfigurations
+      responses:
+        "200":
+          description: The full API configuration.
+          content:
+            application/json:
+              schema: {}
+        "500":
+          description: The API configuration could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/metadata:
+    get:
+      tags:
+        - Metadata
+      summary: Get API handler configuration
+      description: Returns the API handler and rewriter filter configuration.
+      operationId: getRewriterFilterStatus
+      responses:
+        "200":
+          description: The API handler configuration.
+          content:
+            application/json:
+              schema: {}
+        "500":
+          description: The API handler configuration could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/reference-data/{id}:
+    get:
+      tags:
+        - Metadata
+      summary: Get reference data
+      description: Returns the reference data stored under the given identifier.
+      operationId: getReferenceData
+      parameters:
+        - name: id
+          in: path
+          description: Identifier of the reference data.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "The reference data, or a message when no reference data exists\
+            \ for the identifier."
+          content:
+            text/plain:
+              schema: {}
+        "500":
+          description: The reference data could not be retrieved.
+          content:
+            text/plain:
+              schema: {}
+  /tap/api/v1/tools/analyze/cloudformation/template:
+    post:
+      tags:
+        - Tools
+      summary: Analyze a CloudFormation template
+      description: Analyzes an uploaded CloudFormation template against a cloud partition
+        and returns the findings for each resource.
+      operationId: analyzeCloudFormationTemplate
+      requestBody:
+        description: The CloudFormation template and the environment to analyze it
+          against.
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/CloudFormationTemplateRequest"
+        required: true
+      responses:
+        "200":
+          description: The analysis findings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateAnalysisResponse"
+        "400":
+          description: "The environment is unrecognized, the file type is unsupported,\
+            \ or the template could not be analyzed."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/tools/firewall-rules:
+    get:
+      tags:
+        - Tools
+      summary: Get the custom firewall rules
+      description: Returns the Suricata rules for the account's custom firewall rule
+        group.
+      operationId: viewFirewallRules
+      responses:
+        "200":
+          description: The custom firewall rules.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FirewallRulesResponse"
+    post:
+      tags:
+        - Tools
+      summary: Update the custom firewall rules
+      description: Applies Suricata rules to the account's custom firewall rule group.
+      operationId: editFirewallRules
+      requestBody:
+        description: The firewall rules to apply.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FirewallRulesUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: The firewall rules were applied.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FirewallRulesUpdateResponse"
+        "400":
+          description: The firewall rules could not be applied.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/tools/workload-health:
+    get:
+      tags:
+        - Tools
+      summary: Get the workload health configuration
+      description: Returns the configured workload health dashboard and its markup.
+      operationId: viewworkloadHealth
+      responses:
+        "200":
+          description: The workload health configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkloadHealthResponse"
+    post:
+      tags:
+        - Tools
+      summary: Update the workload health configuration
+      description: Sets the workload health dashboard and its markup.
+      operationId: editworkloadHealth
+      requestBody:
+        description: The workload health configuration to set.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkloadHealthUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: The workload health configuration was updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+  /tap/api/v1/users/current:
+    get:
+      tags:
+        - Users
+      summary: Get the current user
+      description: Returns the authenticated user making the request.
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: The current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserCurrentResponse"
+  /tap/api/v1/users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Get a user
+      description: Returns a user by numeric ID or email address. Allowed for an admin
+        or the user themselves.
+      operationId: getUser
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user. A numeric ID or an email address.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The requested user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The caller does not have privileges to view this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No user exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags:
+        - Users
+      summary: Update a user
+      description: Updates a user. Only the fields present in the request body are
+        changed. Allowed for an admin or the user themselves.
+      operationId: updateUser
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Fields to change. Omitted fields are left unchanged.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: The updated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserUpdateResponse"
+        "400":
+          description: The request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The caller does not have privileges to update this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No user exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: The email domain is not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The user could not be updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Users
+      summary: Delete a user
+      description: Deletes a user and removes their group memberships and certificates.
+        Requires the admin role.
+      operationId: doDelete
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The user was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: The user could not be deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No user exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/users/{userId}/generateBundleUrl:
+    get:
+      tags:
+        - Users
+      summary: Get a certificate bundle download link
+      description: Returns a presigned URL for downloading the user's certificate
+        bundle. Allowed for an admin or the user themselves.
+      operationId: generateBundleUrl
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A presigned download link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BundleUrlResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No user exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/users/{userId}/certificate:
+    post:
+      tags:
+        - Users
+      summary: Rebuild a user certificate
+      description: Regenerates the user's certificate. Requires the admin role.
+      operationId: rebuildCertificate
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The certificate was rebuilt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "The user is unknown, the identifier is invalid, or the certificate\
+            \ could not be rebuilt."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/users/{userId}/certificate/bundle:
+    post:
+      tags:
+        - Users
+      summary: Rebuild a user certificate bundle
+      description: Regenerates and stores the user's certificate bundle. Requires
+        the admin role.
+      operationId: rebuildCertificateBundle
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The certificate bundle was rebuilt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "The user is unknown, the identifier is invalid, or the certificate\
+            \ bundle could not be rebuilt."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/users/{userId}/resend:
+    post:
+      tags:
+        - Users
+      summary: Resend the certificate email
+      description: Resends the email containing the user's certificate bundle. Requires
+        the admin role.
+      operationId: resendCertificate
+      parameters:
+        - name: userId
+          in: path
+          description: Identifier of the user.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The email was sent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "The user is unknown, the identifier is invalid, or the certificate\
+            \ email could not be sent."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/users:
+    get:
+      tags:
+        - Users
+      summary: List all users
+      description: Returns all users sorted by name. Requires the admin role. Callers
+        with only the user role receive an empty list.
+      operationId: getAllUsers
+      responses:
+        "200":
+          description: All users.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Users
+      summary: Create a user
+      description: Creates a new user. Requires the admin role.
+      operationId: createUser
+      requestBody:
+        description: User to create.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+        required: true
+      responses:
+        "200":
+          description: The created user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserCreateResponse"
+        "400":
+          description: "The name, email, or user role is missing, or the user could\
+            \ not be saved."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: "The account user limit was reached, or the caller may not\
+            \ create this user."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: The email domain is not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The user could not be created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/servers/{serverId}:
+    get:
+      tags:
+        - Servers
+      summary: Get a server
+      description: Returns a single server by its identifier. Allowed for an admin
+        or the server itself.
+      operationId: getServer
+      parameters:
+        - name: serverId
+          in: path
+          description: Identifier of the server.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The requested server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No server exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags:
+        - Servers
+      summary: Update a server
+      description: Updates a server. Only the fields present in the request body are
+        changed. Requires the admin role.
+      operationId: updateServer
+      parameters:
+        - name: serverId
+          in: path
+          description: Identifier of the server.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Fields to change. Omitted fields are left unchanged.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServerUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: The updated server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerUpdateResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: The email domain is not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The server could not be updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Servers
+      summary: Delete a server
+      description: Deletes a server and removes its certificates. Requires the admin
+        role.
+      operationId: doDelete_1
+      parameters:
+        - name: serverId
+          in: path
+          description: Identifier of the server.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The server was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: The server could not be deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/servers/{serverId}/certificate:
+    post:
+      tags:
+        - Servers
+      summary: Rebuild a server certificate
+      description: Regenerates the server's certificate. Requires the admin role.
+      operationId: rebuildCertificate_1
+      parameters:
+        - name: serverId
+          in: path
+          description: Identifier of the server.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The certificate was rebuilt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "The server is unknown, the identifier is invalid, or the certificate\
+            \ could not be rebuilt."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/servers/{serverId}/certificate/bundle:
+    post:
+      tags:
+        - Servers
+      summary: Rebuild a server certificate bundle
+      description: Regenerates and stores the server's certificate bundle. Requires
+        the admin role.
+      operationId: rebuildCertificateBundle_1
+      parameters:
+        - name: serverId
+          in: path
+          description: Identifier of the server.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The certificate bundle was rebuilt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "The server is unknown, the identifier is invalid, or the certificate\
+            \ bundle could not be rebuilt."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/servers/{serverId}/resend:
+    post:
+      tags:
+        - Servers
+      summary: Resend the certificate email
+      description: Resends the email containing the server's certificate bundle. Requires
+        the admin role.
+      operationId: resendCertificate_1
+      parameters:
+        - name: serverId
+          in: path
+          description: Identifier of the server.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The email was sent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: "The server is unknown, the identifier is invalid, or the certificate\
+            \ email could not be sent."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/servers:
+    get:
+      tags:
+        - Servers
+      summary: List all servers
+      description: Returns all servers sorted by name. Requires the admin role. Callers
+        with only the user role receive an empty list.
+      operationId: getAllServers
+      responses:
+        "200":
+          description: All servers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerListResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags:
+        - Servers
+      summary: Create a server
+      description: Creates a new server. Requires the admin role.
+      operationId: createServer
+      requestBody:
+        description: Server to create.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServerCreateRequest"
+        required: true
+      responses:
+        "200":
+          description: The created server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerCreateResponse"
+        "400":
+          description: "The name, custodian email, or custodian name is missing, or\
+            \ the server could not be saved."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: The user is not authorized to access this resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: The email domain is not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The server could not be created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+    AlertEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        count:
+          type: integer
+          format: int64
+        date:
+          type: string
+        dateExpires:
+          type: string
+        message:
+          $ref: "#/components/schemas/Message"
+        state:
+          type: string
+    Field:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+        referenceDataId:
+          type: string
+        referenceDataType:
+          type: string
+    Message:
+      type: object
+      properties:
+        type:
+          type: string
+        summary:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Field"
+        lastSeen:
+          type: string
+        lastSeenFields:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Field"
+    AlertEventResponse:
+      type: object
+      description: The requested alert event.
+      properties:
+        data:
+          $ref: "#/components/schemas/AlertEvent"
+    AlertEventListResponse:
+      type: object
+      description: A list of alert events.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertEvent"
+    CapAccessListEntry:
+      type: object
+      description: "An account the caller may access, with its available roles."
+      properties:
+        account_number:
+          type: string
+          description: AWS account number.
+          example: "123456789012"
+        agency:
+          type: string
+          description: Agency the account belongs to.
+          example: EXAMPLE
+        mission:
+          type: string
+          description: Mission the account belongs to.
+          example: Example Mission
+        roles:
+          type: array
+          description: Roles the caller may assume within the account.
+          items:
+            $ref: "#/components/schemas/CapAccessRole"
+    CapAccessRole:
+      type: object
+      description: A role the caller may assume within an account.
+      properties:
+        role_name:
+          type: string
+          description: Name of the role.
+          example: PowerUser
+        favorite:
+          type: boolean
+          description: Whether the caller has marked this role as a favorite.
+          example: false
+        granted_by:
+          type: string
+          description: Identifier of the entitlement that granted this role.
+          example: C2S-EXAMPLE-MSN-POWERUSER
+        account_session_duration_seconds:
+          type: integer
+          format: int32
+          description: "Maximum session duration allowed for this account, in seconds."
+          example: 3600
+        user_session_duration_seconds:
+          type: integer
+          format: int32
+          description: "Session duration configured for the user, in seconds."
+        last_access:
+          type: string
+          description: "Time the caller last accessed this role, in UTC. Null when\
+            \ never accessed."
+          example: 2026-07-06T12:34:56Z
+    CapStatusResponse:
+      type: object
+      description: An error result carrying an HTTP status code and a message.
+      properties:
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code of the error.
+          example: 400
+        message:
+          type: string
+          description: Human-readable description of the error.
+          example: "Missing parameter [agency]!"
+      required:
+        - message
+        - status
+    AssumedRoleUser:
+      type: object
+      description: Identifiers of the assumed role session.
+      properties:
+        AssumedRoleId:
+          type: string
+          description: Unique identifier of the assumed role session.
+          example: AROAEXAMPLEID:session
+        Arn:
+          type: string
+          description: Amazon Resource Name of the assumed role session.
+          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/session
+      required:
+        - Arn
+        - AssumedRoleId
+    AwsCredentials:
+      type: object
+      description: Temporary AWS security credentials for the assumed role.
+      properties:
+        AccessKeyId:
+          type: string
+          description: AWS access key ID.
+          example: ASIAIOSFODNN7EXAMPLE
+        SecretAccessKey:
+          type: string
+          description: AWS secret access key.
+          example: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        SessionToken:
+          type: string
+          description: AWS session token for the temporary credentials.
+          example: FQoGZXIvYXdzEExampleSessionTokenABC123
+        Expiration:
+          type: string
+          description: "Expiration time of the credentials, in UTC."
+          example: 2026-07-06T12:34:56Z
+      required:
+        - AccessKeyId
+        - Expiration
+        - SecretAccessKey
+        - SessionToken
+    CredentialsResponse:
+      type: object
+      description: Temporary AWS credentials and the assumed role session.
+      properties:
+        Credentials:
+          $ref: "#/components/schemas/AwsCredentials"
+        AssumedRoleUser:
+          $ref: "#/components/schemas/AssumedRoleUser"
+      required:
+        - AssumedRoleUser
+        - Credentials
+    CapTrailSummary:
+      type: object
+      description: A summary of a user's access to an account.
+      properties:
+        user:
+          $ref: "#/components/schemas/CapTrailSummaryUser"
+        account:
+          $ref: "#/components/schemas/CapTrailSummaryAccount"
+        userRole:
+          type: string
+          description: Role the user assumed.
+          example: PowerUser
+        last_access:
+          type: string
+          description: "Time of the most recent access, in UTC."
+          example: 2026-07-06T12:34:56Z
+        cnt_total:
+          type: string
+          description: "Total number of access events, as a string."
+          example: "42"
+    CapTrailSummaryAccount:
+      type: object
+      description: The account associated with an activity summary.
+      properties:
+        account_number:
+          type: string
+          description: AWS account number.
+          example: "123456789012"
+        agency:
+          type: string
+          description: Agency the account belongs to.
+          example: EXAMPLE
+        mission:
+          type: string
+          description: Mission the account belongs to.
+          example: Example Mission
+    CapTrailSummaryUser:
+      type: object
+      description: The user associated with an activity summary.
+      properties:
+        client_dn:
+          type: string
+          description: Distinguished name from the client certificate.
+          example: "CN=Jane Doe,OU=Example,O=Combine"
+        iaa_dn:
+          type: string
+          description: Distinguished name of the issuing authority.
+          example: "CN=Example CA,O=Combine"
+        org:
+          type: string
+          description: Organization the activity is attributed to.
+          example: Combine
+    CapTrailEvent:
+      type: object
+      description: A single AWS access trail event.
+      properties:
+        version:
+          type: string
+          description: Schema version of the event.
+          example: "1.00"
+        id:
+          type: string
+          description: Unique identifier of the event.
+          example: 3f2504e0-4f89-41d3-9a0c-0305e82c3301
+        at:
+          type: string
+          description: "Time the event occurred, in UTC."
+          example: 2026-07-06T12:34:56Z
+        client_dn:
+          type: string
+          description: Distinguished name from the client certificate.
+          example: "CN=Jane Doe,OU=Example,O=Combine"
+        iaa_dn:
+          type: string
+          description: Distinguished name of the issuing authority.
+          example: "CN=Example CA,O=Combine"
+        accountNumber:
+          type: string
+          description: AWS account number the access targeted.
+          example: "123456789012"
+        environment:
+          type: string
+          description: Cloud environment the access targeted.
+          example: AWS_C2S
+        request:
+          $ref: "#/components/schemas/CapTrailEventRequest"
+        credentials:
+          $ref: "#/components/schemas/CapTrailEventCredentials"
+    CapTrailEventCredentials:
+      type: object
+      description: The credentials issued for a trail event.
+      properties:
+        arn:
+          type: string
+          description: Amazon Resource Name of the assumed role session.
+          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/session
+        role_id:
+          type: string
+          description: Identifier of the assumed role.
+          example: AROAEXAMPLEID
+        key_id:
+          type: string
+          description: Access key ID of the issued credentials.
+          example: ASIAIOSFODNN7EXAMPLE
+        expiration:
+          type: string
+          description: "Expiration time of the issued credentials, in UTC."
+          example: 2026-07-06T12:34:56Z
+    CapTrailEventRequest:
+      type: object
+      description: The access request that produced a trail event.
+      properties:
+        agency:
+          type: string
+          description: Agency the request targeted.
+          example: EXAMPLE
+        mission:
+          type: string
+          description: Mission the request targeted.
+          example: Example Mission
+        userRole:
+          type: string
+          description: Role the request assumed.
+          example: PowerUser
+    ScapAccessGroup:
+      type: object
+      description: "An account the caller may access, with its available roles."
+      properties:
+        agency:
+          type: string
+          description: Agency the account belongs to.
+          example: EXAMPLE
+        accountName:
+          type: string
+          description: Name of the account.
+          example: Example Account
+        accountNumber:
+          type: string
+          description: AWS account number.
+          example: "123456789012"
+        roles:
+          type: array
+          description: Roles the caller may assume within the account.
+          items:
+            $ref: "#/components/schemas/ScapAccessRole"
+    ScapAccessListResponse:
+      type: object
+      description: The accounts and roles the caller may access.
+      properties:
+        gxCAPAccessList:
+          type: array
+          description: The accounts the caller may access.
+          items:
+            $ref: "#/components/schemas/ScapAccessGroup"
+    ScapAccessRole:
+      type: object
+      description: A role the caller may assume within an account.
+      properties:
+        roleName:
+          type: string
+          description: Name of the role.
+          example: PowerUser
+    MassEmailRequest:
+      type: object
+      description: The recipients and content of a mass email.
+      properties:
+        includeAllUsers:
+          type: boolean
+          description: Whether to send the email to all users.
+          example: true
+        includeNPE:
+          type: boolean
+          description: Whether to include non-person entities among the recipients.
+          example: false
+        subject:
+          type: string
+          description: Subject line of the email.
+          example: Scheduled maintenance
+        body:
+          type: string
+          description: Body of the email.
+          example: The system will be unavailable on Saturday.
+    AwsRole:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        environment:
+          type: string
+        defaultRole:
+          type: boolean
+        account:
+          $ref: "#/components/schemas/AwsRolePair"
+        agency:
+          $ref: "#/components/schemas/AwsRolePair"
+        role:
+          $ref: "#/components/schemas/AwsRolePair"
+    AwsRoleListResponse:
+      type: object
+      description: A list of AWS roles.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AwsRole"
+    AwsRolePair:
+      type: object
+      properties:
+        value:
+          type: string
+        valueAlias:
+          type: string
+        valueDescription:
+          type: string
+        empty:
+          type: boolean
+    AwsRoleResponse:
+      type: object
+      description: The requested AWS role.
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/AwsRole"
+    AwsRoleDeleteResponse:
+      type: object
+      description: Confirmation that an AWS role was deleted.
+      properties:
+        success:
+          type: boolean
+        data:
+          type: string
+          example: Role Deleted
+    ApplicationConfiguration:
+      type: object
+      properties:
+        awsAccountId:
+          type: string
+        customerName:
+          type: string
+        userLimit:
+          type: integer
+          format: int32
+        userValidateEmailDomain:
+          type: boolean
+        userValidateEmailDomainWhitelist:
+          type: string
+        userDaysInactiveThreshold:
+          type: integer
+          format: int32
+        sendWelcomeEmail:
+          type: boolean
+        sendWelcomeEmailWithAttachment:
+          type: boolean
+        hasUserManagementAccount:
+          type: boolean
+        showBundleLinks:
+          type: boolean
+        enableResourceRoleMasquerade:
+          type: boolean
+        enableAwsApiLogging:
+          type: boolean
+        endpointCAP:
+          type: string
+        endpointSCAP:
+          type: string
+        enableOCSP:
+          type: boolean
+        certificateKeySize:
+          type: string
+        certificateHashAlgorithm:
+          type: string
+        cors:
+          type: boolean
+        corsAccessControlAllowOrigin:
+          type: string
+        corsAccessControlAllowMethods:
+          type: string
+        corsAccessControlAllowHeaders:
+          type: string
+        corsReferrerPolicy:
+          type: string
+        corsAccessControlAllowCredentials:
+          type: boolean
+        enableToolAnalyzeCloudFormationTemplate:
+          type: boolean
+        enableToolWorkloadHealth:
+          type: boolean
+        enableApplicationMetadata:
+          type: boolean
+    ApplicationConfigurationResponse:
+      type: object
+      description: The application configuration.
+      properties:
+        data:
+          $ref: "#/components/schemas/ApplicationConfiguration"
+    EmailIntegrationResponse:
+      type: object
+      description: Whether email integration is enabled.
+      properties:
+        emailIntegrationEnabled:
+          type: boolean
+          description: Whether email integration is enabled.
+          example: true
+    ApplicationConfigurationUpdateResponse:
+      type: object
+      description: The updated application configuration.
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/ApplicationConfiguration"
+    ConfigurationItemRequest:
+      type: object
+      description: A single application configuration item to set.
+      properties:
+        parameter_name:
+          type: string
+          description: Name of the configuration item.
+          example: combine.tap.api.cap.enable
+        parameter_value:
+          type: string
+          description: New value for the configuration item.
+          example: "true"
+      required:
+        - parameter_name
+        - parameter_value
+    Partition:
+      type: object
+      description: A cloud partition and its regions.
+      properties:
+        id:
+          type: string
+          description: Identifier of the partition.
+          example: aws_us_gov
+        displayName:
+          type: string
+          description: Display name of the partition.
+          example: AWS GovCloud
+        rootRegionId:
+          type: string
+          description: Identifier of the partition's root region. Absent when the
+            partition has no root region.
+          example: us-gov-west-1
+        regions:
+          type: array
+          description: Identifiers of the regions in the partition. Absent when the
+            partition has no regions.
+          items:
+            type: string
+    DashboardMetadataResponse:
+      type: object
+      description: Metadata for the administrator dashboard.
+      properties:
+        version:
+          type: string
+          description: Version of the application.
+          example: 3.14.0
+        activeUserCount:
+          type: integer
+          format: int32
+          description: Number of active users.
+          example: 42
+        lastUserLogin:
+          type: string
+          description: Time of the most recent user login. Null when no user has logged
+            in.
+          example: 2026-07-06T12:34:56Z
+    CertificateExpirationResponse:
+      type: object
+      description: The expiration dates of the certificate authority certificates.
+      properties:
+        signerCAExpDate:
+          type: string
+          description: Expiration date of the signer certificate authority.
+          example: Wed Jul 06 12:00:00 UTC 2026
+        rootCAExpDate:
+          type: string
+          description: Expiration date of the root certificate authority.
+          example: Wed Jul 06 12:00:00 UTC 2026
+    SupportedServiceNames:
+      type: object
+      description: The supported VPC endpoint service names for a region.
+      properties:
+        region:
+          type: string
+          description: The region the service names apply to.
+          example: us-iso-east-1
+        supported_service_names:
+          type: array
+          description: Supported VPC endpoint service names.
+          items:
+            type: string
+    SupportedInstanceTypes:
+      type: object
+      description: The supported instance types for a service in an environment.
+      properties:
+        key:
+          type: string
+          description: The service and environment the instance types apply to.
+          example: ec2.aws_c2s
+        supported_instance_types:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Supported instance types grouped by instance family.
+    SupportedEksClusterVersions:
+      type: object
+      description: The supported EKS cluster versions for an environment.
+      properties:
+        environment:
+          type: string
+          description: Identifier of the cloud partition.
+          example: AWS_C2S
+        supported_eks_cluster_versions:
+          type: array
+          description: Supported EKS cluster versions.
+          items:
+            type: string
+    SupportedRdsEngineVersions:
+      type: object
+      description: The supported RDS engine versions for an engine in an environment.
+      properties:
+        environment:
+          type: string
+          description: Identifier of the cloud partition.
+          example: AWS_C2S
+        engine:
+          type: string
+          description: The RDS database engine.
+          example: mysql
+        supported_rds_engine_versions:
+          type: array
+          description: Supported versions of the engine.
+          items:
+            type: string
+    Group:
+      type: object
+      properties:
+        pk:
+          type: string
+        sk:
+          type: string
+        groupId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        accountIds:
+          type: array
+          items:
+            type: string
+        cidrBlocks:
+          type: array
+          items:
+            type: string
+        vpcIds:
+          type: array
+          items:
+            type: string
+        createdDate:
+          type: string
+        updatedDate:
+          type: string
+    GroupResponse:
+      type: object
+      description: The requested group.
+      properties:
+        success:
+          type: boolean
+          description: Always true for a successful response.
+          example: true
+        data:
+          $ref: "#/components/schemas/Group"
+      required:
+        - success
+    GroupCreateRequest:
+      type: object
+      description: Fields accepted when creating a group.
+      properties:
+        name:
+          type: string
+          description: Display name of the group.
+          example: Example Group
+        description:
+          type: string
+          description: Optional free-text description.
+          example: Example group description
+        accountIds:
+          type: array
+          description: AWS account IDs associated with the group.
+          items:
+            type: string
+        cidrBlocks:
+          type: array
+          description: CIDR blocks associated with the group.
+          items:
+            type: string
+        vpcIds:
+          type: array
+          description: VPC IDs associated with the group.
+          items:
+            type: string
+      required:
+        - name
+    MessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+    GroupListResponse:
+      type: object
+      description: A list of groups.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Group"
+    GroupUpdateRequest:
+      type: object
+      description: Fields to change on a group; only the fields present are updated.
+      properties:
+        name:
+          type: string
+          description: "New display name. If provided, must not be blank."
+          example: Example Group
+        description:
+          type: string
+          description: New free-text description.
+          example: Example group description
+        accountIds:
+          type: array
+          description: Replacement list of AWS account IDs.
+          items:
+            type: string
+        cidrBlocks:
+          type: array
+          description: Replacement list of CIDR blocks.
+          items:
+            type: string
+        vpcIds:
+          type: array
+          description: Replacement list of VPC IDs.
+          items:
+            type: string
+    AddMembersResponse:
+      type: object
+      description: The memberships that were added.
+      properties:
+        success:
+          type: boolean
+          description: Always true for a successful response.
+          example: true
+        data:
+          type: array
+          description: The memberships that were added. Users already in the group
+            are not included.
+          items:
+            $ref: "#/components/schemas/GroupMembership"
+        message:
+          type: string
+          description: A message summarizing how many members were added.
+          example: 2 member(s) added.
+      required:
+        - success
+    GroupMembership:
+      type: object
+      properties:
+        pk:
+          type: string
+        sk:
+          type: string
+        dateJoined:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+        userRole:
+          type: string
+        userId:
+          type: string
+        groupId:
+          type: string
+    AddMembersRequest:
+      type: object
+      description: Users to add to a group. Provide either a single userId or a list
+        of userIds.
+      properties:
+        userId:
+          type: string
+          description: "Single user ID to add. Provide this or userIds, not both."
+          example: "1042"
+        userIds:
+          type: array
+          description: "Multiple user IDs to add. Provide this or userId, not both."
+          items:
+            type: string
+    GroupMembershipListResponse:
+      type: object
+      description: A list of group memberships.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupMembership"
+    UpdateMembershipsRequest:
+      type: object
+      description: The complete set of group IDs the user should belong to.
+      properties:
+        groupIds:
+          type: array
+          description: Group IDs the user should be a member of after the update.
+          items:
+            type: string
+      required:
+        - groupIds
+    Bastion:
+      type: object
+      description: A bastion host within a VPC.
+      properties:
+        name:
+          type: string
+          description: Name of the bastion host.
+          example: bastion-1
+        publicIp:
+          type: string
+          description: "Public IP address of the bastion host, or None when it has\
+            \ none."
+          example: 203.0.113.10
+    Vpc:
+      type: object
+      description: A VPC and its bastion hosts.
+      properties:
+        vpcId:
+          type: string
+          description: Identifier of the VPC.
+          example: vpc-0a1b2c3d4e5f67890
+        cidrBlock:
+          type: string
+          description: CIDR block of the VPC.
+          example: 10.0.0.0/16
+        name:
+          type: string
+          description: Name of the VPC.
+          example: Combine-VPC
+        bastions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bastion"
+        isCurrentVpc:
+          type: boolean
+          description: Whether this is the VPC of the current instance.
+          example: true
+    VpcProxyInformationResponse:
+      type: object
+      description: The VPCs available to the proxy and their bastion hosts.
+      properties:
+        vpcs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Vpc"
+    CloudFormationTemplateRequest:
+      type: object
+      description: The CloudFormation template to analyze and the environment to analyze
+        it against.
+      properties:
+        file:
+          type: string
+          format: binary
+          description: "The CloudFormation template file, in YAML or JSON."
+        environment:
+          type: string
+          description: Identifier of the cloud partition to analyze the template against.
+          example: aws_us_gov
+        region:
+          type: string
+          description: Region to analyze the template against. Defaults to the first
+            region of the environment when omitted.
+          example: us-gov-west-1
+        partitionRef:
+          type: string
+          description: "Value to substitute for the AWS partition pseudo parameter.\
+            \ Defaults to ${AWS::Partition}."
+        regionRef:
+          type: string
+          description: "Value to substitute for the AWS region pseudo parameter. Defaults\
+            \ to ${AWS::Region}."
+    HighlightRange:
+      type: object
+      properties:
+        start:
+          type: integer
+          format: int32
+        end:
+          type: integer
+          format: int32
+    TemplateAnalysisFinding:
+      type: object
+      properties:
+        finding:
+          type: string
+        findingRemediation:
+          type: string
+        level:
+          type: string
+          enum:
+            - ERROR
+            - WARNING
+            - INFO
+        breadcrumbPath:
+          type: array
+          items:
+            type: string
+        sourceLineNumber:
+          type: integer
+          format: int32
+        sourceColumn:
+          type: integer
+          format: int32
+        observedValue:
+          type: string
+        observedHighlightRanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/HighlightRange"
+        expectedValue:
+          type: string
+        expectedHighlightRanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/HighlightRange"
+    TemplateAnalysisResponse:
+      type: object
+      description: The findings from analyzing a CloudFormation template.
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/TemplateAnalysisResult"
+    TemplateAnalysisResult:
+      type: object
+      description: "The analysis findings, grouped by resource."
+      properties:
+        findingCount:
+          type: integer
+          format: int32
+          description: Total number of findings across all resources.
+          example: 3
+        resourcesWithFindingsCount:
+          type: integer
+          format: int32
+          description: Number of resources that have at least one finding.
+          example: 2
+        resourceFindings:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/TemplateAnalysisFinding"
+    FormDataContentDisposition:
+      type: object
+      properties:
+        type:
+          type: string
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+        fileName:
+          type: string
+        creationDate:
+          type: string
+          format: date-time
+        modificationDate:
+          type: string
+          format: date-time
+        readDate:
+          type: string
+          format: date-time
+        size:
+          type: integer
+          format: int64
+        name:
+          type: string
+    FirewallRulesUpdateResponse:
+      type: object
+      description: The result of applying custom firewall rules.
+      properties:
+        success:
+          type: boolean
+        data:
+          description: "Metadata from the firewall update, or a status message when\
+            \ no rule group is present to update."
+    FirewallRulesUpdateRequest:
+      type: object
+      description: The custom firewall rules to apply.
+      properties:
+        rules:
+          type: string
+          description: The Suricata rules to apply to the rule group.
+        dryRunOption:
+          type: string
+          description: Whether to validate the update without applying it.
+          example: "true"
+    WorkloadHealthUpdateRequest:
+      type: object
+      description: The workload health configuration to set.
+      properties:
+        workloadHealthEndpoint:
+          type: string
+          description: URL of the workload health dashboard.
+          example: https://health.example.com
+        workloadHealthMarkup:
+          type: string
+          description: Custom markup displayed alongside the workload health dashboard.
+      required:
+        - workloadHealthEndpoint
+    FirewallRules:
+      type: object
+      description: The custom firewall rules and their rule group.
+      properties:
+        suricataRules:
+          type: string
+          description: The Suricata rules for the matched rule group.
+        matchedGroup:
+          type: string
+          description: Name of the matched firewall rule group.
+    FirewallRulesResponse:
+      type: object
+      description: The current custom firewall rules.
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/FirewallRules"
+    WorkloadHealth:
+      type: object
+      description: The workload health configuration values.
+      properties:
+        workloadHealthEndpoint:
+          type: string
+          description: URL of the workload health dashboard.
+          example: https://health.example.com
+        workloadHealthMarkup:
+          type: string
+          description: Custom markup displayed alongside the workload health dashboard.
+        lastUpdateDate:
+          type: string
+          description: Time the workload health configuration was last updated.
+          example: Mon Jul 06 12:34:56 UTC 2026
+    WorkloadHealthResponse:
+      type: object
+      description: The workload health configuration.
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/WorkloadHealth"
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        fullName:
+          type: string
+        active:
+          type: boolean
+        awsRoles:
+          type: array
+          items:
+            type: integer
+            format: int64
+        isServer:
+          type: boolean
+        bundlePath:
+          type: string
+        storageVersion:
+          type: string
+        userRole:
+          type: string
+        commonName:
+          type: string
+        lastLoginDate:
+          type: string
+        lastConsoleLoginDate:
+          type: string
+        certificateCN:
+          type: string
+    UserCurrentResponse:
+      type: object
+      description: The current authenticated user.
+      properties:
+        success:
+          type: boolean
+          description: Always true for a successful response.
+          example: true
+        data:
+          $ref: "#/components/schemas/User"
+      required:
+        - success
+    BundleUrlResponse:
+      type: object
+      description: A link for downloading the certificate bundle.
+      properties:
+        url:
+          type: string
+          description: A presigned URL for downloading the certificate bundle.
+          example: https://example-bucket.s3.amazonaws.com/users/42/bundle.zip
+      required:
+        - url
+    UserResponse:
+      type: object
+      description: The requested user.
+      properties:
+        data:
+          $ref: "#/components/schemas/User"
+    UserUpdateResponse:
+      type: object
+      description: The updated user.
+      properties:
+        success:
+          type: boolean
+          description: Whether the update succeeded. False when the update could not
+            be applied.
+        message:
+          type: string
+          description: A message describing the result of the update.
+          example: User updated
+        data:
+          $ref: "#/components/schemas/User"
+          description: The updated user. Present only when the update succeeded.
+      required:
+        - success
+    UserUpdateRequest:
+      type: object
+      description: Fields to change on a user. Only the fields present are updated.
+      properties:
+        fullName:
+          type: string
+          description: New full name.
+          example: Jane Doe
+        email:
+          type: string
+          description: New email address.
+          example: jane.doe@example.com
+        active:
+          type: boolean
+          description: Whether the user is active.
+          example: true
+        userRole:
+          type: string
+          description: "New role for the user, such as user, admin, or super_admin."
+          example: admin
+        awsRoles:
+          type: array
+          description: Replacement list of AWS role IDs.
+          items:
+            type: integer
+            format: int64
+    UserCreateResponse:
+      type: object
+      description: The created user.
+      properties:
+        message:
+          type: string
+          description: Confirmation that the user was created.
+          example: User created
+        data:
+          $ref: "#/components/schemas/User"
+    UserCreateRequest:
+      type: object
+      description: Fields accepted when creating a user.
+      properties:
+        fullName:
+          type: string
+          description: Full name of the user.
+          example: Jane Doe
+        email:
+          type: string
+          description: Email address of the user.
+          example: jane.doe@example.com
+        userRole:
+          type: string
+          description: "Role assigned to the user, such as user, admin, or super_admin."
+          example: user
+        active:
+          type: boolean
+          description: Whether the user is active.
+          example: true
+        awsRoles:
+          type: array
+          description: AWS role IDs assigned to the user. Default roles are applied
+            when omitted or empty.
+          items:
+            type: integer
+            format: int64
+      required:
+        - active
+        - email
+        - fullName
+        - userRole
+    UserListResponse:
+      type: object
+      description: A list of users.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+    Server:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        fullName:
+          type: string
+        active:
+          type: boolean
+        awsRoles:
+          type: array
+          items:
+            type: integer
+            format: int64
+        isServer:
+          type: boolean
+        bundlePath:
+          type: string
+        storageVersion:
+          type: string
+        custodianName:
+          type: string
+        domains:
+          type: string
+        isCsr:
+          type: boolean
+        csr:
+          type: string
+        certificateCN:
+          type: string
+    ServerResponse:
+      type: object
+      description: The requested server.
+      properties:
+        data:
+          $ref: "#/components/schemas/Server"
+    ServerUpdateResponse:
+      type: object
+      description: The updated server.
+      properties:
+        success:
+          type: boolean
+          description: Whether the update succeeded. False when the update could not
+            be applied.
+        message:
+          type: string
+          description: A message describing the result of the update.
+          example: Server updated
+        data:
+          $ref: "#/components/schemas/Server"
+          description: The updated server. Present only when the update succeeded.
+      required:
+        - success
+    ServerUpdateRequest:
+      type: object
+      description: Fields to change on a server. Only the fields present are updated.
+      properties:
+        fullName:
+          type: string
+          description: New full name.
+          example: Example Server
+        email:
+          type: string
+          description: New custodian email address.
+          example: custodian@example.com
+        active:
+          type: boolean
+          description: Whether the server is active.
+          example: true
+        custodianName:
+          type: string
+          description: New custodian name.
+          example: Jane Doe
+        domains:
+          type: string
+          description: "Replacement domains associated with the server, separated\
+            \ by spaces."
+          example: example.com service.example.com
+        awsRoles:
+          type: array
+          description: Replacement list of AWS role IDs.
+          items:
+            type: integer
+            format: int64
+    ServerCreateResponse:
+      type: object
+      description: The created server.
+      properties:
+        message:
+          type: string
+          description: Confirmation that the server was created.
+          example: Server created
+        data:
+          $ref: "#/components/schemas/Server"
+    ServerCreateRequest:
+      type: object
+      description: Fields accepted when creating a server.
+      properties:
+        fullName:
+          type: string
+          description: Full name of the server.
+          example: Example Server
+        email:
+          type: string
+          description: Custodian email address for the server.
+          example: custodian@example.com
+        active:
+          type: boolean
+          description: Whether the server is active.
+          example: true
+        custodianName:
+          type: string
+          description: Name of the server's custodian.
+          example: Jane Doe
+        domains:
+          type: string
+          description: "Domains associated with the server, separated by spaces."
+          example: example.com service.example.com
+        csr:
+          type: string
+          description: Certificate signing request for the server.
+        isCsr:
+          type: boolean
+          description: Whether the server uses a certificate signing request.
+          example: false
+        awsRoles:
+          type: array
+          description: AWS role IDs assigned to the server. Default roles are applied
+            when omitted or empty.
+          items:
+            type: integer
+            format: int64
+      required:
+        - custodianName
+        - email
+        - fullName
+    ServerListResponse:
+      type: object
+      description: A list of servers.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Server"
+  securitySchemes:
+    mutualTLS:
+      type: mutualTLS
+      description: "Authenticates the caller with an X.509 client certificate issued\
+        \ by the deployment. Combine identifies the caller's user account from the\
+        \ certificate's serial number, and that account's role determines what the\
+        \ caller can access."
+    xRequestedBy:
+      type: apiKey
+      description: "Required on requests that change data, which is every method except\
+        \ GET, HEAD, and OPTIONS. Combine only checks that the header is present and\
+        \ accepts any value. The health check and OCSP endpoints are exempt."
+      name: X-Requested-By
+      in: header
