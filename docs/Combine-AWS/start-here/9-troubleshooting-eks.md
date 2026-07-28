@@ -10,11 +10,11 @@ Combine has support for integrating AWS EKS into an emulated region. However, du
 
 Mention Combine running on EKS here?
 
-### Kubernetes Version
+## Kubernetes Version
 
 Combine enforces which Kubernetes Version are supported in the production environment.
 
-### Combine and OIDC
+## Combine and OIDC
 
 Combine supports EKS OIDC integration without rewriting calls to the OIDC provider — the commercial URL provided by AWS works as-is. 
 
@@ -24,7 +24,7 @@ Typically, users employ the `WLDEVELOPER` role to create the necessary roles. Th
 
 NOTE that `WLCUSTOMER-IT` is only for use in simulating actions reserved for the government customer, and not intended for development.
 
-### Security Group
+## Security Group
 
 Since Combine is proxying traffic from clients to your EKS cluster it must be granted access to the EKS API.
 
@@ -34,14 +34,14 @@ If your Cluster is open to all traffic within the VPC this is not necessary. If 
 
 In the screenshot above, note that the 'Source' of the EKS Cluster's Security Group's first rule references itself. You will need to add a rule patterned after the second rule above which references Combine Endpoint Server's Security Group.
 
-### Nodes Joining the Cluster
+## Nodes Joining the Cluster
 
 If your nodes are unable to join the cluster, you have several routes to troubleshoot:
 - Your Combine Deployment may need the `EnableAirgapAccessEKS` on the Combine Policy stack set to `true`. This needs to be set for the nodes to communicate with the cluster's API server. The API server lives in AWS's network space, outside of the VPC, so Combine is not able to proxy that traffic over the high side endpoints.
 - More suggestions forthcoming.
 
 
-### Recommended EBS CSI Driver Configuration
+## Recommended EBS CSI Driver Configuration
 
 Use a recent EBS CSI Driver version and ensure IMDS is reachable from pods.
 
@@ -58,9 +58,8 @@ Use a recent EBS CSI Driver version and ensure IMDS is reachable from pods.
 With this configuration, dynamic EBS-backed PersistentVolumes can be provisioned successfully in emulated EKS clusters.
 
 
-### PersistentVolumeClaims (PVCs) stuck in `Pending` when using the AWS EBS CSI Driver
+## PersistentVolumeClaims (PVCs) stuck in `Pending` when using the AWS EBS CSI Driver
 
- 
 Most likely, pods cannot reach the EC2 Instance Metadata Service (IMDS), preventing the EBS CSI driver from obtaining credentials. The root cause is usually an incorrect IMDS hop limit.
 
 **Detailed answer:**  
@@ -81,7 +80,103 @@ The specific misconfiguration in this case would be:
 Once the hop limit is increased to `2` on the worker nodes, pods should able to access IMDS, credentials should be retrieved successfully, and PVCs should be bound as expected.
 
 
-### Additional Considerations
+## Cluster Autoscaler AZ Rewrites
+
+AWS Cluster Autoscaler cannot map Kubernetes nodes to their Auto Scaling Groups in a
+Combine environment. Combine rewrites the availability zone to ISO form in AWS API responses, but a node's `spec.providerID` keeps the commercial AZ, since the autoscaler pod retrieves this value from the default kubernetes domain name `kubernetes.default.svc` domain name, and this API call does not go through Combine. The autoscaler joins
+those two values as strings, so they never match.
+
+An example from a running cluster:
+```bash
+# these two commands will reproduce the az/topology mismatch
+  kubectl get nodes -o custom-columns='NAME:.metadata.name,PROVIDER:.spec.providerID'
+
+aws autoscaling describe-auto-scaling-groups \
+  --auto-scaling-group-names <asg> \
+  --query 'AutoScalingGroups[].[AutoScalingGroupName,Instances[].[InstanceId,AvailabilityZone]]'
+```
+
+In practice, this will return values like:
+```bash
+[ec2-user@ip-10-0-35-207 not-a-kubestronaut]$ kubectl get nodes -o custom-columns='NAME:.metadata.name,PROVIDER:.spec.providerID'
+NAME                          PROVIDER
+ip-10-0-36-249.ec2.internal   aws:///us-east-1c/i-0502afe1f135ab04c  💣 <-- bad cause commercial
+ip-10-0-40-23.ec2.internal    aws:///us-east-1c/i-05efda15056a6f86a
+[ec2-user@ip-10-0-35-207 not-a-kubestronaut]$ aws autoscaling describe-auto-scaling-groups \
+  --auto-scaling-group-names \
+    eks-combine-master-eks-ng-2-20260611172448052600000007-4ecf5bdb-87be-ad95-f634-b84acd83c998 \
+    eks-combine-master-eks-ng-2-20260611174930015800000007-6ccf5be6-d643-7366-b9e8-871ee0cadeda \
+  --query 'AutoScalingGroups[].[AutoScalingGroupName,Instances[].[InstanceId,AvailabilityZone]]'
+[
+  [
+    "eks-combine-master-eks-ng-2-20260611172448052600000007-4ecf5bdb-87be-ad95-f634-b84acd83c998",
+    [
+      [
+        "i-0502afe1f135ab04c",
+        "us-iso-east-1c" 💣 <-- bad cause iso
+      ]
+    ]
+  ],
+  [
+    "eks-combine-master-eks-ng-2-20260611174930015800000007-6ccf5be6-d643-7366-b9e8-871ee0cadeda",
+    [
+      [
+        "i-05efda15056a6f86a",
+        "us-iso-east-1c"
+      ]
+    ]
+  ]
+]
+```
+
+> **Caveat — this snippet illustrates the default rewrite, not the autoscaler's traffic.** The `aws autoscaling` command above runs under *your* shell identity (your role, an `aws-cli/...` user-agent), which is never exempted. It shows what any non-exempt caller receives, and it will keep returning `us-iso-east-1c` **even after the fix below is applied.** Do not use it to validate the fix — see [Verifying the fix](#verifying-the-fix). The cluster-autoscaler itself never shells out to `aws`; it uses the AWS Go SDK under its own IRSA role and `cluster-autoscaler` user-agent, and only *that* traffic is exempted.
+
+The fix is to disable the autoscaling availability-zone response rewriter for the cluster-autoscaler, so its `DescribeAutoScalingGroups` responses pass through with the commercial AZ intact and match the node's `spec.providerID`.
+
+This is done with two config values in DynamoDB, which scope the exemption by the caller's assumed-role ARN and by the caller's user-agent respectively:
+
+```
+combine.endpoints.aws.rewriter.response.autoscaling.availabilityZone.enable.roleArn.contains.except=cluster-autoscaler
+combine.endpoints.aws.rewriter.response.autoscaling.availabilityZone.enable.userAgents.except=cluster-autoscaler
+```
+
+Each value is a space-separated list, matched as a **substring** (case-sensitive) against the corresponding request attribute. A request skips the autoscaling AZ rewrite if *either*:
+
+- its assumed-role ARN contains a listed value (e.g. `arn:aws:sts::<account>:assumed-role/PROJECT_cluster-autoscaler/...` contains `cluster-autoscaler`), or
+- its `user-agent` header contains a listed value (e.g. `aws-sdk-go-v2/... cluster-autoscaler/1.35.0 ...` contains `cluster-autoscaler`).
+
+The two knobs are independent scopes: role-ARN catches the autoscaler's identity regardless of user-agent, and user-agent catches the autoscaler's requests regardless of role. For the cluster-autoscaler both are true, so setting both gives a belt-and-suspenders exemption.
+
+> **Note:** These config values are *not* the request-side `combine.endpoints.aws.rewriter.request.strictMode.userAgents.except`. That property only controls request-side strict-mode validation and has no effect on whether response availability zones are rewritten — a request carrying the `cluster-autoscaler` user-agent will still have its response AZs rewritten to ISO form unless one of the `response.autoscaling.availabilityZone.enable.*.except` keys above matches.
+
+This targeted exemption, at the cost of pure always-on emulation for the cluster-autoscaler, allows the autoscaler to map nodes to their Auto Scaling Groups as expected. It is scoped to the autoscaler only; all other clients in the environment continue to receive emulated ISO availability zones.
+
+### Verifying the fix
+
+Do **not** validate with a manual `aws autoscaling` call — as noted above, that identity is never exempted and will still return `us-iso-east-1c`. Validate against the autoscaler's own Combine transaction instead. The autoscaler issues its tag-filtered `DescribeAutoScalingGroups` automatically on its scan interval (~10s), so a fresh transaction appears on its own; to force one immediately, restart it:
+
+```bash
+kubectl rollout restart deployment/cluster-autoscaler -n kube-system
+```
+
+Then find that transaction in Combine's logs. Confirm it is the autoscaler's by its identity:
+
+- **user-agent** contains `cluster-autoscaler/...` (e.g. `aws-sdk-go-v2/... cluster-autoscaler/1.35.0 ...`)
+- **roleArn** contains `...assumed-role/PROJECT_cluster-autoscaler/...`
+- **parameters** show `Action=DescribeAutoScalingGroups` with the `k8s.io/cluster-autoscaler/enabled` tag filter
+
+Two signals in that transaction confirm the exemption fired:
+
+1. **The AZ rewriter is skipped.** Combine logs a `Response Rewriting : Body : Applying Rewriter [...]` line for each rewriter it *runs*. When the exemption is working, `ApiResponseRewriterAutoscalingAvailabilityZone` is **absent** from that list (you will still see `ApiResponseRewriterAutoscalingArn`, which is a separate rewriter and intentionally left enabled).
+
+2. **The client-facing response carries commercial AZs.** Compare the two response sections in the transaction: `responseProxy` (the raw reply from AWS) and `response` (what Combine returns to the autoscaler). With the exemption active, `response` shows `us-east-1c` / `us-east-1a,b,c` — matching `responseProxy` — instead of the rewritten `us-iso-east-1c`.
+
+If Combine is running at VERBOSE log level you will also see `API Handler [...ApiResponseRewriterAutoscalingAvailabilityZone] is disabled for ...`, but that line is log-level dependent; the two signals above are the reliable check.
+
+If a fresh autoscaler transaction still shows `us-iso-east-1c` and the AZ rewriter still appears in the "Applying Rewriter" list, the config did not reach the handler — check that the DynamoDB value is set at the correct environment/partition scope and has propagated, rather than looking for a logic error.
+
+
+## Additional Considerations
 
 - We recommend using IaC (Infrastructure as Code) to provision your EKS Cluster(s). ClickOps has been shown to not be reliably reproducible. There are AWS Console offerings in the AWS and AWS GovClud partitions which are not present in the emulated regions.
 - We recommend using version 1.33 or greater of the <a href="https://github.com/kubernetes-sigs/aws-ebs-csi-driver" target="_blank">AWS EBS CSI driver</a>.
