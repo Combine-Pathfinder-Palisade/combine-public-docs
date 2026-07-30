@@ -1,0 +1,71 @@
+.content {
+  text-align: center;
+}
+
+.robot {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  margin-bottom: 1.5rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.lead {
+  font-size: 1.15rem;
+  line-height: 1.7;
+  max-width: 34rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Sits under the navbar search box and points up at it. */
+.searchPointer {
+  position: fixed;
+  top: calc(var(--ifm-navbar-height) - 0.25rem);
+  right: 7rem;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  color: var(--ifm-color-primary);
+  pointer-events: none;
+}
+
+.searchArrow {
+  width: 88px;
+  height: 96px;
+  flex: none;
+  order: 2;
+  animation: nudge 2.2s ease-in-out infinite;
+}
+
+.searchLabel {
+  order: 1;
+  margin-top: 4.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(3px, -4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .searchArrow {
+    animation: none;
+  }
+}
+
+/* The navbar collapses below this width, so there is nothing to point at. */
+@media (max-width: 996px) {
+  .searchPointer {
+    display: none;
+  }
+}
