@@ -8,7 +8,7 @@ title: EKS Add-ons
 
 **Please note that for managed add-ons to work in Combine, you will need to install a small mutating admission webhook which will extend Combine's emulation to inside your cluster.**
 
-This webhook rewrites add-on image URLs to their ISO equivalents. You can find more information and install the webhool [in this directory of our public example repository](https://github.com/Combine-Pathfinder-Palisade/combine-examples/tree/main/combine-eks-rewriter-addon).
+This webhook rewrites add-on image URLs to their ISO equivalents. You can find more information and install the webhook [in this directory of our public example repository](https://github.com/Combine-Pathfinder-Palisade/combine-examples/tree/main/combine-eks-rewriter-addon).
 
 ## EKS managed add-ons on Combine
 
