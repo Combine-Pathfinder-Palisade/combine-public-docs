@@ -80,10 +80,9 @@ The specific misconfiguration in this case would be:
 Once the hop limit is increased to `2` on the worker nodes, pods should able to access IMDS, credentials should be retrieved successfully, and PVCs should be bound as expected.
 
 
-## Cluster Autoscaler AZ Rewrites
+## Cluster Autoscaler (and other component) AZ/Topology Rewrites
 
-AWS Cluster Autoscaler cannot map Kubernetes nodes to their Auto Scaling Groups in a
-Combine environment. Combine rewrites the availability zone to ISO form in AWS API responses, but a node's `spec.providerID` keeps the commercial AZ, since the autoscaler pod retrieves this value from the default kubernetes domain name `kubernetes.default.svc` domain name, and this API call does not go through Combine. The autoscaler joins
+AWS Cluster Autoscaler cannot map Kubernetes nodes to their Auto Scaling Groups in a Combine environment. Combine rewrites the availability zone to ISO form in AWS API responses, but a node's `spec.providerID` keeps the commercial AZ, since the autoscaler pod retrieves this value from the default kubernetes domain name `kubernetes.default.svc` domain name, and this API call does not go through Combine. The autoscaler joins
 those two values as strings, so they never match.
 
 An example from a running cluster:
@@ -186,6 +185,7 @@ If a fresh autoscaler transaction still shows `us-iso-east-1c` and the AZ rewrit
 - Your Combine instance must have Permissions Boundaries and IAM Self Service enabled. If you are not sure if this is enabled on your account, please reach out to a Combine Team member via <a href="mailto:service-request@sequoiainc.com">email</a>.
 - You must prefix all roles that do EKS-related work (node groups, pods, clusters) with <code>PROJECT_</code> as per the customer's high side requirement. Combine will not allow creation of roles that do not follow this format.
 
-Note that EKS add-ons are in experimental support for Combine right now. If you need to use them, please reach out to a  <a href="mailto:service-request@sequoiainc.com">Combine team member</a> to discuss your use case.
+Please see [this page](/Combine-AWS/start-here/eks-add-ons) for more information on how to configure EKS add-ons.
+
 
 For a complete working example of how to stand up an EKS cluster within Combine, please see our <a href="https://github.com/Combine-Pathfinder-Palisade/combine-examples/tree/main/combine-eks-example" target="_blank">example repository</a>.
