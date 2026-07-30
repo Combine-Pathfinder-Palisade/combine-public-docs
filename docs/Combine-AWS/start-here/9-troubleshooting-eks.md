@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 10
 title: Troubleshooting - EKS
 
 ---
@@ -185,7 +185,7 @@ If a fresh autoscaler transaction still shows `us-iso-east-1c` and the AZ rewrit
 - Your Combine instance must have Permissions Boundaries and IAM Self Service enabled. If you are not sure if this is enabled on your account, please reach out to a Combine Team member via <a href="mailto:service-request@sequoiainc.com">email</a>.
 - You must prefix all roles that do EKS-related work (node groups, pods, clusters) with <code>PROJECT_</code> as per the customer's high side requirement. Combine will not allow creation of roles that do not follow this format.
 
-Please see [this page](/Combine-AWS/start-here/eks-add-ons) for more information on how to configure EKS add-ons.
+Please see [this page](/Combine-AWS/start-here/eks-addons) for more information on how to configure EKS add-ons.
 
 
 For a complete working example of how to stand up an EKS cluster within Combine, please see our <a href="https://github.com/Combine-Pathfinder-Palisade/combine-examples/tree/main/combine-eks-example" target="_blank">example repository</a>.
