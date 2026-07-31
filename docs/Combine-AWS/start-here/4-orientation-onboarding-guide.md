@@ -11,9 +11,9 @@ Once Combine is installed in your account you are ready to onboard into the Comb
 
 Each Combine user will be provided with a credential package (usually via email.) The credential package is bundled as a `.zip` file and is usually downloaded using a temporary link in the email. For security reasons this link will expire after eight hours.
 
-_NOTE: In some cases your Combine administrator will provide the credential packages to you via other means depending on your organization's security requirements._
+> **NOTE:** In some cases your Combine administrator will provide the credential packages to you via other means depending on your organization's security requirements.
 
-_NOTE: In some cases your organization's email security solution might quarantine or reject our the Combine email address sending the credential packages. You may whitelist the following Domain/Public IP Addresses to ensure delivery:_
+> **NOTE:** In some cases your organization's email security solution might quarantine or reject our the Combine email address sending the credential packages. You may whitelist the following Domain/Public IP Addresses to ensure delivery:
 
 ```
 Email Domain: combine-tap.io
@@ -36,8 +36,8 @@ Each Combine deployment creates a private Certificate Authority unique to you th
 
 To access the Combine Dashboard, you will need to install:
 
-- Combine Trust Chain - This is (usually) just the Public Certificate of the Certificate Authority. (We also provide the Public Certificate of the Certificate Authority Signer in case it is also needed.) This is available in your Credential Package at `certificates/ca.cert.pem` or `certificates/ca.cert.der` depending on the file format you prefer.
-- Personal Certificate - This is the Public Certificate and Private Key of a Certificate issued to you by the Certificate Authority. This is available in your Credential Package at `certificates/<username>.p12`.
+- **Combine Trust Chain** - This is (usually) just the Public Certificate of the Certificate Authority. (We also provide the Public Certificate of the Certificate Authority Signer in case it is also needed.) This is available in your Credential Package at `certificates/ca.cert.pem` or `certificates/ca.cert.der` depending on the file format you prefer.
+- **Personal Certificate** - This is the Public Certificate and Private Key of a Certificate issued to you by the Certificate Authority. This is available in your Credential Package at `certificates/<username>.p12`.
 
 _NOTE: Our team will access your Combine version and list of users via this static ip range. In some cases your security guardrails might trigger when we access through these IP addresses. Please whitelist the following Domain/Public IP Addresses to ensure no false alarms:_
 
@@ -62,12 +62,12 @@ See the steps below to install these into the Chrome Browser.
 
     ![](/aws/onboarding-images/windows-trusted-cert-auth.png)
 
-    * *Tip*: you can use the right/left arrows highlighted below to navigate to the appropriate certificate store.
+    > *Tip*: you can use the right/left arrows highlighted below to navigate to the appropriate certificate store.
 
     ![](/aws/onboarding-images/windows-cert-arrows.png)
 4. Click **Import** and follow the prompts to install the `ca.cert.pem` file into the **Trusted Root Certification Authorities** store. 
 
-    * _NOTE: When browsing for the `ca.cert.pem` file you may need to adjust the file extension filter in the file dialog so you can see `.pem` files._
+    > **NOTE:** When browsing for the `ca.cert.pem` file you may need to adjust the file extension filter in the file dialog so you can see `.pem` files.
 
     If the import is successful you will see an entry for `Combine CA - <your company name>` in the list of certificates.
 5. Install your Personal Certificate. Double-click on your Personal Certificate (`certificates/<username>.p12` in your Credential Package.) You will be prompted to enter the Personal Certificate password (`certificates/<username>_password.txt` in your Credential Package.)
@@ -84,7 +84,7 @@ If you have installed the certificates successfully, browse to the URL of your C
 3. When prompted, enter your MacOS system password.
 4. Locate **Login Keychains** menu and click **Login**.
 
-    * _NOTE: Do not choose **System Roots**_
+    > **NOTE:** Do not choose **System Roots**
 
     ![](/aws/onboarding-images/mac-keychain-login.png)
 5. Import the `certificates/ca.cert.pem` file by dragging it from your Credential Package folder to the **Login** keychain dialog.
@@ -99,7 +99,7 @@ If you have installed the certificates successfully, browse to the URL of your C
 9. Confirm the import by entering your MacOS system password.
 10. Right click the certificate entry in the `Keychain` tool. Click **Info -> Trust** and select **Always Trust** from the dropdown.
 
-If you have installed the certificates successfully, browse to the URL of your Combine Dasboard (see `tap.txt` in your Credential Package.) If the Combine Dashboard loads successfuly, then your Personal Certificate installation was successful!
+If you have installed the certificates successfully, browse to the URL of your Combine Dasboard (see `tap.txt` in your Credential Package.) Chrome may display a prompt that says, **“Google Chrome wants to sign using key ‘private key’ in your keychain.”** Enter your macOS system password, then click **Always Allow**. If the Combine Dashboard loads successfuly, then your Personal Certificate installation was successful!
 
 ### Certificate Installation Troubleshooting
 
@@ -108,15 +108,21 @@ If you receive an error when attempting to authenticate to the Combine Dashboard
 1. Try hitting the Dashboard in an incognito window. Oftentimes even modern browsers like Chrome cache client-side ssl certs for a few days. If you've mistyped the password to either the your personal certificate or your local computer, the unsuccessful attempt is saved for a long time. An incognito window bypasses the cached state.
 2. Try deleting and reinstalling your personal certificate. The cert can become outdated if your Dashboard Admin(s) have rotated all the user certificates, especially if you have had Combine for a few years.
 
+### Dashboard Access Troubleshooting
+
+If your browser repeatedly prompts you for a password when accessing the dashboard, even though your system password is correct:
+1. Make sure that you select **Always Allow** in the keychain prompt rather than **Allow**. Selecting **Allow** can cause your browser to continuously prompt you for your password and that prevents you from accessing the dashboard.
+2. Make sure that your certificates are installed under your **login** default keychain and _not_ your **System Keychains**.
+
 If not, please reach out to the team via slack or our [email](mailto:service-request@sequoiainc.com) for more assistance. The team can attempt to log in with your personal certificate to determine whether it's an issue on your browser/network or the dashboard itself.
 
 ****
 
 ## SSH Access via Bastion
 
-_NOTE: The Combine Team recommends you discontinue use of the Combine Bastion server and use EC2 Instance Connect or SSM Session Manager to access servers directly instead._
+> **NOTE:** The Combine Team recommends you discontinue use of the Combine Bastion server and use EC2 Instance Connect or SSM Session Manager to access servers directly instead.
 
-_NOTE: As of Combine Version 3.13.12 the Combine Bastion server will be deprecated. It will be removed from Combine's management in Version 3.14.0 (meaning that existing Combine Bastion servers will not be destroyed but they will no longer be maintained by the Combine Team.) The Combine Bastion server will not be created for customers that start using Combine in Version 3.14.0 or later._
+> **NOTE:** As of Combine Version 3.13.12 the Combine Bastion server will be deprecated. It will be removed from Combine's management in Version 3.14.0 (meaning that existing Combine Bastion servers will not be destroyed but they will no longer be maintained by the Combine Team.) The Combine Bastion server will not be created for customers that start using Combine in Version 3.14.0 or later.
 
 The Combine Bastion server is provided as a convenience to allow you to easily access resources deployed into a private subnet.
 
@@ -124,24 +130,23 @@ The Combine Bastion server is provided as a convenience to allow you to easily a
 
 To access the Combine Bastion server (usually used to access a server you have deployed into a private subnet) you may use the EC2 Instance Connect or Session Manager option through the AWS Console.
 
-Browse to EC2 Dashboard.
+1. Browse to EC2 Dashboard.
 
-Select the Combine Bastion server. (It is usually named "Combine-Bastion" but uses the default Name Tag pattern `<ShardId>-<VPC Name>-Bastion` unless you have specified a custom Name Tag.)
+2. Select the Combine Bastion server. (It is usually named "Combine-Bastion" but uses the default Name Tag pattern `<ShardId>-<VPC Name>-Bastion` unless you have specified a custom Name Tag.)
 
-Click "Connect".
+3. Click "Connect".
 
-Choose either the EC2 Instance Connect or Session Manager options.
+4. Choose either the EC2 Instance Connect or Session Manager options.
 
-Click "Connect".
-
+5. Click "Connect".
 
 ### Access via Public IP / SSH KeyPair
 
 To access the Combine Bastion server directly you may use an SSH Client.
 
-The Combine Bastion's Public IP address is found in `bastion.txt` in your Credential Package.
+- The Combine Bastion's Public IP address is found in `bastion.txt` in your Credential Package.
 
-The Combine Bastion's SSH KeyPair  is found in `Combine.pem` in your Credential Packaage.
+- The Combine Bastion's SSH KeyPair  is found in `Combine.pem` in your Credential Packaage.
 
 ### Combine Bastion Server Best Practices
 
