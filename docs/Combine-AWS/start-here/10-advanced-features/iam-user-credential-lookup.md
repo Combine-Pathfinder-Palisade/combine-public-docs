@@ -12,9 +12,17 @@ Due to the specialized nature of this integration, it is disabled by default. To
 
 (See [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions.)
 
-## IAM User Credential Registration
+## IAM User Credential Registration - Manual
 
 Once the User Credential Lookup is enabled, the IAM Credentials for the IAM User must be registered in AWS Secrets Manager.
+
+### Registration
+
+If your IAM User was created in Combine (via a `iam:CreateUser` API Call sent to the emulated AWS IAM API Endpoint) then Combine will automatically register your IAM User Credentials in Secrets Manager.
+
+### Registration - Manual
+
+If your IAM User was not created in Combine then you will need to manually register the IAM Credentals in AWS Secrets Manager.
 
 To do this, you must create a Secret with the following Key:
 
