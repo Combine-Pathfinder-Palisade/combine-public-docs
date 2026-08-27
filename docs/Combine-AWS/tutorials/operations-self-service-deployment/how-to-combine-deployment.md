@@ -4,13 +4,13 @@
 
 This guide is only for customers who have access to the Combine automation tool and are performing their own build and deployment operations.
 
-## Combine 3.13.x
+## Combine 3.14.x
 
 ### Prerequisites
 
 - Java installed on the server from which you are deploying.
 - IAM Role or other IAM Credentials to use for the deployment. (See the Combine provided `combine-provisioning.yaml` CloudFormation template for an example of necessary permissions.)
-- Latest Combine JAR file: `combine-aws-account-automation-3.13.x.jar`.
+- Latest Combine JAR file: `combine-aws-account-automation-3.14.x.jar`.
 - Latest Bouncy Castle JAR file for Provider, PKI, and Util in a `lib/` directory:
   - `bcpkix-jdk18on-1.78.1.jar`
   - `bcprov-jdk18on-1.78.1.jar`
@@ -26,20 +26,18 @@ Example:
 {
   "myDevEnvironment": {
     "region": "us-east-1",
-    "clientAccountId": "123123123123",
-    "clientRoleArn": "arn:aws:iam::123123123123:role/Combine-Provisioning-Role",
     "masterRegion": "us-east-1",
-    "shardId": "Dev",
+    "shardId": "POC",
+    "clientRoleArn": "",
     "hasUserManagementAccount": "false",
     "bucketEncryptionKey": "",
-    "buildTS": "true",
-    "buildS": "false",
-    "buildGovCloud": "false",
-    "certificateName": "Development",
-    "templateParameters": {
-      "combine.yaml": {},
-      "combine-policy.yaml": {},
-      "combine-vpc.yaml": {}
+    "bucketSetBlockPublicAccess": "true",
+    "emulatedPartitionId": "<todo>",
+    "certificateName": "POC",
+    "combineStackParameters": {},
+    "combinePolicyStackParameters": {},
+    "combineVPCStacks": {
+      "Combine-POC-VPC": {}
     }
   },
 }
@@ -64,26 +62,31 @@ You can specify Key/Secret Key pair for credentials instead of trying to assume 
 - `shardId` - Optional. A short name to used to namespace resources in Combine. Recommend setting a value such as "Dev" or "Prod" since resource name constraints can cause build to fail for lengthy values. Value should contain only letters.
 - `hasUserManagementAccount` - Except in advanced cases this should be set to `false`.
 - `bucketEncryptionKey` - Optional. ARN value of KMS Key used to encrypt Combine S3 Buckets. Should be blank unless your environment requires setting a KMS CMK Key for each bucket by policy.
-- `buildTS` - Set to `true`/`false` to toggle building AWS Top Secret region emulation.
-- `buildS` - Set to `true`/`false` to toggle building AWS Secret region emulation.
-- `buildGovCloud` - Set to `true`/`false` to toggle building AWS Gov Cloud region emulation.
 - `certificateName` - Value to use when creating the Combine Certificate Authority chain. The final value will be `Combine - <certificateName>`.
-- `templateParameters` - Used to pass on AWS CloudFormation Parameters to the underlying Combine CloudFormation Templates.
+- `combineStackParameters` - Optional. Map of CloudFormation parameter name to value applied when deploying the Combine stack (`combine.yaml`). Values here override the defaults the command supplies. Use `{}` for none.
+- `combinePolicyStackParameters` - Optional. Map of CloudFormation parameter name to value applied when deploying the Combine Policy stack (`combine-policy.yaml`). Values here override the defaults the command supplies. Use `{}` for none.
+- `combineVPCStacks` - Map of Combine VPC stack name to that stack's CloudFormation parameter overrides. Each key is the CloudFormation stack name to create for a Combine VPC (for example `Combine-VPC`), and its value is a map of parameter name to value — use `{}` to accept all defaults. Add additional entries to deploy multiple Combine VPCs into the same account.
 
-Example of using `templateParameters`:
+In most cases the latter three configurations are empty, unless you desire a more nuanced configuration.
+
+Example of using these configurations:
 
 ```
-"templateParameters": {
-  "combine.yaml": {},
-  "combine-policy.yaml": {},
-  "combine-vpc.yaml": {
-    "VpcCidrBlock":"10.1.0.0/16",
-    "VpcCidrBlockAuxiliaryA":"10.255.0.0/21",
+"combineStackParameters": { },
+"combinePolicyStackParameters": {
+  "AllowTerraFormExceptions": "true",
+  "EnforceVpcEndpointSecurityGroup": "false",
+  "EnforceLambdaVpcConfiguration": "false"
+},
+"combineVPCStacks": {
+  "Combine-VPC": {
+    "VpcCidrBlock": "10.172.0.0/16",
+    "VpcCidrBlockAuxiliaryA": "10.255.0.0/21",
     "VpcCustomerSubnetsBuild": "false",
     "VpcCidrBlockCombine": "10.255.0.0/24",
     "VpcCidrBlockCombineFirewall": "10.255.1.0/24"
   }
-}
+},
 ```
 
 Each of the members in the `combine-vpc.yaml` object are passed on to CloudFormation where the key is the CloudFormation Parameter Name and the value is the overridden value to use.
@@ -93,7 +96,7 @@ Each of the members in the `combine-vpc.yaml` object are passed on to CloudForma
 To execute a Combine automation command you will use this CLI command:
 
 ```
-java -classpath "lib/*:combine-aws-account-automation-3.13.x.jar" com.sequoia.combine.accounts.CombineCommandExecutor <command> --config-store-profile <profile> --bricks-release-version bricks_v_x_x_x
+java -classpath "deployment/lib/*:deployment/combine-aws-account-automation.jar" -Dcombine.configuration.partitions.localFile=deployment/release/configuration/cloud-partitions.json com.sequoia.combine.accounts.CombineCommandExecutor <command> --config-store-profile <profile> --bricks-release-version bricks_v_x_x_x
 ```
 
 In the above command, the value of `<profile>` is the key used in the `clients.json` file (`myDevEnvironment` in the example above). If `--config-store-profile` is not provided the tool will prompt you for each value via the CLI.
@@ -106,13 +109,12 @@ In the above command, the value of `<command>` is a support Combine automation c
 
 Running the above command without specifying a `<command>` value will print the usage instructions.
 
-Running this command will list all available Combine automation commands:
+Running this command will list all available Combine automation commands as well as all `clients.json` entries.
 
 ```
-java -classpath "lib/*:combine-aws-account-automation-3.13.x.jar" com.sequoia.combine.accounts.CombineCommandList
+java -classpath "deployment/lib/*:deployment/combine-aws-account-automation.jar"  com.sequoia.combine.accounts.CombineCommandExecutor help
 ```
 
-(As of 3.13.7 many commands lack descriptions. This will be corrected in a subsequent release.)
 
 There are additional command line options including:
 
@@ -127,12 +129,12 @@ There are additional command line options including:
 To deploy a new instance of Combine executing the following Combine automation tool command:
 
 ```
-java -classpath "lib/*:combine-aws-account-automation-3.13.x.jar" com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <profile> --bricks-release-version bricks_v_x_x_x
+java -classpath "deployment/lib/*:deployment/combine-aws-account-automation.jar" -Dcombine.configuration.partitions.localFile=deployment/release/configuration/cloud-partitions.json com.sequoia.combine.accounts.CombineCommandExecutor full --config-store-profile <profile> --bricks-release-version bricks_v_x_x_x
 ```
 
 Be certain to provide the name of your Combine JAR File and the profile you wish to use. For Bricks Release Version you can actually provide any value since it is only used to create a unique path in S3. However we recommend a version number that follows this pattern:
 
-`bricks_v_x_x_x` - For example: `bricks_v_3_13_7`
+`bricks_v_x_x_x` - For example: `bricks_v_3_14_5`
 
 The build will attempt to load artifacts into S3, build a Certificate Authority chain, and then execute all three Combine CloudFormation Templates. It will build a single VPC with default settings. Remember that CloudFormation Parameters can be overridden in the `clients.json` as described above.
 
@@ -143,10 +145,10 @@ If the build fails, we recommend that you empty the `combine-devops-<account id>
 To deploy a new instance of Combine executing the following Combine automation tool command:
 
 ```
-java -classpath "lib/*:combine-aws-account-automation-3.13.x.jar" com.sequoia.combine.accounts.CombineCommandExecutor update --config-store-profile <profile> --bricks-release-version bricks_v_x_x_x
+java -classpath "deployment/lib/*:deployment/combine-aws-account-automation.jar" -Dcombine.configuration.partitions.localFile=deployment/release/configuration/cloud-partitions.json com.sequoia.combine.accounts.CombineCommandExecutor update --config-store-profile <profile> --bricks-release-version bricks_v_x_x_x
 ```
 
-Be certain to provide the name of your Combine JAR File and the profile you wish to use. For Bricks Release Version you can actually provide any value since it is only used to create a unique path in S3. However we recommend a version number that follows the pattern `bricks_v_x_x_x` (such as: `bricks_v_3_13_7`).
+Be certain to provide the name of your Combine JAR File and the profile you wish to use. For Bricks Release Version you can actually provide any value since it is only used to create a unique path in S3. However we recommend a version number that follows the pattern `bricks_v_x_x_x` (such as: `bricks_v_3_14_5`).
 
 The build will attempt to load artifacts into S3.
 
@@ -171,6 +173,6 @@ The Combine automation tool does not support CloudFormation Template updates due
 
 If all templates are updated successfully you may proceed to the final step. Initiate an "Instance Refresh" on the `Combine-ASG-Tap` and `Combine-ASG-Endpoints` Auto Scaling Groups. Set a minimum of a 60 second warmup. Uncheck "Enable skip matching". This will rebuild your TAP and Endpoint servers to use the update artifacts you staged in S3 and configured with CloudFormation.
 
-## Combine 3.14.x
+## Combine 3.15.x
 
 Under Development.
