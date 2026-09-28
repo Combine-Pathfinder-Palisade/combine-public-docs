@@ -183,8 +183,7 @@ In the above command, the value of `<profile>` is the key used in the `clients.j
 
 In the above command, the value of `<command>` is a support Combine automation command. See below for the basic commands:
 
-- `full` - Initiates a full build with a new certificate authority chain.
-- `full_no_vpc` - Initiates a full build with a new certificate authority chain.
+- `build` - Initiates a full build with a new certificate authority chain.
 - `update` - Updates combine with latest artifacts.
 
 Running the above command without specifying a `<command>` value will print the usage instructions.
