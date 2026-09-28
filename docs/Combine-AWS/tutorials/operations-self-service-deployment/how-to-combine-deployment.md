@@ -29,6 +29,7 @@ Example:
     "masterRegion": "us-east-1",
     "shardId": "POC",
     "clientRoleArn": "",
+    "clientAccountId": "",
     "hasUserManagementAccount": "false",
     "bucketEncryptionKey": "",
     "bucketSetBlockPublicAccess": "true",
