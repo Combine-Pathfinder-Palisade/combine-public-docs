@@ -40,7 +40,7 @@ export default function OnboardingTour() {
       tour.addStep({
         id: 'start-here',
         title: 'Start Here',
-        text: `New to Combine? <strong>Start Here</strong> we have guides that will walk you through everything — from common pitfalls to example codes.<br><br><strong>Click the button</strong> to continue.`,
+        text: `New to Combine? <strong>Start Here</strong>! We have guides that will walk you through everything — from common pitfalls to example code.<br><br><strong>Click the button</strong> to continue.`,
         attachTo: { element: 'a[href="/category/start-here"]', on: 'bottom' },
         canClickTarget: true,
         buttons: [],

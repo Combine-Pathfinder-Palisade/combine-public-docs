@@ -7,7 +7,7 @@ title: Topology - Multiple VNet - Central Combine VNet
 
 This Combine Network Architecture is used when your workload must span multiple VNets.
 
-In this architecture Combine is deployed to a single VNet, while your workload is deployed to separate VNets. Route 53 Private DNS entries redirect all emulated endpoint traffic to the Combine VNet through one of several networking mechanisms. At present this architecture has been production-tested with all VNets peered together.
+In this architecture Combine is deployed to a single VNet, while your workload is deployed to separate VNets. Azure Private DNS entries redirect all emulated endpoint traffic to the Combine VNet through one of several networking mechanisms. At present this architecture has been production-tested with all VNets peered together.
 
 # Architecture Diagram
 

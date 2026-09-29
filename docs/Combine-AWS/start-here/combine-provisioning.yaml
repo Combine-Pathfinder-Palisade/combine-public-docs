@@ -1,6 +1,5 @@
-# Formatted with : https://codebeautify.org/yaml-beautifier
-#
 AWSTemplateFormatVersion: "2010-09-09"
+Description: "Combine - Provisioning - This stack creates the Combine Provisioning Role used by the Combine Support Team to deploy/maintain a Combine Deployment."
 Parameters:
   EnablePermissionsFollowerAccountCredentials:
     Type: String

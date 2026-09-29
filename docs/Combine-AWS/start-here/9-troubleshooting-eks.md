@@ -6,13 +6,22 @@ title: Troubleshooting - EKS
 
 # Combine EKS Support
 
-Combine has support for integrating AWS EKS into an emulated region. However, due to limitations of the AWS EKS architecture, there are a several issues to be aware of when standing up your EKS cluster.
+Combine has support for integrating AWS EKS into an emulated region. However, due to limitations of the AWS EKS architecture, there are several issues to be aware of when standing up your EKS cluster.
 
-Mention Combine running on EKS here?
+If you want to run Combine itself on an EKS cluster, see [How to configure Combine on EKS](/Combine-AWS/tutorials/operations/how-to-configure-combine-on-eks).
 
 ## Kubernetes Version
 
-Combine enforces which Kubernetes Version are supported in the production environment.
+Combine enforces which Kubernetes Versions are supported in each emulated partition. A `CreateCluster` or `UpdateClusterVersion` request with a `version` that is not supported is rejected with an `InvalidParameterException` (`unsupported Kubernetes version <version>`), and Combine raises an Alert Event. If a `CreateCluster` request does not specify a `version`, Combine sets it to the emulated partition's default version.
+
+As of Release 3.14.7:
+
+| Emulated Partition | Supported Versions | Default Version |
+|---|---|---|
+| C2S (`aws-iso`) | 1.31, 1.32, 1.33, 1.34, 1.35, 1.36 | 1.36 |
+| SC2S (`aws-iso-b`) | 1.31, 1.32, 1.33, 1.34, 1.35, 1.36 | 1.36 |
+| GovCloud (`aws-us-gov`) | 1.32, 1.33, 1.34, 1.35 | 1.35 |
+| EUSC (`aws-eusc`) | 1.33, 1.34, 1.35 | 1.35 |
 
 ## Combine and OIDC
 
@@ -28,7 +37,7 @@ NOTE that `WLCUSTOMER-IT` is only for use in simulating actions reserved for the
 
 Since Combine is proxying traffic from clients to your EKS cluster it must be granted access to the EKS API.
 
-If your Cluster is open to all traffic within the VPC this is not necessary. If not, at a minimum you will need to give the Combine Endpoint Server Security Group access on your Cluster's Security Group.
+If your Cluster is open to all traffic within the VPC this is not necessary. If not, at a minimum you will need to give the Combine Endpoint Server Security Group (named `<VpcName>-SG-Endpoints`, which is `Combine-SG-Endpoints` by default) access on your Cluster's Security Group.
 
 ![EKS Cluster Security Group](/aws/eks-cluster-sg.png)
 
@@ -37,7 +46,7 @@ In the screenshot above, note that the 'Source' of the EKS Cluster's Security Gr
 ## Nodes Joining the Cluster
 
 If your nodes are unable to join the cluster, you have several routes to troubleshoot:
-- Your Combine Deployment may need the `EnableAirgapAccessEKS` on the Combine Policy stack set to `true`. This needs to be set for the nodes to communicate with the cluster's API server. The API server lives in AWS's network space, outside of the VPC, so Combine is not able to proxy that traffic over the high side endpoints.
+- Your Combine Deployment may need the `EnableAirgapAccessEKS` CloudFormation Parameter on the Combine VPC stack (the `combine-vpc.yaml` template) set to `true` (the default). This needs to be set for the nodes to communicate with the cluster's API server. The API server lives in AWS's network space, outside of the VPC, so Combine is not able to proxy that traffic over the high side endpoints.
 - More suggestions forthcoming.
 
 
@@ -77,18 +86,18 @@ The specific misconfiguration in this case would be:
 - **IMDS HTTP PUT response hop limit set to 1**
 - Pods require a hop limit of **at least 2** to reach IMDS from within the node network namespace
 
-Once the hop limit is increased to `2` on the worker nodes, pods should able to access IMDS, credentials should be retrieved successfully, and PVCs should be bound as expected.
+Once the hop limit is increased to `2` on the worker nodes, pods should be able to access IMDS, credentials should be retrieved successfully, and PVCs should be bound as expected.
 
 
 ## Cluster Autoscaler (and other component) AZ/Topology Rewrites
 
-AWS Cluster Autoscaler cannot map Kubernetes nodes to their Auto Scaling Groups in a Combine environment. Combine rewrites the availability zone to ISO form in AWS API responses, but a node's `spec.providerID` keeps the commercial AZ, since the autoscaler pod retrieves this value from the default kubernetes domain name `kubernetes.default.svc` domain name, and this API call does not go through Combine. The autoscaler joins
+AWS Cluster Autoscaler cannot map Kubernetes nodes to their Auto Scaling Groups in a Combine environment. Combine rewrites the availability zone to ISO form in AWS API responses, but a node's `spec.providerID` keeps the commercial AZ, since the autoscaler pod retrieves this value from the default Kubernetes domain name `kubernetes.default.svc`, and this API call does not go through Combine. The autoscaler joins
 those two values as strings, so they never match.
 
 An example from a running cluster:
 ```bash
 # these two commands will reproduce the az/topology mismatch
-  kubectl get nodes -o custom-columns='NAME:.metadata.name,PROVIDER:.spec.providerID'
+kubectl get nodes -o custom-columns='NAME:.metadata.name,PROVIDER:.spec.providerID'
 
 aws autoscaling describe-auto-scaling-groups \
   --auto-scaling-group-names <asg> \
@@ -132,7 +141,7 @@ ip-10-0-40-23.ec2.internal    aws:///us-east-1c/i-05efda15056a6f86a
 
 The fix is to disable the autoscaling availability-zone response rewriter for the cluster-autoscaler, so its `DescribeAutoScalingGroups` responses pass through with the commercial AZ intact and match the node's `spec.providerID`.
 
-This is done with two config values in DynamoDB, which scope the exemption by the caller's assumed-role ARN and by the caller's user-agent respectively:
+This is done with two Configuration Values in DynamoDB, which scope the exemption by the caller's assumed-role ARN and by the caller's user-agent respectively:
 
 ```
 combine.endpoints.aws.rewriter.response.autoscaling.availabilityZone.enable.roleArn.contains.except=cluster-autoscaler
@@ -146,7 +155,7 @@ Each value is a space-separated list, matched as a **substring** (case-sensitive
 
 The two knobs are independent scopes: role-ARN catches the autoscaler's identity regardless of user-agent, and user-agent catches the autoscaler's requests regardless of role. For the cluster-autoscaler both are true, so setting both gives a belt-and-suspenders exemption.
 
-> **Note:** These config values are *not* the request-side `combine.endpoints.aws.rewriter.request.strictMode.userAgents.except`. That property only controls request-side strict-mode validation and has no effect on whether response availability zones are rewritten — a request carrying the `cluster-autoscaler` user-agent will still have its response AZs rewritten to ISO form unless one of the `response.autoscaling.availabilityZone.enable.*.except` keys above matches.
+> **Note:** These Configuration Values are *not* the request-side `combine.endpoints.aws.rewriter.request.strictMode.userAgents.except`. That property only controls request-side strict-mode validation and has no effect on whether response availability zones are rewritten — a request carrying the `cluster-autoscaler` user-agent will still have its response AZs rewritten to ISO form unless one of the `response.autoscaling.availabilityZone.enable.*.except` keys above matches.
 
 This targeted exemption, at the cost of pure always-on emulation for the cluster-autoscaler, allows the autoscaler to map nodes to their Auto Scaling Groups as expected. It is scoped to the autoscaler only; all other clients in the environment continue to receive emulated ISO availability zones.
 
@@ -170,16 +179,16 @@ Two signals in that transaction confirm the exemption fired:
 
 2. **The client-facing response carries commercial AZs.** Compare the two response sections in the transaction: `responseProxy` (the raw reply from AWS) and `response` (what Combine returns to the autoscaler). With the exemption active, `response` shows `us-east-1c` / `us-east-1a,b,c` — matching `responseProxy` — instead of the rewritten `us-iso-east-1c`.
 
-If Combine is running at VERBOSE log level you will also see `API Handler [...ApiResponseRewriterAutoscalingAvailabilityZone] is disabled for ...`, but that line is log-level dependent; the two signals above are the reliable check.
+If Combine is running at VERBOSE log level and the `combine.endpoints.log.ignore.api.handlers.disabled` Configuration Value is set to `false` (it defaults to `true`), you will also see `API Handler [...ApiResponseRewriterAutoscalingAvailabilityZone] is disabled for ...`, but that line depends on logging configuration; the two signals above are the reliable check.
 
 If a fresh autoscaler transaction still shows `us-iso-east-1c` and the AZ rewriter still appears in the "Applying Rewriter" list, the config did not reach the handler — check that the DynamoDB value is set at the correct environment/partition scope and has propagated, rather than looking for a logic error.
 
 
 ## Additional Considerations
 
-- We recommend using IaC (Infrastructure as Code) to provision your EKS Cluster(s). ClickOps has been shown to not be reliably reproducible. There are AWS Console offerings in the AWS and AWS GovClud partitions which are not present in the emulated regions.
+- We recommend using IaC (Infrastructure as Code) to provision your EKS Cluster(s). ClickOps has been shown to not be reliably reproducible. There are AWS Console offerings in the AWS and AWS GovCloud partitions which are not present in the emulated regions.
 - We recommend using version 1.33 or greater of the <a href="https://github.com/kubernetes-sigs/aws-ebs-csi-driver" target="_blank">AWS EBS CSI driver</a>.
-- On EC2 instances, including EKS worker nodes, there is a setting on the instance metadata options called `HTTP PUT response hop limit`. This controls how many network hops a response from the EC2 Instance Metadata Service (IMDS) is allowed to take..It needs to be set to at least `2`. More information on the [AWS docs here](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_ModifyInstanceMetadataOptions.html?utm_source=chatgpt.com#API_ModifyInstanceMetadataOptions_RequestParameters).
+- On EC2 instances, including EKS worker nodes, there is a setting on the instance metadata options called `HTTP PUT response hop limit`. This controls how many network hops a response from the EC2 Instance Metadata Service (IMDS) is allowed to take. It needs to be set to at least `2`. More information on the [AWS docs here](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_ModifyInstanceMetadataOptions.html#API_ModifyInstanceMetadataOptions_RequestParameters).
 - Note that Combine does not fully support EKS clusters provisioned with the [terraform AWS EKS module version 21.3.1](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/21.3.1). We anticipate supporting this very soon!
 - The Helm Chart for some Plugins may need to be modified, particularly for AWS commercial ARNs, regions, and availability zones.
 - Your Combine instance must have Permissions Boundaries and IAM Self Service enabled. If you are not sure if this is enabled on your account, please reach out to a Combine Team member via <a href="mailto:service-request@sequoiainc.com">email</a>.

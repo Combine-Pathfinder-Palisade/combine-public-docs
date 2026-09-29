@@ -9,8 +9,8 @@ description: How to prep your subscription for Combine Azure.
 We are excited to onboard your team to Combine Azure!
 
 ## Disclaimers
-- Unless you'd like a different region, Combine will be deployed in either the '**US East**' or '**US Gov Virginia**' region, depending on which Azure Cloud your subscription is located in.
-- The cost to run Combine in your subscription will run between $200 and $350 dollars per month; we are working to lower this cost and anticipate steep savings in the near future.
+- Unless you'd like a different region, Combine will be deployed in either the '**East US**' or '**US Gov Virginia**' region, depending on which Azure Cloud your subscription is located in.
+- The cost to run Combine in your subscription will run between $200 and $350 per month; we are working to lower this cost and anticipate steep savings in the near future.
 - Combine's policies will considerably restrict resource creation in the subscription; for this reason we recommend Combine be deployed in a subscription which is not used for active development and/or testing.
   - Optionally, we can restrict policy creation to one or more resource groups, provided they exist before Combine is deployed. If you give us the resource IDs of the groups you plan to test your workload in, we will assign our policies to include only those groups.
 - By default Combine will deploy one Virtual Network with the following properties:
@@ -22,7 +22,7 @@ We are excited to onboard your team to Combine Azure!
 | Combine-Functions   |       YES        | 10.3.1.0/24     | Dynamic       |
 | Combine-Ingress     |       YES        | 10.3.2.0/25     | Dynamic       |
 | Combine-Public      |       YES        | 10.3.2.128/25   | Dynamic       |
-| AzureBastionSubnet  |       NO         | 10.3.4.0/23     | 511           |
+| AzureBastionSubnet  |       NO         | 10.3.4.0/23     | 507           |
 | Combine-Customer-A  |       NO         | 10.3.101.0/24   | 251           |
 | Combine-Customer-B  |       NO         | 10.3.102.0/24   | 251           |
 | Combine-Customer-C  |       NO         | 10.3.103.0/24   | 251           |
@@ -67,7 +67,7 @@ To provision and manage Combine resources in your subscription, we'll need a Ser
 
 The default role assignment for service principals is `"Owner"`; however, Combine needs to create an identity with the `"Contributor"` role within the subscription, and a Contributor can't create another Contributor in Microsoft's AD hierarchy. The only role that the Service Principal can assume in this case is `"Owner"`.
 
-However, this may not be an option for your company's security posture, so this leaves us with another option - you can opt to create the identity with the required role assignments, and share that identity's information with us. Combine can integrate that identity into it's deployment. This would allow the Service Principal to have only `"Contributor"` permissions on the subscription.
+However, this may not be an option for your company's security posture, so this leaves us with another option - you can opt to create the identity with the required role assignments, and share that identity's information with us. Combine can integrate that identity into its deployment. This would allow the Service Principal to have only `"Contributor"` permissions on the subscription.
 
 So, there are two paths for assigning permissions to this Service Principal:
 1. The Service Principal can be created with `"Owner"` permissions, or
@@ -102,7 +102,7 @@ Alternatively, to create the Service Principal with the `"Contributor"` role you
 
 `az role assignment create --assignee "<app-id>" --role "b24988ac-6180-42a0-ab88-20f7382dd24c" --scope "subscriptions/<sub-id>"`
 
-To make sure the Principal was assigned the correct role, we can list out it's assignments:
+To make sure the Principal was assigned the correct role, we can list out its assignments:
 
 `az role assignment list --assignee <app-id>`
 
@@ -126,13 +126,13 @@ We should see one assignment in the response:
 ]
 ```
 
-If you opted to create the Service Principal with `"Contributor"` permissions, you'll want to create the Managed identity with three permissions - `"Contributor"`, `"Log Analtytics Reader"` and `"Storage Account Contributor"`. This is detailed in the Azure documentation [here](https://learn.microsoft.com/en-us/cli/azure/identity?view=azure-cli-latest#az-identity-create) and [here](https://learn.microsoft.com/en-us/azure/role-based-access-control/role-assignments-cli#step-4-assign-role). Please remember to create the identity in the same region that Combine will be deployed in. The Service Principal in this case will need read access to the security group inside of which the managed identity resides, i.e. `Microsoft.ManagedIdentity/userAssignedIdentities/read`.
+If you opted to create the Service Principal with `"Contributor"` permissions, you'll want to create the Managed identity with three permissions - `"Contributor"`, `"Log Analytics Reader"` and `"Storage Account Contributor"`. This is detailed in the Azure documentation [here](https://learn.microsoft.com/en-us/cli/azure/identity?view=azure-cli-latest#az-identity-create) and [here](https://learn.microsoft.com/en-us/azure/role-based-access-control/role-assignments-cli#step-4-assign-role). Please remember to create the identity in the same region that Combine will be deployed in. The Service Principal in this case will need read access to the resource group inside of which the managed identity resides, i.e. `Microsoft.ManagedIdentity/userAssignedIdentities/read`.
 
 Once you've created the managed identity, please share with us the name of the identity and the resource group that it resides in.
 
 We use Rocky Linux 9, an open-source binary equivalent to Red Hat Linux, for our own compute instances; in order to use them in your subscription you'll need to run this az cli command to "accept" them. They are free, i.e. do not have any cost above the normal Azure operating costs, but require an explicit grant from you only because it is an Azure marketplace image. You can read more on Rocky Linux's Marketplace listing [here](https://azuremarketplace.microsoft.com/en-ca/marketplace/apps/resf.rockylinux-x86_64?tab=Overview).
 
-The command to accept the terms use of Rocky Linux instances is:
+The command to accept the terms of use for Rocky Linux instances is:
 
 ```
 az vm image terms accept --publisher resf --offer rockylinux-x86_64 --plan 9-lvm
@@ -144,13 +144,13 @@ If Rocky Linux 9 is not an option for your subscription we are happy to work wit
 
 The Combine team will need the following choices for your deployment:
 
-- Which Azure region you'd like us to deploy in. Combine can be deployed in any region, but please note that US East is the most stable. We have recently seen capacity issues with all Azure regions.
+- Which Azure region you'd like us to deploy in. Combine can be deployed in any region, but please note that East US is the most stable. We have recently seen capacity issues with all Azure regions.
 - The source and target regions of your workload. We support **Commercial to Government**, **Commercial to Secret**,
  **Commercial to Top Secret**, **Government to Secret** and **Government to Top Secret**.
 - Whether to enable cost savings on Compute instances - it will save some money but startup time for the instances will take a few seconds
 - Policy Assignments applied to the subscription OR a particular set of existing resource group(s)
 - The Subnet Schema as presented above OR modified as per your workload's needs
-- Which Azure services your workload is likely to use (ACR, AKS, ACA, Function Apps, etc).
+- Which Azure services your workload is likely to use (ACR, AKS, ACA, Function Apps, etc.).
 - [Which network topology your workload will want to use](/Combine-Azure/start-here/network-topologies).
 
 Also, please let us know if your organization has any security policies or restrictions that we need to be aware of, i.e. whitelisted IPs or compute instance requirements, etc.

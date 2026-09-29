@@ -11,14 +11,14 @@ To add support for an additional AWS Service you need to:
 
 #### Update Combine Policy Layer
 
-(NOTE: Applies to C2S and SC2S emulations using the US Government Policy Template.)
+(NOTE: Applies to C2S, SC2S, and GovCloud emulations using the US Government Policy Template.)
 
 To add IAM Permissions you should create a separate IAM Policy in the affected account that grants access to the Service or Service Features you desire.
 
-You should then update the Combine Policy CloudFormation Stack. There are a pair of parameters: `CombineServiceAugment` and `CombineServiceAugmentReadOnly`. Set the ARN of the IAM Policy you created as the appropriate paramater.
+You should then update the Combine Policy CloudFormation Stack. There are a pair of parameters: `CombineServiceAugment` ("Policy Augment - Service") and `CombineServiceAugmentReadOnly` ("Policy Augment - Service Read Only"). Set the ARN of the IAM Policy you created as the appropriate parameter.
 
-`CombineServiceAugment` - Will update default roles that have read / write permissions (such as `WLDEVELOPER`).
-`CombineServiceAugmentReadOnly` - Will update default roles that have read permissions (such as `TECHNREADONLY`).
+- `CombineServiceAugment` - Will update default roles that have read / write permissions (such as `WLDEVELOPER`).
+- `CombineServiceAugmentReadOnly` - Will update default roles that have read permissions (such as `TECHREADONLY`).
 
 You can confirm that the change is successful by using the TAP Dashboard to assume an affected role and confirming that you have access to the AWS Service in the AWS Dashboard.
 
@@ -28,21 +28,19 @@ To update the Service Filter you need to determine the AWS Service's name. This 
 
 `ecs.us-east-1.amazonaws.com` - The service name is `ecs`
 
-There are times where the service name is not intuitive, so you can confirm you have the right service name by executing an command from the CLI to that AWS Service inside Combine and looking at the Endpoint Server logs to see what host the call was made too.
+There are times where the service name is not intuitive, so you can confirm you have the right service name by executing a command from the CLI to that AWS Service inside Combine and looking at the Endpoint Server logs to see what host the call was made to.
 
-The default list of upported AWS Services is defined in the Combine Policy CloudFormation template. It is a Mapping that is written out to a set of Configuration Parameters:
+The default list of supported AWS Services for each emulated Region is the `supportedServices` list for that Region in the Combine Cloud Partition definition file (`cloud-partitions.json`) included in each Combine release. (Before 3.14 it was defined in the Combine CloudFormation template as a Mapping that is written out to a set of Configuration Values: `combine.endpoints.aws.metadata.supportedServices.<region-id>`.) If a Region's list is empty or contains `all`, the Service Filter allows every AWS Service in that Region.
 
-`combine.endpoints.aws.metadata.supportedServices.<region-id>`
-
-If you are adding support for an AWS Service permenantly during a Service Parity update you would update that default list. To update the service list for a specific customer you should use the override Configuration Parameter:
+If you are adding support for an AWS Service permanently during a Service Parity update you would update that default list. To update the service list for a specific customer you should use the override Configuration Value:
 
 `combine.endpoints.aws.filter.service.unsupported.<region-id>.services`
 
-You should set a value of the space separate list of service names you wish to allow. For example:
+You should set a value of the space separated list of service names you wish to allow. For example:
 
 `combine.endpoints.aws.filter.service.unsupported.us-iso-east-1.services`=`polly macie`
 
-You can test this change by executing an command from the CLI to that AWS Service inside Combine. It should pass both the Service Filter and IAM Policy layer now.
+You can test this change by executing a command from the CLI to that AWS Service inside Combine. It should pass both the Service Filter and IAM Policy layer now.
 
 #### Unblocking a DENY on AWS Service or AWS Service Features
 
@@ -50,7 +48,7 @@ The above instructions handle the case where you are strictly adding access. If 
 
 If this is a case where the customer wants to ignore the restriction we need to refer this request to the development team. There are a few options:
 
--  Add a configuration option to the Combine Policy template to make that particular DENY optiona with an conditional statement.
+-  Add a configuration option to the Combine Policy template to make that particular DENY optional with a conditional statement.
 -  Add a custom role without that restriction and enable it in the TAP Dashboard. (There is some risk as this custom role may fall out of sync with other service parity changes.)
 
 ### Blocking Additional AWS Service

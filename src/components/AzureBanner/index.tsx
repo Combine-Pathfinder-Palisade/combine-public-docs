@@ -20,9 +20,9 @@ export default function AzureBanner(): JSX.Element {
         href="mailto:service-request@sequoiainc.com"
         style={{ color: '#fff', textDecoration: 'underline' }}
       >
-        combine team
+        Combine team
       </a>{' '}
-      for more information, or how this might affect you.
+      for more information on how this might affect you.
     </div>
   );
 }

@@ -8,7 +8,7 @@ Please note that this tutorial may change as we are working for a seamless tutor
 
 _Note that the Combine team must allow your aws account id to access our ECR registries where the images are stored._
 
-This guide walks you through installing **Combine** via our Helm repository, then enable CloudWatch Container Insights / Fluent Bit logging.
+This guide walks you through installing **Combine** via our Helm repository, then enabling CloudWatch Container Insights / Fluent Bit logging.
 
 Some things to be aware of:
 - These instructions are tailored for use with an EKS cluster created with EKS Auto mode; the vpc cni, coredns and kube-proxy are managed by AWS and will not show up in the cluster.
@@ -17,11 +17,11 @@ Some things to be aware of:
 
 ---
 
-# 1. Add OIDC Provider of cluster as an Identity Provider in IAM
+## 1. Add OIDC Provider of cluster as an Identity Provider in IAM
 
 - with audience `sts.amazonaws.com`
 
-# 1.5 Ensure the subnets that the cluster will use have the following tags:
+## 1.5 Ensure the subnets that the cluster will use have the following tags:
 
 For the endpoints service load balancer (which is default internal to the VPC):
 ```
@@ -35,9 +35,11 @@ kubernetes.io/role/elb: 1
 kubernetes.io/cluster/CLUSTER_NAME: owned
 ```
 
-# 2. Create the appropriate roles for Combine Service Accounts
+## 2. Create the appropriate roles for Combine Service Accounts
 
-You can name them `combine-endpoints-irsa-role` and `combine-tap-irsa-role`, respectively.
+You can name them `combine-endpoints-irsa-role` and `combine-tap-irsa-role`, respectively. In the trust policies below, replace `YOUR_OIDC_ID` with your cluster's OIDC provider ID and `COMBINE_NAMESPACE` with the namespace you install Combine into (`combine` in step 5).
+
+The S3 bucket in the policies below is the Combine DevOps bucket, `combine-devops-ACCOUNT_NUMBER-us-east-1`. If you have a sharded (namespaced) Combine Deployment, it is named `combine-SHARD_ID-devops-ACCOUNT_NUMBER-us-east-1` (with the Shard ID in lowercase) instead.
 
 The Endpoints IRSA role must have the following permissions and trust:
 
@@ -53,13 +55,12 @@ The Endpoints IRSA role must have the following permissions and trust:
     "Resource": "*"
   },
   {
-    "Sid": "VisualEditor0",
+    "Sid": "VisualEditor1",
     "Effect": "Allow",
     "Action": "s3:GetObject",
     "Resource": [
-      # if you have a sharded (namespaced) Combine deployment, the bucket name will differ slightly
-      "arn:aws:s3:::combine-ACCOUNT_NUMBER-us-east-1/releases/*",
-      "arn:aws:s3:::combine-ACCOUNT_NUMBER-us-east-1/certificates/*"
+      "arn:aws:s3:::combine-devops-ACCOUNT_NUMBER-us-east-1/releases/*",
+      "arn:aws:s3:::combine-devops-ACCOUNT_NUMBER-us-east-1/certificates/*"
     ]
   },
   {
@@ -186,7 +187,7 @@ The Endpoints IRSA role must have the following permissions and trust:
 ```
 </details>
 
-The TAP irsa role:
+The TAP IRSA role must have the following permissions and trust:
 
 <details>
   <summary>Permissions</summary>
@@ -336,26 +337,26 @@ The TAP irsa role:
         {
             "Effect": "Allow",
             "Principal": {
-                "Federated": "arn:aws:iam::ACCOUNT_NUMBER:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/C9207D97901E526348CDAB1FD295D54E"
+                "Federated": "arn:aws:iam::ACCOUNT_NUMBER:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/YOUR_OIDC_ID"
             },
             "Action": "sts:AssumeRoleWithWebIdentity",
             "Condition": {
                 "StringEquals": {
-                    "oidc.eks.us-east-1.amazonaws.com/id/C9207D97901E526348CDAB1FD295D54E:aud": "sts.amazonaws.com",
-                    "oidc.eks.us-east-1.amazonaws.com/id/C9207D97901E526348CDAB1FD295D54E:sub": "system:serviceaccount:combine:combine-tap-sa"
+                    "oidc.eks.us-east-1.amazonaws.com/id/YOUR_OIDC_ID:aud": "sts.amazonaws.com",
+                    "oidc.eks.us-east-1.amazonaws.com/id/YOUR_OIDC_ID:sub": "system:serviceaccount:COMBINE_NAMESPACE:combine-tap-sa"
                 }
             }
         },
         {
             "Effect": "Allow",
             "Principal": {
-                "Federated": "arn:aws:iam::ACCOUNT_NUMBER:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/C9207D97901E526348CDAB1FD295D54E"
+                "Federated": "arn:aws:iam::ACCOUNT_NUMBER:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/YOUR_OIDC_ID"
             },
             "Action": "sts:AssumeRoleWithWebIdentity",
             "Condition": {
                 "StringEquals": {
-                    "oidc.eks.us-east-1.amazonaws.com/id/C9207D97901E526348CDAB1FD295D54E:aud": "sts.amazonaws.com",
-                    "oidc.eks.us-east-1.amazonaws.com/id/C9207D97901E526348CDAB1FD295D54E:sub": "system:serviceaccount:amazon-cloudwatch:cloudwatch-agent"
+                    "oidc.eks.us-east-1.amazonaws.com/id/YOUR_OIDC_ID:aud": "sts.amazonaws.com",
+                    "oidc.eks.us-east-1.amazonaws.com/id/YOUR_OIDC_ID:sub": "system:serviceaccount:amazon-cloudwatch:cloudwatch-agent"
                 }
             }
         }
@@ -367,7 +368,7 @@ The TAP irsa role:
 
 
 
-## 3. Login your Helm client to our ECR registry
+## 3. Log in your Helm client to our ECR registry
 
 Note that you will be logging into the Combine team's ECR, so the account number here will be different than above.
 
@@ -393,7 +394,8 @@ helm upgrade --install amazon-cloudwatch \
 The contents of the `cloudwatch-helm-values.yaml`:
 
 <details>
-  <summary>Cloudwatch helm values</summary>
+  <summary>CloudWatch Helm values</summary>
+
 ```yaml
 clusterName: CLUSTER_NAME
 region: us-east-1
@@ -555,10 +557,11 @@ helm upgrade --install combine \
   --set endpoints.serviceAccount.roleArn=arn:aws:iam::ACCOUNT_NUMBER:role/combine-endpoints-irsa-role
 ```
 
-The contents of `combine-helm-values.yaml`:
+The contents of `combine-helm-values.yaml` (if you have a sharded Combine Deployment, use `combine-SHARD_ID-devops-ACCOUNT_NUMBER-us-east-1` and `combine-SHARD_ID-configuration`, with the Shard ID in lowercase):
 
 <details>
   <summary>Combine Helm Values</summary>
+
 ```yaml
 endpoints:
   serviceAccount:
@@ -570,7 +573,7 @@ endpoints:
       BucketDevOpsVar: "combine-devops-ACCOUNT_NUMBER-us-east-1"
       BucketDevOpsMasterRegionVar: "combine-devops-ACCOUNT_NUMBER-us-east-1"
       SystemPropertyMasterRegion: "us-east-1"
-      SystemPropertyConfigurationTableNameVar: "combine-dev-configuration"
+      SystemPropertyConfigurationTableNameVar: "combine-configuration"
 
     imdsBypass:
       SYSTEM_PROPERTY_ACCOUNT_ID: "ACCOUNT_NUMBER"
@@ -592,7 +595,7 @@ tap:
       BucketDevOpsVar: "combine-devops-ACCOUNT_NUMBER-us-east-1"
       BucketDevOpsMasterRegionVar: "combine-devops-ACCOUNT_NUMBER-us-east-1"
       SystemPropertyMasterRegion: "us-east-1"
-      SystemPropertyConfigurationTableNameVar: "combine-dev-configuration"
+      SystemPropertyConfigurationTableNameVar: "combine-configuration"
 
     imdsBypass:
       SYSTEM_PROPERTY_ACCOUNT_ID: "ACCOUNT_NUMBER"
@@ -609,11 +612,19 @@ tap:
 
 Then, wait for combine pods to show healthy...
 
-## 6. Add DNS records in route 53 to map c2s domains to Combine service's load balancer
+## 6. Add DNS records in Route 53 to map C2S domains to Combine's load balancers
 
-- *.c2s.ic.gov
-- *.eks.c2s.ic.gov
-- ...
+Create a Route 53 private hosted zone for `c2s.ic.gov`, associate it with your VPC, and add CNAME records that point to the Endpoints service's load balancer (`combine-endpoints-service`):
+
+- `*.c2s.ic.gov`
+- `*.us-iso-east-1.c2s.ic.gov`
+- `*.us-iso-west-1.c2s.ic.gov`
+- `*.eks.c2s.ic.gov`
+- `*.es.c2s.ic.gov`
+
+To reach TAP by its emulated name, create a private hosted zone for `cia.ic.gov` with a CNAME record `cap.cia.ic.gov` that points to the TAP service's load balancer (`combine-tap-service`).
+
+When emulating SC2S, use `sc2s.sgov.gov` with the `us-isob-east-1` and `us-isob-west-1` Regions, add `*.global.sc2s.sgov.gov`, and use `geoaxis.nga.smil.mil` for TAP.
 
 ## 7. Test!
 
@@ -621,7 +632,7 @@ Use `kubectl` or the console to get the load balancer endpoints for TAP and endp
 
 ```bash
 # login to cluster
-aws eks update-kubeconfig ...
+aws eks update-kubeconfig --region us-east-1 --name CLUSTER_NAME
 
 # get services
 kubectl get svc -n combine

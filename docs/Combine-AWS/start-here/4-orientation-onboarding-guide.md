@@ -11,9 +11,11 @@ Once Combine is installed in your account you are ready to onboard into the Comb
 
 Each Combine user will be provided with a credential package (usually via email.) The credential package is bundled as a `.zip` file and is usually downloaded using a temporary link in the email. For security reasons this link will expire after eight hours.
 
+> **NOTE:** If the link has expired, ask your Combine administrator to resend it (the **Resend Bundle URL** Certificate Action on your User in the Combine Dashboard). Once you can access the Combine Dashboard you can also download your credential package at any time with the **Download Certificates Bundle** button on the Home page.
+
 > **NOTE:** In some cases your Combine administrator will provide the credential packages to you via other means depending on your organization's security requirements.
 
-> **NOTE:** In some cases your organization's email security solution might quarantine or reject our the Combine email address sending the credential packages. You may whitelist the following Domain/Public IP Addresses to ensure delivery:
+> **NOTE:** In some cases your organization's email security solution might quarantine or reject the Combine email address sending the credential packages. You may whitelist the following Domain/Public IP Addresses to ensure delivery:
 
 ```
 Email Domain: combine-tap.io
@@ -24,7 +26,7 @@ Public IP Addresses:
 54.240.47.208
 ```
 
-Once you have your User Account Credentials you are ready to install your Combine User Certificate. (These steps are also summarized in the `README.txt`.)
+Once you have your User Account Credentials you are ready to install your Combine User Certificate. (The `README.txt` in your Credential Package links to this guide.)
 
 ### Combine Dashboard Access
 
@@ -36,7 +38,7 @@ Each Combine deployment creates a private Certificate Authority unique to you th
 
 To access the Combine Dashboard, you will need to install:
 
-- **Combine Trust Chain** - This is (usually) just the Public Certificate of the Certificate Authority. (We also provide the Public Certificate of the Certificate Authority Signer in case it is also needed.) This is available in your Credential Package at `certificates/ca.cert.pem` or `certificates/ca.cert.der` depending on the file format you prefer.
+- **Combine Trust Chain** - This is (usually) just the Public Certificate of the Certificate Authority. (We also provide the Public Certificate of the Certificate Authority Signer in case it is also needed.) This is available in your Credential Package at `certificates/ca.cert.pem` or `certificates/ca.cert.der` depending on the file format you prefer. (The Certificate Authority Signer is at `certificates/signer.cert.pem` / `certificates/signer.cert.der`, and the full chain is at `certificates/ca-chain.cert.pem`.)
 - **Personal Certificate** - This is the Public Certificate and Private Key of a Certificate issued to you by the Certificate Authority. This is available in your Credential Package at `certificates/<username>.p12`.
 
 _NOTE: Our team will access your Combine version and list of users via this static ip range. In some cases your security guardrails might trigger when we access through these IP addresses. Please whitelist the following Domain/Public IP Addresses to ensure no false alarms:_
@@ -69,11 +71,11 @@ See the steps below to install these into the Chrome Browser.
 
     > **NOTE:** When browsing for the `ca.cert.pem` file you may need to adjust the file extension filter in the file dialog so you can see `.pem` files.
 
-    If the import is successful you will see an entry for `Combine CA - <your company name>` in the list of certificates.
-5. Install your Personal Certificate. Double-click on your Personal Certificate (`certificates/<username>.p12` in your Credential Package.) You will be prompted to enter the Personal Certificate password (`certificates/<username>_password.txt` in your Credential Package.)
+    If the import is successful you will see an entry that begins with `Combine CA - <your company name>` in the list of certificates.
+5. Install your Personal Certificate. Double-click on your Personal Certificate (`certificates/<username>.p12` in your Credential Package.) You will be prompted to enter the Personal Certificate password (`certificates/<username>_password.txt` in your Credential Package. Enter only the value after the `Password: ` prefix.)
 6. Confirm the import of your Personal Certificate by entering your Windows system password if prompted.
 
-If you have installed the certificates successfully, browse to the URL of your Combine Dasboard (see `tap.txt` in your Credential Package.) If the Combine Dashboard loads successfuly, then your Personal Certificate installation was successful!
+If you have installed the certificates successfully, browse to the URL of your Combine Dashboard (see `dashboard.txt` in your Credential Package.) If the Combine Dashboard loads successfully, then your Personal Certificate installation was successful!
 
 ### Certificate Installation - MacOS
 
@@ -90,22 +92,22 @@ If you have installed the certificates successfully, browse to the URL of your C
 5. Import the `certificates/ca.cert.pem` file by dragging it from your Credential Package folder to the **Login** keychain dialog.
 6. Confirm import by entering your MacOS system password.
 
-    If the import is successful you will see an entry for `Combine CA - <your company name>` in the list of certificates.
+    If the import is successful you will see an entry that begins with `Combine CA - <your company name>` in the list of certificates.
 
 7. Right click the certificate entry in the `Keychain` tool. Click **Info -> Trust** and select **Always Trust** from the dropdown.
 
     ![](/aws/onboarding-images/cert-trust.png)
-8. Install your Personal Certificate. Double-click on your Personal Certificate (`certificates/<user name>.p12` in your Credential Package.) You will be prompted to enter the Personal Certificate password (`certificates/<username>_password.txt` in your Credential Package.)
+8. Install your Personal Certificate. Double-click on your Personal Certificate (`certificates/<username>.p12` in your Credential Package.) You will be prompted to enter the Personal Certificate password (`certificates/<username>_password.txt` in your Credential Package. Enter only the value after the `Password: ` prefix.)
 9. Confirm the import by entering your MacOS system password.
 10. Right click the certificate entry in the `Keychain` tool. Click **Info -> Trust** and select **Always Trust** from the dropdown.
 
-If you have installed the certificates successfully, browse to the URL of your Combine Dasboard (see `tap.txt` in your Credential Package.) Chrome may display a prompt that says, **“Google Chrome wants to sign using key ‘private key’ in your keychain.”** Enter your macOS system password, then click **Always Allow**. If the Combine Dashboard loads successfuly, then your Personal Certificate installation was successful!
+If you have installed the certificates successfully, browse to the URL of your Combine Dashboard (see `dashboard.txt` in your Credential Package.) Chrome may display a prompt that says, **“Google Chrome wants to sign using key ‘private key’ in your keychain.”** Enter your macOS system password, then click **Always Allow**. If the Combine Dashboard loads successfully, then your Personal Certificate installation was successful!
 
 ### Certificate Installation Troubleshooting
 
 If you receive an error when attempting to authenticate to the Combine Dashboard, here are a few things to try to get you unstuck:
 
-1. Try hitting the Dashboard in an incognito window. Oftentimes even modern browsers like Chrome cache client-side ssl certs for a few days. If you've mistyped the password to either the your personal certificate or your local computer, the unsuccessful attempt is saved for a long time. An incognito window bypasses the cached state.
+1. Try hitting the Dashboard in an incognito window. Oftentimes even modern browsers like Chrome cache client-side ssl certs for a few days. If you've mistyped the password to either your personal certificate or your local computer, the unsuccessful attempt is saved for a long time. An incognito window bypasses the cached state.
 2. Try deleting and reinstalling your personal certificate. The cert can become outdated if your Dashboard Admin(s) have rotated all the user certificates, especially if you have had Combine for a few years.
 
 ### Dashboard Access Troubleshooting
@@ -122,7 +124,7 @@ If not, please reach out to the team via slack or our [email](mailto:service-req
 
 > **NOTE:** The Combine Team recommends you discontinue use of the Combine Bastion server and use EC2 Instance Connect or SSM Session Manager to access servers directly instead.
 
-> **NOTE:** As of Combine Version 3.13.12 the Combine Bastion server will be deprecated. It will be removed from Combine's management in Version 3.14.0 (meaning that existing Combine Bastion servers will not be destroyed but they will no longer be maintained by the Combine Team.) The Combine Bastion server will not be created for customers that start using Combine in Version 3.14.0 or later.
+> **NOTE:** As of Combine Version 3.13.12 the Combine Bastion server is deprecated. As of Version 3.14.0 it has been removed from Combine's management (meaning that existing Combine Bastion servers are not destroyed but they are no longer maintained by the Combine Team.) The Combine Bastion server is not created for customers that start using Combine in Version 3.14.0 or later.
 
 The Combine Bastion server is provided as a convenience to allow you to easily access resources deployed into a private subnet.
 
@@ -144,9 +146,11 @@ To access the Combine Bastion server (usually used to access a server you have d
 
 To access the Combine Bastion server directly you may use an SSH Client.
 
+> **NOTE:** This applies only to a Combine Bastion server created before Combine Version 3.14.0. Credential Packages issued by Combine Version 3.14.0 or later do not include `bastion.txt` or `Combine.pem`.
+
 - The Combine Bastion's Public IP address is found in `bastion.txt` in your Credential Package.
 
-- The Combine Bastion's SSH KeyPair  is found in `Combine.pem` in your Credential Packaage.
+- The Combine Bastion's SSH KeyPair is found in `Combine.pem` in your Credential Package.
 
 ### Combine Bastion Server Best Practices
 

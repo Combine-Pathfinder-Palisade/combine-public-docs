@@ -2,9 +2,11 @@ openapi: 3.1.0
 info:
   title: Combine TAP API
   description: |-
-    The Combine TAP API manages users, servers, groups, AWS role assignments, certificates, alert events, configuration, metadata, and operational tools for a Combine deployment. It also provides CAP and SCAP-compatible endpoints for issuing temporary AWS credentials.
+    The Combine TAP API manages users, servers, groups, AWS role assignments, certificates, alert events, configuration, metadata, and operational tools for a Combine deployment. It also provides CAP- and SCAP-compatible endpoints for issuing temporary AWS credentials.
 
-    All requests must use HTTPS. Except where explicitly noted, requests require mutual TLS with a valid client certificate issued for the deployment. Requests that modify data must include the X-Requested-By header; this applies to all methods except GET, HEAD, and OPTIONS. Administrative operations require an account with the admin role.
+    All requests must use HTTPS. Except where explicitly noted, requests require mutual TLS with a valid client certificate issued for the deployment. There is no login step: the certificate's serial number identifies the caller's user account, and that account's role (user, admin, or super_admin) determines what the caller can access. A request without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page instead of a JSON response.
+
+    Requests that modify data must include the X-Requested-By header; this applies to every method except GET and HEAD. A request that omits it is rejected with 400 and an empty body. Administrative operations require an account with the admin role; the super_admin role satisfies every role check. A caller without the required role receives 403.
   version: "3.15"
 servers:
   - url: "https://{host}"
@@ -106,15 +108,18 @@ paths:
       summary: Delete all alert events
       description: Permanently deletes every alert event. Requires the admin role.
       operationId: deleteAlertEvents
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       responses:
         "200":
           description: All alert events were deleted.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "401":
-          description: The user is not authorized to perform this action.
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -186,6 +191,9 @@ paths:
       summary: Reopen an alert event
       description: Sets the state of the given alert event to "open".
       operationId: openAlertEvent
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: id
           in: path
@@ -199,7 +207,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResponse"
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: No alert event exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: The alert event could not be reopened.
           content:
@@ -212,6 +226,9 @@ paths:
       summary: Ignore an alert event
       description: Sets the state of the given alert event to "ignored".
       operationId: ignoreAlertEvent
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: id
           in: path
@@ -225,7 +242,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResponse"
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: No alert event exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: The alert event could not be ignored.
           content:
@@ -236,7 +259,7 @@ paths:
     get:
       tags:
         - CAP / SCAP
-      summary: List the caller's access
+      summary: List the caller's access (CAP)
       description: "Returns the AWS accounts and roles the caller may access, grouped\
         \ by account. Authenticated with a client certificate. Requires the CAP API\
         \ to be enabled."
@@ -250,6 +273,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CapAccessListEntry"
+        "404":
+          description: The CAP API is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: The access list could not be retrieved.
           content:
@@ -260,7 +289,7 @@ paths:
     get:
       tags:
         - CAP / SCAP
-      summary: Get temporary AWS credentials
+      summary: Get temporary AWS credentials (CAP)
       description: Returns temporary AWS credentials for an assumed role. Authenticated
         with a client certificate. Credentials are issued only for roles assigned
         to the caller. Requires the CAP API to be enabled.
@@ -315,38 +344,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
         "404":
-          description: No role matches the requested parameters.
+          description: "No role matches the requested parameters, or the CAP API\
+            \ is not enabled."
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CapStatusResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/CapStatusResponse"
+                  - $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: The credentials could not be issued.
+          description: "The credentials could not be issued, including when the\
+            \ requested duration is not a number or is outside the allowed range."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
-  /api/v1/accounts/{accountId}:
-    get:
-      tags:
-        - CAP / SCAP
-      summary: Echo the account identifier
-      description: Returns a plain-text confirmation of the account identifier.
-      operationId: base
-      parameters:
-        - name: accountId
-          in: path
-          description: AWS account number.
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Confirmation of the account identifier.
-          content:
-            text/plain:
-              schema:
-                example: Account ID is 123456789012
   /api/v1/accounts/{accountId}/activity:
     get:
       tags:
@@ -371,6 +383,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CapTrailSummary"
+        "404":
+          description: The CAP API is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/accounts/{accountId}/trailevents:
     get:
       tags:
@@ -388,14 +406,16 @@ paths:
             type: string
         - name: start_time
           in: query
-          description: "Inclusive lower bound for the event time, as a UTC ISO8601 timestamp.\
-            \ Defaults to 7 days before now when omitted."
+          description: "Inclusive lower bound for the event time, as a UTC ISO8601 timestamp\
+            \ (YYYY-MM-DDTHH:MM:SSZ). Defaults to 7 days before now when omitted. Must\
+            \ not be more than 90 days in the past."
           schema:
             type: string
         - name: stop_time
           in: query
-          description: "Inclusive upper bound for the event time, as a UTC ISO8601 timestamp.\
-            \ Defaults to now when omitted."
+          description: "Inclusive upper bound for the event time, as a UTC ISO8601 timestamp\
+            \ (YYYY-MM-DDTHH:MM:SSZ). Defaults to now when omitted. Must not be before\
+            \ start_time or more than 7 days after it."
           schema:
             type: string
         - name: page
@@ -442,11 +462,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+        "404":
+          description: The CAP API is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /cap/gxCAP/getAccessList:
     get:
       tags:
         - CAP / SCAP
-      summary: List the caller's access
+      summary: List the caller's access (SCAP)
       description: "Returns the AWS accounts and roles the caller may access, grouped\
         \ by account. Authenticated with a client certificate. Requires the SCAP API\
         \ to be enabled."
@@ -458,6 +484,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScapAccessListResponse"
+        "404":
+          description: The SCAP API is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: The access list could not be retrieved.
           content:
@@ -468,7 +500,7 @@ paths:
     get:
       tags:
         - CAP / SCAP
-      summary: Get temporary AWS credentials
+      summary: Get temporary AWS credentials (SCAP)
       description: Returns temporary AWS credentials for an assumed role. Authenticated
         with a client certificate. Credentials are issued only for roles assigned
         to the caller. Requires the SCAP API to be enabled.
@@ -523,13 +555,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
         "404":
-          description: "The agency, account, or role is not registered or is disabled."
+          description: "The agency, account, or role is not registered or is disabled,\
+            \ or the SCAP API is not enabled."
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CapStatusResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/CapStatusResponse"
+                  - $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: The credentials could not be issued.
+          description: "The credentials could not be issued, including when the\
+            \ requested duration is not a number or is outside the allowed range."
           content:
             application/json:
               schema:
@@ -546,7 +582,8 @@ paths:
       parameters:
         - name: environment
           in: query
-          description: Cloud environment the account belongs to.
+          description: "Identifier of the cloud partition the role belongs to, such\
+            \ as AWS_C2S, AWS_SC2S, or AWS_GOV_CLOUD."
           required: true
           schema:
             type: string
@@ -577,7 +614,8 @@ paths:
               style: simple
               schema: {}
         "500":
-          description: The login could not be completed.
+          description: The login could not be completed. The Combine HTML error page
+            is returned.
   /tap/api/v1/login/credentials:
     get:
       tags:
@@ -590,7 +628,8 @@ paths:
       parameters:
         - name: environment
           in: query
-          description: Cloud environment the account belongs to.
+          description: "Identifier of the cloud partition the role belongs to, such\
+            \ as AWS_C2S, AWS_SC2S, or AWS_GOV_CLOUD."
           required: true
           schema:
             type: string
@@ -628,6 +667,7 @@ paths:
       summary: Check service health
       description: Returns a successful response when the service is available.
       operationId: healthCheck
+      security: []
       responses:
         "200":
           description: The service is available.
@@ -639,20 +679,18 @@ paths:
       description: Rebuilds the certificate bundles for every user and server. Requires
         the admin role.
       operationId: rebuildAllBundles
-      requestBody:
-        content:
-          "*/*":
-            schema:
-              type: string
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       responses:
         "200":
           description: The bundles were rebuilt.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "401":
-          description: The user is not authorized to rebuild credential bundles.
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -663,48 +701,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /tap/api/v1/admin/{userId}/email:
+  /tap/api/v1/admin/email:
     put:
       tags:
         - Administration
       summary: Send a mass email
       description: Sends an email to a selection of users. Requires the admin role.
       operationId: sendMassEmail
-      parameters:
-        - name: userId
-          in: path
-          description: Identifier of the user.
-          required: true
-          schema:
-            type: string
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: The recipients and content of the email.
         content:
-          "*/*":
+          application/json:
             schema:
               $ref: "#/components/schemas/MassEmailRequest"
         required: true
       responses:
         "200":
-          description: The email was sent.
+          description: "The email was sent to all, or some, of the recipients. The\
+            \ message reports how many were sent."
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "400":
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: The caller does not have the admin role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Email integration is not enabled.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to send a mass email.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: The email could not be sent.
+          description: "The email could not be sent to any recipient, or the request\
+            \ body is missing a field."
           content:
             application/json:
               schema:
@@ -714,7 +750,7 @@ paths:
       tags:
         - AWS Roles
       summary: List AWS roles
-      description: Returns all AWS roles.
+      description: Returns all AWS roles. Available to any authenticated caller.
       operationId: all
       responses:
         "200":
@@ -729,6 +765,9 @@ paths:
       summary: Create an AWS role
       description: Creates an AWS role. Requires the admin role.
       operationId: createRole
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: The role to create.
         content:
@@ -745,13 +784,13 @@ paths:
                 $ref: "#/components/schemas/AwsRoleResponse"
         "400":
           description: "The role is missing a required value, has an invalid environment,\
-            \ or already exists."
+            \ already exists, or could not be saved (including a malformed request body)."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -778,14 +817,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AwsRoleResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: No role exists with the given identifier.
+          description: "No role exists with the given identifier, or the identifier\
+            \ is not a number."
           content:
             application/json:
               schema:
@@ -794,8 +834,13 @@ paths:
       tags:
         - AWS Roles
       summary: Update an AWS role
-      description: Updates an AWS role. Requires the admin role.
+      description: "Updates an AWS role. The environment, account, and role values\
+        \ must always be provided; an omitted agency is reset to Combine, and defaultRole\
+        \ is changed only when present. Requires the admin role."
       operationId: updateRole
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: roleId
           in: path
@@ -818,19 +863,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/AwsRoleResponse"
         "400":
-          description: The role has an invalid value or already exists.
+          description: "The role is missing the environment, account, or role value,\
+            \ has an invalid environment, or already exists."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: No role exists with the given identifier.
+        "500":
+          description: "The role could not be updated, including when no role exists\
+            \ with the given identifier or the request body is malformed."
           content:
             application/json:
               schema:
@@ -842,6 +889,9 @@ paths:
       description: Deletes an AWS role and removes it from any users and servers that
         hold it. Requires the admin role.
       operationId: deleteRole
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: roleId
           in: path
@@ -849,11 +899,6 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: string
       responses:
         "200":
           description: The role was deleted.
@@ -861,14 +906,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AwsRoleDeleteResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: No role exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The role could not be removed from its users and servers, or
+            could not be deleted.
           content:
             application/json:
               schema:
@@ -882,6 +934,9 @@ paths:
         the signed certificate. Requires the admin role. Requires custom CSR signing
         to be enabled.
       operationId: signCustomCsrRequest
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: The PEM-encoded PKCS#10 certificate signing request.
         content:
@@ -902,6 +957,13 @@ paths:
                   -----BEGIN CERTIFICATE-----
                   ...
                   -----END CERTIFICATE-----
+        "400":
+          description: The request body is not a PEM-encoded certificate signing request.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Request was not a PEM Encoded CSR!
         "403":
           description: The user is not authorized to sign a custom certificate signing
             request.
@@ -909,12 +971,22 @@ paths:
             text/plain:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Custom CSR signing is not enabled.
+        "413":
+          description: The certificate signing request exceeds the configured maximum
+            size.
+          content:
+            text/plain:
+              schema:
+                type: string
         "500":
           description: The certificate signing request could not be signed.
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                type: string
+                example: Could not sign custom CSR Request. See Error Log.
   /tap/api/v1/config/application:
     get:
       tags:
@@ -939,8 +1011,16 @@ paths:
       tags:
         - Configuration
       summary: Update the application configuration
-      description: Updates the application configuration. Requires the admin role.
+      description: "Updates the application configuration. Only these fields are\
+        \ written: customerName, userLimit, userValidateEmailDomain, userValidateEmailDomainWhitelist,\
+        \ sendWelcomeEmail, sendWelcomeEmailWithAttachment, showBundleLinks, enableResourceRoleMasquerade,\
+        \ enableAwsApiLogging, enableOCSP, certificateKeySize, certificateHashAlgorithm,\
+        \ and the cors fields. Omitted or null fields are left unchanged. Requires the\
+        \ admin role."
       operationId: updateApplicationConfiguration
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: The application configuration to apply.
         content:
@@ -995,6 +1075,9 @@ paths:
       description: Updates a single application configuration item by name. Requires
         the admin role.
       operationId: updateApplicationConfigurationItem
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: The configuration item to set.
         content:
@@ -1101,8 +1184,11 @@ paths:
       summary: Process an OCSP request
       description: Checks the revocation status of the certificates in a DER-encoded
         OCSP request and returns a signed OCSP response. Requires the OCSP responder
-        to be enabled.
+        to be enabled. Does not require a client certificate or the X-Requested-By
+        header. A request larger than the configured byte limit receives an OCSP
+        malformedRequest response.
       operationId: handleRequest
+      security: []
       requestBody:
         description: The DER-encoded OCSP request.
         content:
@@ -1117,6 +1203,8 @@ paths:
             application/ocsp-response:
               schema:
                 format: binary
+        "404":
+          description: The OCSP responder is not enabled.
         "500":
           description: The OCSP request could not be processed.
   /tap/api/v1/documentation/service-endpoints:
@@ -1213,8 +1301,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GroupListResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -1225,6 +1313,9 @@ paths:
       summary: Create a group
       description: Creates a new group. Requires the admin role.
       operationId: createGroup
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: Group to create.
         content:
@@ -1245,8 +1336,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -1278,8 +1369,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GroupResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -1297,6 +1388,9 @@ paths:
       description: Updates a group. Only the fields present in the request body are
         changed. Requires the admin role.
       operationId: updateGroup
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: groupId
           in: path
@@ -1324,8 +1418,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -1348,6 +1442,9 @@ paths:
       summary: Delete a group
       description: Deletes a group by its identifier. Requires the admin role.
       operationId: deleteGroup
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: groupId
           in: path
@@ -1362,8 +1459,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -1401,8 +1498,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GroupMembershipListResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -1420,6 +1517,9 @@ paths:
       description: Adds one or more users to a group. Users already in the group are
         skipped. Requires the admin role.
       operationId: addMembers
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: groupId
           in: path
@@ -1448,8 +1548,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -1473,6 +1573,9 @@ paths:
       summary: Remove a member from a group
       description: Removes a user from a group. Requires the admin role.
       operationId: removeMember
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: groupId
           in: path
@@ -1493,8 +1596,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -1533,8 +1636,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GroupListResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller is neither an admin nor the user.
           content:
             application/json:
               schema:
@@ -1567,6 +1670,9 @@ paths:
       description: Sets the complete set of groups a user belongs to; memberships
         not listed are removed. Requires the admin role.
       operationId: setMembershipsForUser
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: userId
           in: path
@@ -1613,30 +1719,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /tap/api/v1/information/vpc-proxy-information:
-    get:
-      tags:
-        - Metadata
-      summary: Get VPC proxy information
-      description: Returns the VPCs available to the proxy and their bastion hosts.
-      operationId: getFilteredVpcsWithInstances
-      responses:
-        "200":
-          description: The VPCs and their bastion hosts.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/VpcProxyInformationResponse"
-        "400":
-          description: The shard identifier is not configured.
-          content:
-            text/plain:
-              schema: {}
-        "500":
-          description: The VPC information could not be retrieved.
-          content:
-            text/plain:
-              schema: {}
   /tap/api/v1/metadata/all-configurations:
     get:
       tags:
@@ -1650,13 +1732,19 @@ paths:
           content:
             application/json:
               schema: {}
+        "404":
+          description: Application metadata is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: The API configuration could not be retrieved.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /tap/api/v1/metadata:
+  /tap/api/v1/metadata/api-handler-status:
     get:
       tags:
         - Metadata
@@ -1669,6 +1757,12 @@ paths:
           content:
             application/json:
               schema: {}
+        "404":
+          description: Application metadata is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: The API handler configuration could not be retrieved.
           content:
@@ -1691,11 +1785,16 @@ paths:
             type: string
       responses:
         "200":
-          description: "The reference data, or a message when no reference data exists\
-            \ for the identifier."
+          description: The reference data.
           content:
             text/plain:
               schema: {}
+        "404":
+          description: No reference data exists for the identifier.
+          content:
+            text/plain:
+              schema:
+                type: string
         "500":
           description: The reference data could not be retrieved.
           content:
@@ -1709,6 +1808,9 @@ paths:
       description: Analyzes an uploaded CloudFormation template against a cloud partition
         and returns the findings for each resource.
       operationId: analyzeCloudFormationTemplate
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: The CloudFormation template and the environment to analyze it
           against.
@@ -1731,13 +1833,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The CloudFormation template analysis tool is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: The template exceeds the configured maximum size.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /tap/api/v1/tools/firewall-rules:
     get:
       tags:
         - Tools
       summary: Get the custom firewall rules
       description: Returns the Suricata rules for the account's custom firewall rule
-        group.
+        group. Requires the admin role.
       operationId: viewFirewallRules
       responses:
         "200":
@@ -1746,12 +1860,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FirewallRulesResponse"
+        "403":
+          description: The caller does not have the admin role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The firewall rules tool is not enabled, or no Combine firewall
+            override rule group is configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: More than one Combine firewall override rule group was found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The firewall rules could not be read.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       tags:
         - Tools
       summary: Update the custom firewall rules
       description: Applies Suricata rules to the account's custom firewall rule group.
+        Requires the admin role.
       operationId: editFirewallRules
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: The firewall rules to apply.
         content:
@@ -1767,7 +1910,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/FirewallRulesUpdateResponse"
         "400":
-          description: The firewall rules could not be applied.
+          description: The rules value is missing, or AWS Network Firewall rejected
+            the rules.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The caller does not have the admin role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The firewall rules tool is not enabled, or no Combine firewall
+            override rule group is configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: More than one Combine firewall override rule group was found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The firewall rules could not be updated.
           content:
             application/json:
               schema:
@@ -1786,12 +1955,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WorkloadHealthResponse"
+        "404":
+          description: The workload health tool is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       tags:
         - Tools
       summary: Update the workload health configuration
-      description: Sets the workload health dashboard and its markup.
+      description: Sets the workload health dashboard and its markup. Requires the
+        admin role.
       operationId: editworkloadHealth
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: The workload health configuration to set.
         content:
@@ -1806,6 +1985,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
+        "403":
+          description: The caller does not have the admin role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The workload health tool is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /tap/api/v1/users/current:
     get:
       tags:
@@ -1825,13 +2016,13 @@ paths:
       tags:
         - Users
       summary: Get a user
-      description: Returns a user by numeric ID or email address. Allowed for an admin
-        or the user themselves.
+      description: Returns a user by numeric ID. Allowed for an admin or the user
+        themselves.
       operationId: getUser
       parameters:
         - name: userId
           in: path
-          description: Identifier of the user. A numeric ID or an email address.
+          description: Numeric identifier of the user.
           required: true
           schema:
             type: string
@@ -1842,14 +2033,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "400":
+          description: The identifier is not a number.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
-          description: The caller does not have privileges to view this user.
+          description: "The caller is neither an admin nor the user, or the user is\
+            \ a super_admin and the caller is not."
           content:
             application/json:
               schema:
@@ -1864,9 +2056,13 @@ paths:
       tags:
         - Users
       summary: Update a user
-      description: Updates a user. Only the fields present in the request body are
-        changed. Allowed for an admin or the user themselves.
+      description: "Updates a user. Only the fields present in the request body are\
+        \ changed. Allowed for an admin or the user themselves; only an admin may change\
+        \ userRole, active, commonName, or awsRoles."
       operationId: updateUser
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: userId
           in: path
@@ -1894,14 +2090,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "403":
-          description: The caller does not have privileges to update this user.
+          description: "The caller is not allowed to make this change: the caller\
+            \ is neither an admin nor the user, a non-admin tried to change an admin-only\
+            \ field, the caller tried to assign or modify a super_admin without being one,\
+            \ or reactivating the user would exceed the account user limit."
           content:
             application/json:
               schema:
@@ -1919,7 +2112,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: The user could not be updated.
+          description: The user could not be updated (including a malformed request
+            body).
           content:
             application/json:
               schema:
@@ -1931,6 +2125,9 @@ paths:
       description: Deletes a user and removes their group memberships and certificates.
         Requires the admin role.
       operationId: doDelete
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: userId
           in: path
@@ -1951,14 +2148,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: "The caller does not have the admin role, or the target user\
+            \ is a super_admin and the caller is not."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: No user exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The user could not be deleted.
           content:
             application/json:
               schema:
@@ -1985,8 +2189,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BundleUrlResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: "The caller is neither an admin nor the user, or the user is\
+            \ a super_admin and the caller is not."
           content:
             application/json:
               schema:
@@ -2004,6 +2209,9 @@ paths:
       summary: Rebuild a user certificate
       description: Regenerates the user's certificate. Requires the admin role.
       operationId: rebuildCertificate
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: userId
           in: path
@@ -2025,8 +2233,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: "The caller does not have the admin role, or the target user\
+            \ is a super_admin and the caller is not."
           content:
             application/json:
               schema:
@@ -2039,6 +2248,9 @@ paths:
       description: Regenerates and stores the user's certificate bundle. Requires
         the admin role.
       operationId: rebuildCertificateBundle
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: userId
           in: path
@@ -2060,8 +2272,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: "The caller does not have the admin role, or the target user\
+            \ is a super_admin and the caller is not."
           content:
             application/json:
               schema:
@@ -2074,6 +2287,9 @@ paths:
       description: Resends the email containing the user's certificate bundle. Requires
         the admin role.
       operationId: resendCertificate
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: userId
           in: path
@@ -2095,8 +2311,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: "The caller does not have the admin role, or the target user\
+            \ is a super_admin and the caller is not."
           content:
             application/json:
               schema:
@@ -2107,7 +2324,8 @@ paths:
         - Users
       summary: List all users
       description: Returns all users sorted by name. Requires the admin role. Callers
-        with only the user role receive an empty list.
+        with only the user role receive an empty list. Users with the super_admin role
+        are included only for a super_admin caller.
       operationId: getAllUsers
       responses:
         "200":
@@ -2116,8 +2334,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserListResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -2128,6 +2346,9 @@ paths:
       summary: Create a user
       description: Creates a new user. Requires the admin role.
       operationId: createUser
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: User to create.
         content:
@@ -2143,21 +2364,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserCreateResponse"
         "400":
-          description: "The name, email, or user role is missing, or the user could\
-            \ not be saved."
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+          description: "The request body is malformed, the full name or email is missing,\
+            \ the user role is blank or invalid, the email is already in use, or the user\
+            \ could not be saved."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
-          description: "The account user limit was reached, or the caller may not\
-            \ create this user."
+          description: "The caller does not have the admin role, the caller tried\
+            \ to create a super_admin without being one, or the account user limit was\
+            \ reached."
           content:
             application/json:
               schema:
@@ -2179,8 +2396,8 @@ paths:
       tags:
         - Servers
       summary: Get a server
-      description: Returns a single server by its identifier. Allowed for an admin
-        or the server itself.
+      description: Returns a single server by its identifier. Requires the admin
+        role.
       operationId: getServer
       parameters:
         - name: serverId
@@ -2196,8 +2413,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ServerResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "400":
+          description: The identifier is not a number.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -2215,6 +2438,9 @@ paths:
       description: Updates a server. Only the fields present in the request body are
         changed. Requires the admin role.
       operationId: updateServer
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: serverId
           in: path
@@ -2236,8 +2462,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ServerUpdateResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No server exists with the given identifier.
           content:
             application/json:
               schema:
@@ -2261,6 +2493,9 @@ paths:
       description: Deletes a server and removes its certificates. Requires the admin
         role.
       operationId: doDelete_1
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: serverId
           in: path
@@ -2281,8 +2516,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No server exists with the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The server could not be deleted.
           content:
             application/json:
               schema:
@@ -2294,6 +2541,9 @@ paths:
       summary: Rebuild a server certificate
       description: Regenerates the server's certificate. Requires the admin role.
       operationId: rebuildCertificate_1
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: serverId
           in: path
@@ -2315,8 +2565,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -2329,6 +2579,9 @@ paths:
       description: Regenerates and stores the server's certificate bundle. Requires
         the admin role.
       operationId: rebuildCertificateBundle_1
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: serverId
           in: path
@@ -2350,8 +2603,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -2364,6 +2617,9 @@ paths:
       description: Resends the email containing the server's certificate bundle. Requires
         the admin role.
       operationId: resendCertificate_1
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       parameters:
         - name: serverId
           in: path
@@ -2385,8 +2641,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -2406,8 +2662,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ServerListResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -2418,6 +2674,9 @@ paths:
       summary: Create a server
       description: Creates a new server. Requires the admin role.
       operationId: createServer
+      security:
+        - mutualTLS: []
+          xRequestedBy: []
       requestBody:
         description: Server to create.
         content:
@@ -2439,8 +2698,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: The user is not authorized to access this resource.
+        "403":
+          description: The caller does not have the admin role.
           content:
             application/json:
               schema:
@@ -2488,6 +2747,7 @@ components:
           $ref: "#/components/schemas/Message"
         state:
           type: string
+          description: State of the alert event, either open or ignored.
     Field:
       type: object
       properties:
@@ -2575,7 +2835,7 @@ components:
         user_session_duration_seconds:
           type: integer
           format: int32
-          description: "Session duration configured for the user, in seconds."
+          description: Always null.
         last_access:
           type: string
           description: "Time the caller last accessed this role, in UTC. Null when\
@@ -2830,6 +3090,11 @@ components:
           type: string
           description: Body of the email.
           example: The system will be unavailable on Saturday.
+      required:
+        - body
+        - includeAllUsers
+        - includeNPE
+        - subject
     AwsRole:
       type: object
       properties:
@@ -2838,14 +3103,25 @@ components:
           format: int64
         environment:
           type: string
+          description: "Identifier of the cloud partition the role belongs to, such\
+            \ as AWS_C2S, AWS_SC2S, or AWS_GOV_CLOUD."
+          example: AWS_C2S
         defaultRole:
           type: boolean
+          description: Whether the role is assigned to new users and servers that are
+            created without any AWS roles.
         account:
           $ref: "#/components/schemas/AwsRolePair"
+          description: "The AWS account. value is the account number; valueAlias is\
+            \ the account (mission) name used by the CAP, SCAP, and login endpoints."
         agency:
           $ref: "#/components/schemas/AwsRolePair"
+          description: "The agency. valueAlias is the agency name used by the CAP,\
+            \ SCAP, and login endpoints. Defaults to Combine when omitted."
         role:
           $ref: "#/components/schemas/AwsRolePair"
+          description: "The IAM role. value is the IAM role name that is assumed; valueAlias\
+            \ is the role name used by the CAP, SCAP, and login endpoints."
     AwsRoleListResponse:
       type: object
       description: A list of AWS roles.
@@ -2865,6 +3141,8 @@ components:
           type: string
         empty:
           type: boolean
+          readOnly: true
+          description: Whether value or valueAlias is blank. Computed; ignored on input.
     AwsRoleResponse:
       type: object
       description: The requested AWS role.
@@ -2903,7 +3181,7 @@ components:
           type: boolean
         sendWelcomeEmailWithAttachment:
           type: boolean
-        hasUserManagementAccount:
+        isFollowerAccount:
           type: boolean
         showBundleLinks:
           type: boolean
@@ -2934,6 +3212,8 @@ components:
         corsAccessControlAllowCredentials:
           type: boolean
         enableToolAnalyzeCloudFormationTemplate:
+          type: boolean
+        enableToolFirewallRules:
           type: boolean
         enableToolWorkloadHealth:
           type: boolean
@@ -2983,11 +3263,11 @@ components:
         id:
           type: string
           description: Identifier of the partition.
-          example: aws_us_gov
+          example: AWS_GOV_CLOUD
         displayName:
           type: string
           description: Display name of the partition.
-          example: AWS GovCloud
+          example: AWS US GovCloud Regions
         rootRegionId:
           type: string
           description: Identifier of the partition's root region. Absent when the
@@ -2995,8 +3275,7 @@ components:
           example: us-gov-west-1
         regions:
           type: array
-          description: Identifiers of the regions in the partition. Absent when the
-            partition has no regions.
+          description: Identifiers of the regions in the partition.
           items:
             type: string
     DashboardMetadataResponse:
@@ -3014,21 +3293,23 @@ components:
           example: 42
         lastUserLogin:
           type: string
-          description: Time of the most recent user login. Null when no user has logged
-            in.
-          example: 2026-07-06T12:34:56Z
+          description: "Date of the most recent user login, as YYYY-MM-DD in UTC. Null\
+            \ or absent when no user has logged in."
+          example: "2026-07-06"
     CertificateExpirationResponse:
       type: object
       description: The expiration dates of the certificate authority certificates.
       properties:
-        signerCAExpDate:
+        expirationCASigner:
           type: string
-          description: Expiration date of the signer certificate authority.
-          example: Wed Jul 06 12:00:00 UTC 2026
-        rootCAExpDate:
+          description: "Expiration date of the signer certificate authority, in UTC.\
+            \ Null or absent when the certificate could not be read."
+          example: Mon, 6 Jul 2026 12:00:00
+        expirationCA:
           type: string
-          description: Expiration date of the root certificate authority.
-          example: Wed Jul 06 12:00:00 UTC 2026
+          description: "Expiration date of the root certificate authority, in UTC.\
+            \ Null or absent when the certificate could not be read."
+          example: Mon, 6 Jul 2026 12:00:00
     SupportedServiceNames:
       type: object
       description: The supported VPC endpoint service names for a region.
@@ -3271,51 +3552,6 @@ components:
             type: string
       required:
         - groupIds
-    Bastion:
-      type: object
-      description: A bastion host within a VPC.
-      properties:
-        name:
-          type: string
-          description: Name of the bastion host.
-          example: bastion-1
-        publicIp:
-          type: string
-          description: "Public IP address of the bastion host, or None when it has\
-            \ none."
-          example: 203.0.113.10
-    Vpc:
-      type: object
-      description: A VPC and its bastion hosts.
-      properties:
-        vpcId:
-          type: string
-          description: Identifier of the VPC.
-          example: vpc-0a1b2c3d4e5f67890
-        cidrBlock:
-          type: string
-          description: CIDR block of the VPC.
-          example: 10.0.0.0/16
-        name:
-          type: string
-          description: Name of the VPC.
-          example: Combine-VPC
-        bastions:
-          type: array
-          items:
-            $ref: "#/components/schemas/Bastion"
-        isCurrentVpc:
-          type: boolean
-          description: Whether this is the VPC of the current instance.
-          example: true
-    VpcProxyInformationResponse:
-      type: object
-      description: The VPCs available to the proxy and their bastion hosts.
-      properties:
-        vpcs:
-          type: array
-          items:
-            $ref: "#/components/schemas/Vpc"
     CloudFormationTemplateRequest:
       type: object
       description: The CloudFormation template to analyze and the environment to analyze
@@ -3327,8 +3563,9 @@ components:
           description: "The CloudFormation template file, in YAML or JSON."
         environment:
           type: string
-          description: Identifier of the cloud partition to analyze the template against.
-          example: aws_us_gov
+          description: "Identifier of the cloud partition to analyze the template against,\
+            \ such as AWS_C2S, AWS_SC2S, or AWS_GOV_CLOUD."
+          example: AWS_GOV_CLOUD
         region:
           type: string
           description: Region to analyze the template against. Defaults to the first
@@ -3342,6 +3579,9 @@ components:
           type: string
           description: "Value to substitute for the AWS region pseudo parameter. Defaults\
             \ to ${AWS::Region}."
+      required:
+        - environment
+        - file
     HighlightRange:
       type: object
       properties:
@@ -3446,8 +3686,18 @@ components:
         success:
           type: boolean
         data:
-          description: "Metadata from the firewall update, or a status message when\
-            \ no rule group is present to update."
+          type: object
+          description: The rule group that was updated.
+          properties:
+            matchedGroup:
+              type: string
+              description: Name of the updated firewall rule group.
+            ruleGroupArn:
+              type: string
+              description: ARN of the updated firewall rule group.
+            updateToken:
+              type: string
+              description: Update token returned by AWS Network Firewall.
     FirewallRulesUpdateRequest:
       type: object
       description: The custom firewall rules to apply.
@@ -3457,8 +3707,10 @@ components:
           description: The Suricata rules to apply to the rule group.
         dryRunOption:
           type: string
-          description: Whether to validate the update without applying it.
+          description: "When \"true\", validates the update without applying it."
           example: "true"
+      required:
+        - rules
     WorkloadHealthUpdateRequest:
       type: object
       description: The workload health configuration to set.
@@ -3482,6 +3734,9 @@ components:
         matchedGroup:
           type: string
           description: Name of the matched firewall rule group.
+        ruleGroupArn:
+          type: string
+          description: ARN of the matched firewall rule group.
     FirewallRulesResponse:
       type: object
       description: The current custom firewall rules.
@@ -3528,8 +3783,7 @@ components:
         awsRoles:
           type: array
           items:
-            type: integer
-            format: int64
+            $ref: "#/components/schemas/AwsRole"
         isServer:
           type: boolean
         bundlePath:
@@ -3538,6 +3792,10 @@ components:
           type: string
         userRole:
           type: string
+          enum:
+            - user
+            - admin
+            - super_admin
         commonName:
           type: string
         lastLoginDate:
@@ -3609,14 +3867,21 @@ components:
           example: true
         userRole:
           type: string
-          description: "New role for the user, such as user, admin, or super_admin."
+          description: New role for the user. Admin only; only a super_admin may assign
+            super_admin.
+          enum:
+            - user
+            - admin
+            - super_admin
           example: admin
+        commonName:
+          type: string
+          description: Common name to use in the user's certificate. Admin only.
         awsRoles:
           type: array
-          description: Replacement list of AWS role IDs.
+          description: Replacement list of AWS roles. Admin only.
           items:
-            type: integer
-            format: int64
+            $ref: "#/components/schemas/AwsRole"
     UserCreateResponse:
       type: object
       description: The created user.
@@ -3641,24 +3906,28 @@ components:
           example: jane.doe@example.com
         userRole:
           type: string
-          description: "Role assigned to the user, such as user, admin, or super_admin."
+          description: "Role assigned to the user. Defaults to user when omitted. Only\
+            \ a super_admin may create a super_admin."
+          enum:
+            - user
+            - admin
+            - super_admin
+          default: user
           example: user
         active:
           type: boolean
-          description: Whether the user is active.
+          description: Whether the user is active. Defaults to true when omitted.
+          default: true
           example: true
         awsRoles:
           type: array
-          description: AWS role IDs assigned to the user. Default roles are applied
-            when omitted or empty.
+          description: AWS roles assigned to the user. Default roles are applied when
+            omitted or empty.
           items:
-            type: integer
-            format: int64
+            $ref: "#/components/schemas/AwsRole"
       required:
-        - active
         - email
         - fullName
-        - userRole
     UserListResponse:
       type: object
       description: A list of users.
@@ -3682,8 +3951,7 @@ components:
         awsRoles:
           type: array
           items:
-            type: integer
-            format: int64
+            $ref: "#/components/schemas/AwsRole"
         isServer:
           type: boolean
         bundlePath:
@@ -3750,10 +4018,9 @@ components:
           example: example.com service.example.com
         awsRoles:
           type: array
-          description: Replacement list of AWS role IDs.
+          description: Replacement list of AWS roles.
           items:
-            type: integer
-            format: int64
+            $ref: "#/components/schemas/AwsRole"
     ServerCreateResponse:
       type: object
       description: The created server.
@@ -3797,11 +4064,10 @@ components:
           example: false
         awsRoles:
           type: array
-          description: AWS role IDs assigned to the server. Default roles are applied
-            when omitted or empty.
+          description: AWS roles assigned to the server. Default roles are applied when
+            omitted or empty.
           items:
-            type: integer
-            format: int64
+            $ref: "#/components/schemas/AwsRole"
       required:
         - custodianName
         - email
@@ -3824,7 +4090,9 @@ components:
     xRequestedBy:
       type: apiKey
       description: "Required on requests that change data, which is every method except\
-        \ GET, HEAD, and OPTIONS. Combine only checks that the header is present and\
-        \ accepts any value. The health check and OCSP endpoints are exempt."
+        \ GET and HEAD. Combine only checks that the header is present and accepts any\
+        \ value; a request without it is rejected with 400 and an empty body. The health\
+        \ check and OCSP endpoints are exempt, and a CORS preflight OPTIONS request is\
+        \ answered without it when CORS is enabled."
       name: X-Requested-By
       in: header

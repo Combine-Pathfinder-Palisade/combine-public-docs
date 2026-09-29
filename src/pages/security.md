@@ -90,7 +90,7 @@
 ## **Documentation**
 
 ### **DOC-001: Architecture**
-- See [the Combine Architectural Diagram](https://docs.sequoiacombine.io/assets/images/combine-architecture-1e890aaf06b17fbe510bb677719290fe.png) for a full architectural overview
+- See [the Combine Architectural Diagram](https://docs.sequoiacombine.io/aws/combine-architecture.png) for a full architectural overview
 - Which AWS Services are in use:
   - Lambda
   - S3
@@ -98,16 +98,23 @@
   - EC2
   - CloudWatch
   - CloudFormation
-  - **Continue filling this list**
-- How are outside systems are connected to the Combine AWS deployment?
+  - DynamoDB
+  - SNS
+  - Route 53
+  - Elastic Load Balancing
+  - AWS Network Firewall
+  - IAM
+  - EventBridge
+  - EC2 Auto Scaling
+- How are outside systems connected to the Combine AWS deployment?
   - Outside systems can access the TAP dashboard front end from the public internet
     - In order to interact with elements on the dashboard page systems must have a client certificate installed in their browsers
   - Outside systems can also access a bastion host (if configured as part of the installation) over a keyed SSH connection
 - What elements are deployed outside of AWS?
-  - No elements are deployed outside of AWS; see [the Combine Architectural Diagram](https://docs.sequoiacombine.io/assets/images/combine-architecture-1e890aaf06b17fbe510bb677719290fe.png) for reference
-- How AWS services are deployed?
-  - AWS services are currently deployed using cloudformation yaml templates
-- How does the design acheive high availability?
+  - No elements are deployed outside of AWS; see [the Combine Architectural Diagram](https://docs.sequoiacombine.io/aws/combine-architecture.png) for reference
+- How are AWS services deployed?
+  - AWS services are currently deployed using CloudFormation YAML templates
+- How does the design achieve high availability?
   - All deployed systems are part of auto-scaling groups
   - Auto-scaling groups have been configured with health checks to automatically monitor and restart services should they fail
 - How does the design scale automatically?
@@ -117,7 +124,7 @@
 
 ## **Security - Networking**
 
-### **NETSEC-001: Security Best Practices for Virtual Priviate Cloud**
+### **NETSEC-001: Security Best Practices for Virtual Private Cloud**
 - Customer examples need to be developed and linked to this section of the SOP
 
 ### **NETSEC-002: Data Encryption Policies for Data at Rest and Data in Transit**
@@ -134,14 +141,14 @@
 ### **OPE-001: Define, Monitor and Analyze Customer Workload Health KPIs**
 - Customer examples need to be developed and linked to this section of the SOP
 - Operational Metric Thresholds for Triggering Alerts
-  - Alarms are configured in Cloudformation for TAP and Endpoint servers
-  - Alarms are based on Cloudwatch actvity as configured within the combine-vpc.yaml file.
+  - Alarms are configured in CloudFormation for TAP and Endpoint servers
+  - Alarms are based on CloudWatch activity as configured within the combine.yaml and combine-vpc.yaml files.
     - See OPE-001 column 2 for actual policy config (**ADD THIS HERE**)
   - [Link to alarms in console](https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#alarmsV2:alarm/TargetTracking-Infra-ECS-Cluster-combine-test-cluster-da051c92-ECSAutoScalingGroup-H0S1tvwSlUOy-AlarmLow-11aa91c2-781a-4d64-b56b-b8c416830139)
 - Workload Health KPIs for Customer Workloads
   - Alarm configurations in the console meet this requirement
   - **Add details regarding alarm configurations to this bullet**
 - Definition, Collection and Analysis of Workload Health Metrics
-  - Currently, analysis of logs is completed via logs insights.
-  - Alarms have historic occurence charts built in by default.
+  - Currently, analysis of logs is completed via CloudWatch Logs Insights.
+  - Alarms have historic occurrence charts built in by default.
   - Notifications of alarms are sent to administrators via e-mail

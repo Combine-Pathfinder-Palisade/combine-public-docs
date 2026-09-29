@@ -39,7 +39,7 @@ Not every AWS Service offers a FIPS endpoint in every Region. Combine validates 
 If your workload calls a FIPS endpoint for a service that does not have one in the emulated Region, Combine will:
 
 1. Reject the request with an HTTP `400` response and an `EmulationError` code.
-2. Raise an **Unsupported AWS Endpoint: FIPS** alert on the Combine Dashboard, including the service, the endpoint that was called, and resolution guidance.
+2. Raise an **Unsupported AWS Endpoint: FIPS** Alert Event on the Combine Dashboard, including the service, the endpoint that was called, and resolution guidance.
 
 The list of AWS Services with FIPS endpoints in the emulated Region is available on the Combine Dashboard Documentation page.
 
@@ -63,7 +63,7 @@ The FIPS **endpoint availability** check is controlled by the following configur
 
 | Parameter Name | Value | Description |
 |---|---|---|
-| `combine.endpoints.aws.filter.serviceEndpoints.fips.enable` | `true` / `false` | Enable or disable blocking of FIPS endpoint requests for services without a FIPS endpoint in the emulated Region |
-| `combine.endpoints.aws.metadata.serviceEndpoints.fips.supported.override.<region-id>` | List of service names | Override the list of AWS Services considered to have a FIPS endpoint in the given Region |
+| `combine.endpoints.aws.filter.serviceEndpoints.fips.enable` | `true` / `false` | Enable or disable blocking of FIPS endpoint requests for services without a FIPS endpoint in the emulated Region. Enabled by default. |
+| `combine.endpoints.aws.metadata.serviceEndpoints.fips.supported.override.<region-id>` | Space-separated list of service names (for example `kms s3`) | Override the list of AWS Services considered to have a FIPS endpoint in the given emulated Region. When set, this list replaces the default list for that Region. |
 
 These configuration values are set in the Combine Configuration DynamoDB table (`combine-configuration`). See [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions.

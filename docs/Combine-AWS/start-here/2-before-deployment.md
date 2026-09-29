@@ -13,7 +13,7 @@ The first decision is who will perform the Combine Deployment?
 
 The typical path is for the Combine Team to perform the Combine Deployment based on a [shared IAM Role](before-deployment-shared-role) we assume in an AWS Account you provide. The Combine Team will perform a white glove installation in the account.
 
-If this is not allowed, then the Combine Team can provide support to your Team to use our interal automation tool to perform the Combine Deployment. (Please note this will reduce the timeline of our Combine updates and also our response times for support issues.)
+If this is not allowed, then the Combine Team can provide support to your Team to use our internal [automation tool](../tutorials/operations-self-service-deployment/how-to-combine-deployment.md) to perform the Combine Deployment. (Please note this will reduce the timeline of our Combine updates and also our response times for support issues.)
 
 ### Network Architecture
 
@@ -23,7 +23,7 @@ By default the Combine Deployment will use a Single VPC topology.
 
 ### VPC Configuration
 
-By default the Combine Deployment will create each Combine VPC according to any specifications you provided. This most commonly matches what while happen in the production environment as the production environment's sponsor typically controls VPC creation.
+By default the Combine Deployment will create each Combine VPC according to any specifications you provided. This most commonly matches what will happen in the production environment as the production environment's sponsor typically controls VPC creation.
 
 There is an option to instead ["wrap"](advanced-features/vpc-wrapping) an existing VPC with Combine. Please reach out to the Combine Support Team if you would like to explore that option.
 
@@ -51,7 +51,7 @@ There are several optional VPC Configuration options that are not required but t
     - You create this security group and provide the Combine Team with the Security Group ID. You can then control access to the Combine Dashboard / Bastion via that Security Group once it has been applied to Combine via our AWS CloudFormation templates.
 - You may schedule the shutdown of most Combine resources during off hours using a `cron` expression.
     - By default this is `disabled`.
-- You may modify the AirGap Emulation be more permissive depending on your Team's needs.
+- You may modify the AirGap Emulation to be more permissive depending on your Team's needs.
     - By default the AirGap Emulation blocks all outbound traffic.
     - You can choose to allow outbound calls to a specific set of domains and/or in accordance with a set of firewall rules.
     - You can choose to allow outbound calls to any domain but still report each outbound call as an Alert. _(NOTE: This is referred to as Permissive Mode.)_
@@ -67,4 +67,4 @@ There are many many optional Emulation Configuration options that can be adjuste
     - By default this is set to 60 minutes.
     - You can choose to extend this to up to 12 hours. _(NOTE: In the restricted region(s) this requires approval from the restricted region's sponsor.)_
 
-Almost any aspect of the emulation can be configured or extended so please let the Combine Support Team if you have any questions!
+Almost any aspect of the emulation can be configured or extended so please let the Combine Support Team know if you have any questions!

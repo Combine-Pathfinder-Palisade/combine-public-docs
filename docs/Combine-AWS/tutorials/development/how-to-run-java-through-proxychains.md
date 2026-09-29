@@ -6,7 +6,7 @@ This guide details all the required steps to configure **ProxyChains** to route 
 A SOCKS proxy can be used to provide a different exit point for traffic that is originating from the application, almost like a lightweight VPN tunnel. When the application is run with proxychains all of its traffic is captured and redirected through the SSH based SOCKS proxy (established later in this example). The traffic then exits out of the end of the SSH tunnel and all replies are routed back through the SSH tunnel to the originating application.
 
 #### **This guide currently works ONLY with Linux based operating systems.**
-At this time it appears that Mac OS does not allow network traffic to be redirected from Java through proxychains / SOCKS and the issue will need to be resolved in order to utilize the functionality. The primary suspect is SIP (System Integrity Protection)
+At this time it appears that Mac OS does not allow network traffic to be redirected from Java through proxychains / SOCKS and the issue will need to be resolved in order to utilize the functionality. The primary suspect is SIP (System Integrity Protection).
 
 Should this problem be resolved it will allow for local development and debugging of Java applications while they are effectively executed within the VPC.
 
@@ -56,12 +56,12 @@ ssh -D 9050 -i /path/to/key.pem -N -f user@proxy-server-ip
 ```
 Confirm it’s running:
 ```sh
-ss -pantu | grep 1080
+ss -pantu | grep 9050
 ```
 
 ---
 
-## **5. Run Java Application with ProxyChains**
+## **4. Run Java Application with ProxyChains**
 Run the built Java application using `proxychains`:
 
 ```sh
@@ -80,7 +80,7 @@ Successful execution should yield output similar to the following:
 
 ---
 
-## **6. Debugging & Testing**
+## **5. Debugging & Testing**
 - **Check network traffic via proxy:**
   ```sh
   proxychains4 curl ifconfig.me
@@ -89,13 +89,13 @@ Successful execution should yield output similar to the following:
 
 - **Run Java with debugging logs:**
   ```sh
-  proxychains4 java -Djava.net.debug=all -jar target/cap-credentials-provider.jar [arguments]
+  proxychains4 java -Djavax.net.debug=all -jar target/cap-credentials-provider.jar [arguments]
   ```
   This provides detailed networking logs.
 
 ---
 
-## **7. Verify DNS Resolution Over Proxy**
+## **6. Verify DNS Resolution Over Proxy**
 Since Java applications may directly resolve DNS, test if `proxychains` is handling DNS correctly:
 
 ```sh

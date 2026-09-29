@@ -23,7 +23,7 @@ Multiple Combine VPCs might work together in a particular network topology to pr
 
 ### AirGap Networking
 
-Combine routes network egress for each workload subnet via a Route Table to the approprate Combine Firewall. The Combine Firewall has a rule set that controls how traffic is allowed to egress.
+Combine routes network egress for each workload subnet via a Route Table to the appropriate Combine Firewall. The Combine Firewall has a rule set that controls how traffic is allowed to egress.
 
 Combine can create default workload subnets that are correctly configured for your convenience. If you prefer to create your own subnets, you will need to configure each subnet to use the appropriate Combine Route Table in order to control egress.
 
@@ -33,14 +33,14 @@ Combine uses a Route 53 Private Hosted Zone to implement the DNS for each emulat
 
 ### Emulated API Endpoints
 
-Combine uses a Route 53 Private Hosted Zone to implement the DNS for each emulated API Endpoint. This DNS Zone routes traffic to an internal Combine Load Balancer for the Combine TAP servers which hosted these Emulated API services.
+Combine uses a Route 53 Private Hosted Zone to implement the DNS for each emulated API Endpoint. This DNS Zone routes traffic to an internal Combine Load Balancer for the Combine TAP servers which host these Emulated API services.
 
 ### Internal Architecture
 
-Each Combine VPC is configured with at least a pair of `/24` CIDR Blocks. It divides these into several groups of subnets:
+Each Combine VPC is configured with at least a pair of `/24` CIDR Blocks (by default `10.0.255.0/24` for the Combine Subnets and `10.0.254.0/24` for the Combine Firewall Subnets, within a default VPC CIDR Block of `10.0.0.0/16`). It divides these into several groups of subnets:
 
 - _Combine Private Subnets_ - Used to deploy Combine TAP/Endpoint servers and their Load Balancers.
-- _Combine Public Subnets_ - Used to deploy Combine TAP Public Load Balancer and the Combine Bastion server.
+- _Combine Public Subnets_ - Used to deploy Combine TAP Public Load Balancer and the Combine NAT Gateway. (Prior to Combine Version 3.14.0 these also housed the Combine Bastion server.)
 - _Combine Private Firewall Subnets_ - Used to house the Private Combine Firewall (controls egress for Private Subnets).
 - _Combine Public Firewall Subnets_ - Used to house the Public Combine Firewall (controls egress for Public Subnets).
 

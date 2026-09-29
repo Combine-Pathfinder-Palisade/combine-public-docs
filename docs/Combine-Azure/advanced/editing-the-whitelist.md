@@ -1,6 +1,6 @@
 # Editing the Whitelist
 
-Combine Azure uses [Squid Cache](https://www.squid-cache.org/) OpenSSL proxy to achieve airgapping.
+Combine Azure uses a [Squid Cache](https://www.squid-cache.org/) proxy (with SSL interception) to emulate the airgap.
 
 :::tip[This is handled on the Dashboard in new versions]
 
@@ -27,7 +27,8 @@ vi allowed
 Edit the file as you please. Things to note:
 
 - Comments are allowed, you can use `#` to add a comment
-- only root domains, i.e. `google.com` is allowed, `google.com/123` is NOT
+- Only domain names are allowed, i.e. `google.com` or `mystorageaccount.blob.core.windows.net` is allowed, `google.com/123` is NOT
+- The `allowed` file is copied from Combine's Storage Account when the `Combine-Proxy` virtual machine is provisioned, so edits made here are lost if the virtual machine is re-deployed
 
 ## 3. Restart the `squid` service
 
@@ -43,7 +44,7 @@ The status should show similar to:
 ```bash
 ● squid.service - Squid caching proxy
    Loaded: loaded (/usr/lib/systemd/system/squid.service; enabled; vendor preset: disabled)
-   Active: active (running) since Tue 2026-01-27 00:00:00 UTC; 6min ago # 👈 the servic is active
+   Active: active (running) since Tue 2026-01-27 00:00:00 UTC; 6min ago # 👈 the service is active
   Process: 7862 ExecStop=/usr/sbin/squid -k shutdown -f $SQUID_CONF (code=exited, status=0/SUCCESS)
   Process: 7871 ExecStart=/usr/sbin/squid $SQUID_OPTS -f $SQUID_CONF (code=exited, status=0/SUCCESS)
   Process: 7865 ExecStartPre=/usr/libexec/squid/cache_swap.sh (code=exited, status=0/SUCCESS)

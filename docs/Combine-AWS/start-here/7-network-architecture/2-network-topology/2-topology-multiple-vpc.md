@@ -22,7 +22,7 @@ _Note that this diagram is for Combine AWS but is analogous to Combine Azure fro
 
 # Disadvantages
 
-- At present User Management can only be performed in a single designated AWS Account. This account is referred to in Combine as the "root" account.
+- At present User Management can only be performed in a single designated AWS Account. This account is referred to in Combine as the "User Management Account" (the other AWS Accounts are referred to as "Follower Accounts").
 - At present the Combine Alert Events for an AWS Account are only displayed on the TAP Dashboard of that AWS Account. (_NOTE: We are designing a new architecture for the TAP Dashboard with the capability for multiple accounts and multiple tenants._)
 - Higher AWS spend due to additional infrastructure deployed to each VPC.
 

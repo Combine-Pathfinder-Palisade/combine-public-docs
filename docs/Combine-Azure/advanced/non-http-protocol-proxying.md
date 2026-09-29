@@ -77,9 +77,9 @@ At this point, workloads inside the VNet can already resolve `mycache.privatelin
 
 ---
 
-### 4. Combine Team: Deploy Combine DNS Indirection
+### 3. Combine Team: Deploy Combine DNS Indirection
 
-The Combine team deploys (or updates) a **Combine-managed Private DNS Zone**: `scombine.database.scloud` pointing to the same IP address of the Private Endpoint
+The Combine team deploys (or updates) a **Combine-managed Private DNS Zone**: `scombine.database.scloud` pointing to the same IP address as the Private Endpoint. (For a Top Secret emulation the zone is `tscombine.database.tscloud`, e.g. `mycache.redis.cache.cloudapi.tscombine.database.tscloud`.)
 
 
 Within this zone, an `A` record is created:
@@ -100,7 +100,7 @@ This DNS zone is linked to the same VNet(s) where Combine and customer workloads
 
 ---
 
-### 5. Customer: Connect Using the Combine DNS Name
+### 4. Customer: Connect Using the Combine DNS Name
 
 From any workload **inside the VNet**, the customer can now connect using the Combine-provided hostname.
 

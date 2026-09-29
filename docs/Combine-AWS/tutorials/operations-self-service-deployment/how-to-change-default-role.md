@@ -30,10 +30,11 @@ In addition to your own permissions, the role must carry the Combine-managed pol
 - The **Emulation Protection** policy (for example, `PolicyCombineEmulationProtection`).
 - The **Overlay Base** policies for the partition (for example, `TSPolicyCombineOverlayBase` and its per-region variants such as `TSPolicyCombineOverlayBaseRegionE1`).
 
-The easiest way to get the exact list is to open the `WLDEVELOPER` role for the partition in the IAM console and copy its attached Combine policies. (Policy names include your Shard ID if your deployment has one)
+The easiest way to get the exact list is to open the `WLDEVELOPER` role for the partition in the IAM console and copy its attached Combine policies. (Policy names include your Shard ID if your deployment has one.)
 
 ### Step 3: Set the Trust Policy
-Your role's trust policy must let Combine's service roles call `sts:AssumeRole`, the same way the Default Role trusts `Combine-Endpoints` and `Combine-TAP`.
+
+Your role's trust policy must let Combine's service roles (`Combine-Endpoints` and `Combine-TAP`) call `sts:AssumeRole`. (The default `WLDEVELOPER` role allows this by trusting the account's root principal.)
 
 At a minimum, the role must trust the `Combine-Endpoints`/`Combine-<shard-id>-Endpoints` role:
 
@@ -68,7 +69,7 @@ At a minimum, the role must trust the `Combine-Endpoints`/`Combine-<shard-id>-En
 
 ### Step 4: Update the Combine-Policy CloudFormation Stack
 
-Update the `Combine-Policy` CloudFormation Stack in each affected account and set the **name** of your IAM Role (not the ARN) in the parameter for each partition you want to override:
+Update the `Combine-Policy` (or `Combine-<ShardId>-Policy`) CloudFormation Stack in each affected account and set the **name** of your IAM Role (not the ARN) in the parameter for each partition you want to override:
 
 | Parameter | Emulated Partition | Configuration Value Written |
 | --- | --- | --- |
@@ -90,6 +91,8 @@ aws sts get-caller-identity
 
 The returned ARN should reference your new role. You can also confirm in the Endpoint Server logs, which will record:
 
-`Request Authorization: Authorized by default role [<your-role-name>] in account [<account-id>].`
+`Request Authorization: Authorized by Role [<your-role-name>] in AWS Account [<account-id>].`
+
+(Releases before 3.14.6 record `Request Authorization: Authorized by default role [<your-role-name>] in account [<account-id>].`)
 
 Please contact your Combine Support Team for additional information!

@@ -1,10 +1,10 @@
 # VPC Wrapping
 
-Combine will support deploying to an already existing VPC by "wrapping" it with Combine. This allows Combine to be deployed without permissions to create network resources.
+Combine supports deploying to an already existing VPC by "wrapping" it with Combine. This allows Combine to be deployed without permissions to create network resources.
 
 ## Configuration Parameters
 
-The following Configuration Parameters are used in the Combine VPC CloudFormation template to wrap an existing VPC:
+The following Configuration Parameters are used in the Combine VPC CloudFormation template (`combine-vpc.yaml`) to wrap an existing VPC. They are set on the Combine VPC stack (for example, in `clients.json` under `combineVPCStacks` > `<VPC stack name>`):
 
 - `WrappedVpc`
 - `WrappedVpcId`
@@ -29,15 +29,15 @@ The following Configuration Parameters are used in the Combine VPC CloudFormatio
 
 To start wrapping a VPC you set `WrappedVpc` to `true`.
 
-You must set `WrappedVpcId` to the ID of the VPC to wrap.
+You must set `WrappedVpcId` to the ID of the VPC to wrap. You must also set the `VpcCidrBlock` parameter (and any `VpcCidrBlockAuxiliaryA` through `VpcCidrBlockAuxiliaryD` parameters) to match the CIDR Blocks of the wrapped VPC.
 
-If the VPC has public internet access, you must set `WrappedVpcInternetGatewayId` to the Internet Gateway ID of the VPC.
+If the VPC has public internet access, you must set `WrappedVpcInternetGatewayId` to the Internet Gateway ID of the VPC. If it is left empty, Combine assumes the VPC has no public internet access.
 
-If you want the template to build each Combine Subnet within the VPC you set `VpcCombineNetworkBuild` to `true`. If the VPC has public internet access, you may also set `VpcCombineNetworkingBuildPublicAccess` to `true` to build public internet access resources.
+If you want the template to build each Combine Subnet within the VPC you set `VpcCombineNetworkingBuild` to `true` (the default). If the VPC has public internet access, you may also set `VpcCombineNetworkingBuildPublicAccess` to `true` (the default) to build public internet access resources.
 
-If you set `VpcCombineNetworkBuild` to `false` then you must provide the ID of each subnet that Combine will use. These subnets will need to be built in advance and provided by the customer.
+If you set `VpcCombineNetworkingBuild` to `false` then you must provide the ID of each subnet that Combine will use. These subnets will need to be built in advance and provided by the customer.
 
-The following configuration values are required:
+The following parameters are required:
 
 - `VpcCombineSubnetPublicA`
 - `VpcCombineSubnetPublicB`
@@ -47,7 +47,7 @@ The following configuration values are required:
 - `VpcCombineSubnetPrivateFirewallPublicA`
 - `VpcCombineSubnetPrivateFirewallPrivateA`
 
-_NOTE: The other subnet configuration values (ending in `C` through `F`) are only to support a specific legacy customer deployment and should be ignored._
+_NOTE: The other subnet parameters (ending in `C` through `F`) are only to support a specific legacy customer deployment and should be ignored._
 
 ## Pitfalls
 

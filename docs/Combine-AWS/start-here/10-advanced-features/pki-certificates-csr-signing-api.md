@@ -12,7 +12,9 @@ This will enable an API Endpoint:
 
 `<tap server>/tap/api/v1/admin/certificate/custom`
 
-It accepts a CSR as the body of a request and returns the signed Certificate as PEM encoded text.
+It accepts a PEM encoded CSR as the body of a `POST` request and returns the signed Certificate as PEM encoded text. The request must be authenticated with the certificate of a TAP user with the Admin (or Super Admin) role.
+
+The CSR may not exceed the size set by the `combine.tap.api.certificates.signCustomCSR.byteLimit` configuration value (default `65536` bytes). A larger CSR is rejected with an HTTP `413` response.
 
 ### Example
 

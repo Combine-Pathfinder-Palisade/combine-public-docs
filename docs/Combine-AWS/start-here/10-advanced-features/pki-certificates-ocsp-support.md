@@ -8,7 +8,9 @@ To enable OCSP you [set the following](../../tutorials/operations/how-to-edit-co
 
 `combine.tap.certificates.ocsp`
 
-Once enabled User and Server/NPE certificates issued by the TAP Dashboard will include an AIA Block listing the following OCSP Endpoints:
+(You can also toggle **OCSP Support** in the TAP Dashboard under **Admin Settings > TAP Settings > Application Configuration**, in the **Certificate Settings** section.)
+
+Once enabled User and Server/NPE certificates issued by the TAP Dashboard will include an AIA Block listing an OCSP Responder URL (`http://<OCSP Endpoint>/tap/api/v1/certificate/ocsp`) for each emulated Partition that defines an OCSP Endpoint, for example:
 
 `ocsp.c2s.ic.gov`
 `ocsp.sc2s.sgov.gov`
@@ -17,13 +19,15 @@ There are additional configuration parameters:
 
 `combine.tap.ocsp.responder.signerCertificate.cache.duration` which is how long in milliseconds to cache the Signer Certificate before refreshing it from S3. Defaults to 15 minutes.
 
-`combine.tap.ocsp.responder.nextUpdate.duration` which is how long Combine advertises before the next update to OCSP. Defaults to 24 hours.
+`combine.tap.ocsp.responder.nextUpdate.duration` which is how long in milliseconds Combine advertises before the next update to OCSP. Defaults to 24 hours.
+
+`combine.tap.ocsp.responder.request.byteLimit` which is the maximum size in bytes of an OCSP Request. Defaults to `8192`.
 
 ### Certificate Revocation
 
 Combine supports Certificate Revocation by setting a configuration value for each revoked certificate.
 
-`combine.tap.certificates.revocation.certificate.<serial number>.date` which is the epoch time in milliseconds at which the certificate was revoked.
+`combine.tap.certificates.revocation.certificate.<serial number>.date` which is the epoch time in milliseconds at which the certificate was revoked. (The `<serial number>` is the certificate serial number in decimal.)
 
 The TAP Dashboard will respect certificate revocation during authentication.
 

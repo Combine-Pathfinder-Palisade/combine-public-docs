@@ -25,8 +25,8 @@ _Note that this diagram is for Combine AWS but is analogous to Combine Azure fro
 # Disadvantages
 
 
-- Higher cloud spend due to additional infrastructure deployed to each VPC.
-- Currently each VNet will have it's own independent Combine dashboard, as violation information is not shared between VNets.
+- Higher cloud spend due to additional infrastructure deployed to each VNet.
+- Currently each VNet will have its own independent Combine dashboard, as violation information is not shared between VNets.
 
 # Shared Responsibilities
 

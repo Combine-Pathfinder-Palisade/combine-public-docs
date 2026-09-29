@@ -12,9 +12,9 @@ Note that 'customer' below refers not to the sponsoring agency, but to the Combi
 
 3. Customer deploys/rotates this combined trust chain throughout its infrastructure.
 
-4. Sequoia updates TAP and Endpoint servers to use certificiates issued by new CA and the combined trust chain. 
+4. Sequoia updates TAP and Endpoint servers to use certificates issued by new CA and the combined trust chain. 
 	- At this point any customer infrastructure that did not trust the combined trust chain will not be able to connect to the TAP / Endpoints servers.
-	- Calls to the CAP API will continue to functions since Combine authentication is based on trust of CA (which is provided by the combined trust chain) plus the serial number of the certificate (which is unchanged for existing certificates).
+	- Calls to the CAP API will continue to function since Combine authentication is based on trust of CA (which is provided by the combined trust chain) plus the serial number of the certificate (which is unchanged for existing certificates).
 
 5. Customer issues new certificates to all active users and server / NPE certificates. These certificates are deployed / rotated throughout each applicable service.
 	- At this point any customer peer-to-peer connections that did not trust the combined trust chain will not be able to connect to each other. All connections that use the combined trust chain will work even with certificates issued by different authorities.

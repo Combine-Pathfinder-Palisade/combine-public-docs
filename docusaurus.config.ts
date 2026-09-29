@@ -7,7 +7,7 @@ import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs';
 
 const config: Config = {
   title: 'Combine Documentation',
-  tagline: 'Combine Documention',
+  tagline: 'Combine Documentation',
   favicon: 'img/favicon.png',
 
   // Set the production url of your site here

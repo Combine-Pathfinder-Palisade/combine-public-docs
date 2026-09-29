@@ -35,21 +35,23 @@ You have the option to stop routing outbound traffic through a Firewall through 
 
 `EnableAirgap`
 
-Setting this to `false` leaves Private/Public Firewall resources instact but changes the route table so outbound traffic bypasses its respective Firewall and routes directly to the NAT Gateway / IGW.
+Setting this to `false` leaves Private/Public Firewall resources intact but changes the route table so outbound traffic bypasses its respective Firewall and routes directly to the NAT Gateway / IGW.
 
 ## Enable/Disable Firewall Permissive Mode
 
-You have the option to allow all outbound traffic but still log each outbound connection on the TAP Dashboard as a Violation through the following configuration parameter:
+You have the option to allow all outbound traffic but still log each outbound connection on the TAP Dashboard as an Alert Event through the following configuration parameter:
 
 `EnableAirgapPermissiveMode`
 
-Setting this to `true` while the Private/Public Firewall is in operation (assuming the build flag and `EnableAirgap` configuration parameters are `true`) allows all outbound traffic but still throws a Violation for each outbound call.
+Setting this to `true` while the Private/Public Firewall is in operation (assuming the build flag and `EnableAirgap` configuration parameters are `true`) allows all outbound traffic but still throws an Alert Event for each outbound call.
 
 ## Firewall Exception List 
 
 You have the option to create an exception list for each Firewall. This allows individual domains to be exempted from the airgap layer. 
 
 If this account does not have an override rule group already you will need to create one.
+
+_NOTE: By default Combine also builds a Firewall Override Rule Group (the `CombineFirewallOverrideRuleGroupBuild` configuration parameter) that an `Admin` can edit from the **Firewall Rules** tool on the **Combine Tools** page of the TAP Dashboard. The steps below create a separate Auxiliary Rule Group that you manage yourself._
 
 ### Create Network Rule Group
 
