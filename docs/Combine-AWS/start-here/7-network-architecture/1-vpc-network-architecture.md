@@ -48,6 +48,12 @@ Each Combine VPC is configured with at least a pair of `/24` CIDR Blocks (by def
 
 ![Combine VPC Internal Architecture](/aws/combine_vpc_architecture.png)
 
-### Questions
+## Wrapping an Existing VPC
+
+By default each Combine VPC CloudFormation Stack builds a new VPC. Combine can instead "wrap" a VPC that already exists (for example when your account does not permit Combine to create network resources, or when your workload already runs in an established VPC). Combine then adds its resources to the existing VPC, and the architecture described above otherwise stays the same.
+
+See [VPC Wrapping](../10-advanced-features/vpc-wrapping.md) for what Combine builds in a wrapped VPC, what you must configure yourself, and the parameters that configure it.
+
+## Questions
 
 If you have any questions please consult the Combine Support Team!
