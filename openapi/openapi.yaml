@@ -7,6 +7,8 @@ info:
     All requests must use HTTPS. Except where explicitly noted, requests require mutual TLS with a valid client certificate issued for the deployment. There is no login step: the certificate's serial number identifies the caller's user account, and that account's role (user, admin, or super_admin) determines what the caller can access. A request without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page instead of a JSON response.
 
     Requests that modify data must include the X-Requested-By header; this applies to every method except GET and HEAD. A request that omits it is rejected with 400 and an empty body. Administrative operations require an account with the admin role; the super_admin role satisfies every role check. A caller without the required role receives 403.
+
+    For a step-by-step guide with curl and Python examples, see [Call the TAP API](/Combine-AWS/tutorials/development/how-to-call-the-tap-api).
   version: "3.15"
 servers:
   - url: "https://{host}"
@@ -1119,6 +1121,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Partition"
+  /tap/api/v1/partitions/getActivePartitions:
+    get:
+      tags:
+        - Configuration
+      summary: List active partitions
+      description: "Returns the cloud partitions that are active in this deployment,\
+        \ in the order listed by the combine.partitions.active configuration value.\
+        \ Returns an empty array when no partition is active. Available to any authenticated\
+        \ user."
+      operationId: getActivePartitions
+      responses:
+        "200":
+          description: The active cloud partitions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Partition"
   /tap/api/v1/partitions/getPartitions:
     get:
       tags:
@@ -1199,6 +1220,37 @@ paths:
       responses:
         "200":
           description: The signed OCSP response.
+          content:
+            application/ocsp-response:
+              schema:
+                format: binary
+        "404":
+          description: The OCSP responder is not enabled.
+        "500":
+          description: The OCSP request could not be processed.
+  /tap/api/v1/certificate/ocsp/{request}:
+    get:
+      tags:
+        - Certificates
+      summary: Process an OCSP request (GET)
+      description: "The RFC 6960 GET form of the OCSP responder. Checks the revocation\
+        \ status of the certificates in the OCSP request carried in the final path\
+        \ segment and returns a signed OCSP response. Requires the OCSP responder\
+        \ to be enabled. Does not require a client certificate. A request that cannot\
+        \ be decoded receives an OCSP malformedRequest response."
+      operationId: handleRequestEncoded
+      security: []
+      parameters:
+        - name: request
+          in: path
+          description: "The DER-encoded OCSP request, Base64-encoded and then URL-encoded."
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "The signed OCSP response, or an OCSP malformedRequest response\
+            \ when the request could not be decoded."
           content:
             application/ocsp-response:
               schema:
@@ -2530,6 +2582,46 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: The server could not be deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tap/api/v1/servers/{serverId}/generateBundleUrl:
+    get:
+      tags:
+        - Servers
+      summary: Get a server certificate bundle download link
+      description: Returns a presigned URL for downloading the server's certificate
+        bundle. Requires the admin role.
+      operationId: generateBundleUrl_1
+      parameters:
+        - name: serverId
+          in: path
+          description: Identifier of the server.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A presigned download link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BundleUrlResponse"
+        "400":
+          description: The identifier is not a number.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The caller does not have the admin role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No server exists with the given identifier.
           content:
             application/json:
               schema:

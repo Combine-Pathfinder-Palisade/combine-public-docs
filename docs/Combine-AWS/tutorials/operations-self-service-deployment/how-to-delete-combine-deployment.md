@@ -1,6 +1,6 @@
 # Delete/Uninstall a Combine Deployment
 
-(If you perform your own deployments with the Combine automation tool, the 3.14 `destroy` command deletes the Combine VPC CloudFormation stacks listed in `combineVPCStacks`, the Combine Policy and Combine CloudFormation stacks, the contents of the app storage buckets, and the Combine DevOps bucket. It does not disable Termination Protection or delete Combine secrets in AWS Secrets Manager. See [Combine Deployment Process](how-to-combine-deployment.md).)
+(If you perform your own deployments with the Combine automation tool, the 3.14 `destroy` command deletes the Combine VPC CloudFormation stacks listed in `combineVPCStacks`, the Combine Policy and Combine CloudFormation stacks, the contents of the app storage buckets, and the Combine DevOps bucket. In Combine 3.14.7 and later, when run with the profile of a Region that is not the Master Region, it deletes only that Region's Combine VPC and Combine CloudFormation stacks (see [Multi-Region Deployment](how-to-deploy-multiple-regions.md)). It does not disable Termination Protection or delete Combine secrets in AWS Secrets Manager. See [Combine Deployment Process](how-to-combine-deployment.md).)
 
 If Termination Protection is enabled on a Combine CloudFormation stack (the 3.14 automation tool enables it by default), disable it before deleting that stack.
 

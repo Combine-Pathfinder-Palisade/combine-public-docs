@@ -61,7 +61,7 @@ If neither `clientRoleArn` nor `clientKey`/`clientKeySecret` is set, the tool wi
 Required by every command:
 
 - `region` - AWS Region ID in which to deploy.
-- `masterRegion` - AWS Region ID in which to deploy account unique resources. Except in advanced cases this should be set to the same value as `region`.
+- `masterRegion` - AWS Region ID in which to deploy account unique resources. Except in advanced cases this should be set to the same value as `region`. (See [Multi-Region Deployment](how-to-deploy-multiple-regions.md).)
 - `clientAccountId` - AWS Account ID in which to deploy.
 - `emulatedPartitionId` - The emulated partition. Use `AWS_C2S` (C2S), `AWS_SC2S` (SC2S), or `AWS_GOV_CLOUD` (GovCloud). For the EUSC release use `AWS_EUSC`.
 - `hasUserManagementAccount` - `true`/`false`. Except in advanced cases this should be set to `false`. Set to `true` only to build this Deployment as a Follower. (See [Follower Mode](#follower-mode).)
@@ -114,13 +114,15 @@ Example of setting CloudFormation Parameters:
 
 Each key is the CloudFormation Parameter Name and the value is the overridden value to use. (It also replaces any value the tool would otherwise set for that parameter.) These values are only used when the tool creates a stack. If you deploy more than one Combine VPC give each a different `VpcName` parameter (maximum 13 characters) since it is used to name the VPC's resources.
 
+See [Reference - clients.json](reference-clients-json.md) for the commonly changed CloudFormation Parameters of each stack, IAM Overlays, and the User Management Account fields.
+
 ### Follower Mode
 
 By default a Combine Deployment is self contained: TAP keeps its Users, Groups, Servers, and AWS Role Mappings in the Combine DynamoDB Tables in its own Account, and its Certificate Authority chain in its own Account. Follower Mode instead points a Deployment at a second Combine Deployment — the "Leader", also called the User Management Account — and uses the Leader's Account for all of that. Every Follower shares one user base, one set of Groups, and one Certificate Authority chain with the Leader, so a user is created and issued a certificate once and can then log into TAP in the Leader and in each Follower.
 
 Follower Mode also lets Combine "bridge" cross account Role assumptions through the Leader Account. Without it, each Combine Deployment must be trusted individually by every customer workload Account it reaches. With it, those Accounts need to trust only the Leader Account.
 
-Follower Mode is an advanced configuration. Leave `hasUserManagementAccount` set to `false` unless you are intentionally building a Leader / Follower topology.
+Follower Mode is an advanced configuration. Leave `hasUserManagementAccount` set to `false` unless you are intentionally building a Leader / Follower topology. For a step by step procedure see [Add Follower Account](how-to-add-follower-account.md).
 
 Two separate sets of credentials are involved and they are easy to confuse:
 
@@ -160,11 +162,11 @@ The Combine CloudFormation Templates do **not** create the Follower principal fo
 Create the principal yourself in the Leader Account and attach that Managed Policy to it:
 
 - For `followerConfigRole`, create an IAM Role (for example `Combine-I-Follower-Role`) at path `/`, attach the `CombinePolicy...FollowerAccount` Managed Policy, and give it a Trust Policy that allows the Follower Account to assume it. Use the Role Name in `clients.json`.
-- For `followerConfigKey` / `followerConfigKeySecret`, create an IAM User whose name begins with `combine-`, attach the same Managed Policy, and create an Access Key for it. Deploying `combine-provisioning.yaml` with the `EnablePermissionsFollowerAccountCredentials` Parameter set to `true` grants the Combine Provisioning Role the IAM permissions needed to manage `combine-*` Users and their Access Keys.
+- For `followerConfigKey` / `followerConfigKeySecret`, create an IAM User (for example `combine-follower`), attach the same Managed Policy, and create an Access Key for it. (See [Add Follower Account](how-to-add-follower-account.md#option-b-iam-user).)
 
 One Role or User in the Leader Account may be shared by every Follower.
 
-A Follower build reads the Leader's Certificate Authority chain and signs its own signing certificate under it, and it does not generate an Admin User because Users come from the Leader. The Leader must therefore be fully built, including its Admin User, before you build a Follower.
+A Follower build uses the Leader's Certificate Authority chain (it copies the Leader's root and signer certificates and keys, and signs the Follower's TAP and Endpoint server certificates with the Leader's signer), and it does not generate an Admin User because Users come from the Leader. The Leader must therefore be fully built, including its Admin User, before you build a Follower.
 
 #### `clients.json` Example (Follower Mode)
 
@@ -216,7 +218,7 @@ Running the above command without specifying a `<command>` value (or with `help`
 The basic commands are:
 
 - `build` - Performs a new deployment in the master region. It checks Service Quotas, uploads the release to the Combine DevOps bucket, builds a new Certificate Authority chain, creates the Combine, Combine Policy, and Combine VPC CloudFormation Stacks, writes the `configuration` Configuration Values, creates the default TAP Role Mappings, and creates the Admin user.
-- `build_region` - Performs a build in a region that is NOT the master region. It creates the Combine and Combine VPC CloudFormation Stacks in `region`.
+- `build_region` - Performs a build in a region that is NOT the master region. It creates the Combine and Combine VPC CloudFormation Stacks in `region`. (See [Multi-Region Deployment](how-to-deploy-multiple-regions.md).)
 - `build_vpc_only` - Creates each Combine VPC CloudFormation Stack listed in `combineVPCStacks` that does not already exist.
 - `upgrade` - Upgrades an existing Combine 3.14.x Deployment to a newer 3.14.x release. (See below.)
 - `upgrade_to_3_dot_14` - Upgrades an existing Combine 3.13.x Deployment to 3.14.x. (See below.)

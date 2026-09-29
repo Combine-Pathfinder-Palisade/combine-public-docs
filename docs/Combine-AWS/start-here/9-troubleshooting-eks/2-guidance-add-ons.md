@@ -1,6 +1,6 @@
 ---
-sidebar_position: 9
-title: EKS Add-ons
+sidebar_position: 2
+title: Guidance - Add Ons
 
 ---
 

@@ -45,7 +45,9 @@ In all other cases (_such as credentials issued by an EC2 Instance Profile_) Com
 
 Recommended Solution:
 
-- The Combine Team recommends that for generating the presigned `sts:GetCallerIdentity` call (and for that only) that you use the non-emulated Region value. Combine will detect the use of a non-emulated credential for that call and will pass it on without attempting to resign the call.
+- The Combine Team recommends that for generating the presigned `sts:GetCallerIdentity` call (and for that only) that you use the host Region that your emulated Region is mapped to (for example `us-east-1`) and the Regional STS Endpoint of that host Region (for example `sts.us-east-1.amazonaws.com`). Combine will detect that the call is signed for the host Region and will pass it on to AWS without attempting to resign the call.
+
+See [Request Reflection](10-advanced-features/request-reflection.md) for how Combine handles these calls, including the legacy global STS Endpoint (`sts.amazonaws.com`) and the related Configuration Values.
 
 ### RDS and other non-HTTP/s Endpoint Proxying
 
@@ -90,6 +92,25 @@ This means that customers must consistently use the same Service Principal acros
 Recommended Solution:
 
 - Choose a single Service Principal and use it consistently across all IAM calls within a given workflow.
+
+#### RDS Service Principal (US Top Secret Partition)
+
+In the US Top Secret Partition the RDS Service Principal is now domain optional: `rds.amazonaws.com` (or `rds.<region>.amazonaws.com`) is accepted in addition to the legacy `rds.c2s.ic.gov`.
+
+- Combine `3.14.5` added support for the domain optional RDS Service Principal and began returning `rds.amazonaws.com` by default.
+- Combine `3.14.5.6` reverted this change.
+- Combine `3.14.6` restored support for `rds.amazonaws.com` but retains the legacy default behavior of returning `rds.c2s.ic.gov` as the RDS Service Principal.
+
+Combine retains the legacy behavior because, as described above, it cannot track which Service Principal was used in earlier requests. Changing the default would suddenly break existing client state (for example TerraForm state or IAM Policy documents that record `rds.c2s.ic.gov`) and force end users to migrate to `rds.amazonaws.com` immediately.
+
+The legacy behavior is controlled per emulated Region by these Configuration Values:
+
+| Configuration Value | Default |
+| --- | --- |
+| `combine.endpoints.aws.rewriteOperation.host.servicePrincipal.optionalDomains.override.us-iso-east-1` | `rds` |
+| `combine.endpoints.aws.rewriteOperation.host.servicePrincipal.optionalDomains.override.us-iso-west-1` | `rds` |
+
+To disable the legacy behavior (so Combine returns `rds.amazonaws.com`), set both Configuration Values to a blank (empty) value. To restore the legacy behavior, delete the entries or set them back to `rds`. (See [Edit Combine Configuration Values](../tutorials/operations/how-to-edit-combine-configuration.md).)
 
 ### `WLDEVELOPER` Role
 

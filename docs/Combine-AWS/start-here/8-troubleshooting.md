@@ -17,4 +17,4 @@ While Combine enforces access to AWS Services only through emulated Endpoints, i
 
 - Do not create VPC PrivateLink Endpoints for AWS Services with a security group that excludes Combine server access. The Combine Team can help determine what security group rules are needed. (As of Combine Version 3.14 Combine blocks creating a VPC Endpoint for an AWS Service that uses a Security Group by default.)
 
-- As noted on the [Troubleshooting - EKS](/Combine-AWS/start-here/troubleshooting-eks) page the EKS Security Group will have to allow Combine server access as well.
+- As noted on the [Troubleshooting - EKS Guidance](/Combine-AWS/start-here/troubleshooting-eks/guidance) page the EKS Security Group will have to allow Combine server access as well.

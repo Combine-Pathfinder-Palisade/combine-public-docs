@@ -23,3 +23,5 @@ Here is an example command that is made from inside a Combine VPC:
 `curl -X POST -H "X-Requested-By: Combine" --data-binary @csr.pem --cacert ca-chain.cert.pem --cert <username>.cert.pem:<password> --key <username>.key.pem "https://cap.cia.ic.gov/tap/api/v1/admin/certificate/custom"`
 
 _NOTE: You need to provide a CSRF `X-Requested-By` header._
+
+See [Call the TAP API](../../tutorials/development/how-to-call-the-tap-api.md) for how TAP API requests are authenticated, the required headers, and more examples.

@@ -1,0 +1,9 @@
+{
+  "label": "Troubleshooting - EKS",
+  "position": 9,
+  "link": {
+    "type": "generated-index",
+    "slug": "/Combine-AWS/start-here/troubleshooting-eks",
+    "description": "Guidance for using AWS EKS with Combine"
+  }
+}
