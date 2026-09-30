@@ -6,18 +6,19 @@ The AWS Systems Manager (SSM) Agent is enabled by default on many AMIs. Left unc
 discovers its Region from the EC2 Instance Metadata Service (IMDS) and then talks to the **commercial**
 Systems Manager endpoints for that Region (for example `ssm.us-east-1.amazonaws.com`).
 
-Inside Combine this does not work. The EC2 instance is hosted in a commercial Region, so its IMDS
-reports that commercial Region. Combine, however, emulates only the reserved Region (for example
-`us-iso-east-1`). An unconfigured agent therefore:
-
-- sends traffic to commercial endpoints, which bypasses the emulation, and
-- signs its requests for the commercial Region, which Combine rejects with a *signature region mismatch*
-  (`AuthFailure` / `SignatureDoesNotMatch`, "Credential should be scoped to a valid region").
+Inside Combine this bypasses the emulation. The EC2 instance is hosted in a commercial Region, so its
+IMDS reports that commercial Region. Combine, however, emulates only the reserved Region (for example
+`us-iso-east-1`). An unconfigured agent therefore sends its traffic to the commercial endpoints, and
+Combine never sees it.
 
 _NOTE: By default, the Combine AirGap Layer exempts the commercial SSM traffic through the
 `EnableAirgapAccessSSM` parameter of the `combine-vpc.yaml` template, so it is not blocked (see
 [Known Issues](../../start-here/6-known-issues.md)). If that exemption is disabled, the Combine
 Firewall blocks this traffic._
+
+Pointing the agent's endpoints at Combine is not enough on its own. Unless you also set the Region, the
+agent signs its requests for the commercial Region, and Combine rejects them with `SignatureDoesNotMatch`
+("Credential should be scoped to a valid region") and raises a **Signature Region Mismatch** Alert Event.
 
 To make the agent work inside Combine, you must change three things:
 
@@ -48,9 +49,9 @@ For Ubuntu and Debian, see the [Ubuntu / Debian Variant](#ubuntu--debian-variant
   the account and the instance profile role's trust policy must allow Combine to assume it. For details,
   see the [Rewriting](../../start-here/5-orientation.md#rewriting) section of the Orientation page._
 
-- **Systems Manager is supported in your Combine Deployment.** The `ssm`, `ssmmessages`, and
-  `ec2messages` services must be enabled for your emulated Region. If you are unsure, contact your
-  Combine Support Team.
+- **Combine 3.14.7 or later.** Combine accepts the `ssm` and `ssmmessages` endpoints in the US Top
+  Secret and US Secret Partitions starting with Combine 3.14.7. Earlier releases reject them. If you
+  are unsure which release you run, contact your Combine Support Team.
 - **The Combine CA public certificate.** This is the `certificates/ca.cert.pem` file from your
   Credential Package (the same CA you install to reach the Combine Dashboard). You will paste its
   contents into the UserData script below.
@@ -91,11 +92,9 @@ update-ca-trust extract
 #    endpoint), and the per-service Endpoint values route traffic to Combine.
 #    Any fields not listed here keep their default values.
 # ---------------------------------------------------------------------------
+mkdir -p /etc/amazon/ssm
 cat > /etc/amazon/ssm/amazon-ssm-agent.json <<'CFG_EOF'
 {
-  "Mds": {
-    "Endpoint": "ec2messages.us-iso-east-1.c2s.ic.gov"
-  },
   "Ssm": {
     "Endpoint": "ssm.us-iso-east-1.c2s.ic.gov"
   },
@@ -132,10 +131,17 @@ every field you do not specify keeps its default value._
 | --- | --- |
 | `Agent.Region` | The Region the agent uses to **sign** its API requests. On a Combine instance, IMDS reports the commercial host Region, so this override is required. Without it, Combine rejects every request with a signature region mismatch. |
 | `Ssm.Endpoint` | The Systems Manager control endpoint (for example, `UpdateInstanceInformation` and command polling). |
-| `Mds.Endpoint` | The message delivery service (`ec2messages`) used for Run Command. |
 | `Mgs.Endpoint` / `Mgs.Region` | The message gateway service (`ssmmessages`) used by Session Manager. This service has its own Region field, so set both. |
 | `S3.Endpoint` | Used for the Distributor package service and for streaming command / session output to S3. |
 | `Kms.Endpoint` | Used to encrypt Session Manager sessions when KMS encryption is enabled. |
+
+_NOTE: The configuration intentionally omits `Mds.Endpoint`. The agent's message delivery service
+client (`ec2messages`) has no Region setting and always signs its requests for the Region that IMDS
+reports (the commercial host Region), so Combine would reject each of its requests with
+`SignatureDoesNotMatch` and raise a **Signature Region Mismatch** Alert Event. Without the override, the
+client uses the commercial `ec2messages.<host region>.amazonaws.com` endpoint, which the Combine AirGap
+Layer exempts by default (`EnableAirgapAccessSSM`). The agent also receives Run Command messages through
+the message gateway service (`ssmmessages`), which this configuration does point at Combine._
 
 ---
 
@@ -159,12 +165,14 @@ The exact wording varies by agent version, but in a healthy log you should see m
 - the instance being **successfully registered**, and
 - the agent **starting message polling**.
 
-You should **not** see `TLS handshake failed`, `unable to connect to endpoint`, `AuthFailure`, or any
-reference to a commercial (`amazonaws.com`) endpoint.
+You should **not** see `TLS handshake failed`, `unable to connect to endpoint`, or
+`SignatureDoesNotMatch`. References to the commercial `ec2messages.<host region>.amazonaws.com` endpoint
+are expected, because the configuration leaves the message delivery service on its default endpoint (see
+the note under [Why Each Field Matters](#why-each-field-matters)).
 
 If everything is working, the instance will appear as **Online** in **Systems Manager → Fleet Manager**
 (and **Session Manager** will be able to open a shell to it) in the AWS Console for the account hosting
-Combine.
+Combine, in the host Region that your emulated Region is mapped to (for example, `us-east-1`).
 
 _NOTE: UserData output is captured in `/var/log/cloud-init-output.log`. If the agent never picks up the
 new configuration, check that file first to confirm the script ran without error._
@@ -208,9 +216,9 @@ CA_EOF
 update-ca-certificates
 
 # 2. Write the same amazon-ssm-agent.json shown above.
+mkdir -p /etc/amazon/ssm
 cat > /etc/amazon/ssm/amazon-ssm-agent.json <<'CFG_EOF'
 {
-  "Mds": { "Endpoint": "ec2messages.us-iso-east-1.c2s.ic.gov" },
   "Ssm": { "Endpoint": "ssm.us-iso-east-1.c2s.ic.gov" },
   "Mgs": { "Region": "us-iso-east-1", "Endpoint": "ssmmessages.us-iso-east-1.c2s.ic.gov" },
   "S3":  { "Endpoint": "s3.us-iso-east-1.c2s.ic.gov" },
@@ -230,8 +238,9 @@ snap restart amazon-ssm-agent
 | Symptom | Likely cause |
 | --- | --- |
 | `TLS handshake failed` / `x509: certificate signed by unknown authority` | The Combine CA is not in the OS trust store. Confirm the certificate was written correctly and that `update-ca-trust extract` (Amazon Linux/RHEL) or `update-ca-certificates` (Ubuntu/Debian) ran successfully. |
-| `AuthFailure`, `SignatureDoesNotMatch`, or "Credential should be scoped to a valid region" | The agent is signing for the wrong Region. Confirm `Agent.Region` is set to your emulated Region in `/etc/amazon/ssm/amazon-ssm-agent.json` and that the agent was restarted. |
-| Combine reports Alert Events for calls to the commercial `SSM` endpoint | The endpoint overrides were not applied. Confirm the `Ssm` / `Mgs` / `Mds` endpoints are set and that the agent restarted. |
+| `SignatureDoesNotMatch` or "Credential should be scoped to a valid region", with a **Signature Region Mismatch** Alert Event | The agent is signing for the wrong Region. Confirm `Agent.Region` is set to your emulated Region in `/etc/amazon/ssm/amazon-ssm-agent.json` and that the agent was restarted. |
+| Combine reports Alert Events for calls to the commercial `SSM` endpoint | The endpoint overrides were not applied. Confirm the `Ssm` and `Mgs` endpoints are set and that the agent restarted. |
+| **Signature Region Mismatch** Alert Events for `ec2messages` | `Mds.Endpoint` points at a Combine endpoint. Remove it from `/etc/amazon/ssm/amazon-ssm-agent.json` and restart the agent (see the note under [Why Each Field Matters](#why-each-field-matters)). |
 | The instance never appears in Fleet Manager | The instance profile is missing Systems Manager permissions, or Combine could not infer its credentials. Review the [Prerequisites](#prerequisites) and the caller-identity conditions in the [Rewriting](../../start-here/5-orientation.md#rewriting) section of the Orientation page. |
 
 If you are still stuck, gather `/var/log/amazon/ssm/amazon-ssm-agent.log` and
