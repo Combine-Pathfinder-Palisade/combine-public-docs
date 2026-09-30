@@ -1,17 +1,16 @@
-# Use Logs Insights
+# Use CloudWatch Logs Insights
 
 ## Overview
 
-This guide provides a step-by-step approach to utilizing AWS Logs Insights for troubleshooting and monitoring simulation issues, particularly in environments such as AWS C2S and SC2S. The following example demonstrates how to investigate a potential simulation issue based on a real-world request.
+This guide shows how to use CloudWatch Logs Insights to troubleshoot and monitor emulation issues, for example in a Combine Deployment that emulates C2S or SC2S. It works through a real-world example: investigating a potential emulation issue from a customer's request.
+
+For the Log Groups that Combine writes to and the structure of a log entry, see [View Combine Logs](how-to-view-combine-logs.md).
 
 ## Example Scenario
 
-- **Request from Client:** 
-    - A simulation issue was reported, and the following log snippet sent to us by the client needs investigating.
+A customer reported a potential emulation issue and sent the following log snippet from their application:
 
-- **Log Snippet from Client:**
-
- ``` json
+```json
 {
     "@timestamp": "2025-01-29T21:15:47.257+00:00",
     "@version": 1,
@@ -24,63 +23,60 @@ This guide provides a step-by-step approach to utilizing AWS Logs Insights for t
 }
 ```
 
-- **Look for patterns in the error messages**
-    - Common issues may include:
-        - **Permissions Denied**
-        - **Mismatched Regions or Endpoints**
-        - **Error Code/Type**
-        - **Account of origin**
-        - **Services**
+### What to Look For
 
-    - Other Troubleshooting Steps:
-        - **Verify if the Role ARN exists in the target account**
-        - **Check IAM permissions for the source account**
-        - **Confirm the AssumeRole policy allows intended access**
-        - **Ensure the request is routed to the correct STS endpoint**
+Look for patterns in the error messages, such as:
+
+- Permissions denied
+- Mismatched Regions or endpoints
+- The error code or type
+- The account of origin
+- The service
+
+Other troubleshooting steps:
+
+- Verify that the Role ARN exists in the target account.
+- Check the IAM permissions of the source account.
+- Confirm that the AssumeRole policy allows the intended access.
+- Make sure the request is routed to the correct STS endpoint.
 
 ## Step-by-Step Guide
 
-1. **Access Logs Insights**
+### Step 1: Open CloudWatch Logs Insights
 
-    - Navigate to the AWS CloudWatch console
+1. Open the CloudWatch console.
+2. In the left navigation pane, choose **Logs Insights**.
+3. Choose the Log Group to search, for example `Combine_Server_Endpoint` (or `Combine_<shard id>_Server_Endpoint` if your Combine Deployment has a Shard ID).
 
-    - Select Logs Insights from the left-hand menu
+### Step 2: Write the Query
 
-    - Choose the relevant log group (e.g. `Combine_Server_Endpoint`, or `Combine_<shard id>_Server_Endpoint` if your Combine Deployment has a Shard ID)
+Use a query like the following to find errors, in this case errors related to AWS STS AssumeRole operations:
 
-2. **Construct Your Query**
-    - Use the following query to identify errors, e.g. related to AWS STS AssumeRole operations:
-
- ``` sql
+```sql
 fields @timestamp, @message
 | filter transaction.response.code = "400"
 | filter transaction.request.host = "sts.us-iso-east-1.c2s.ic.gov"
 | sort @timestamp desc
 | limit 50
- ```
+```
 
-3. **Query Breakdown**
-- `fields @timestamp, @message`
-    - Displays the timestamp and message for each log entry
-    - Combine writes each log entry as JSON, so Logs Insights automatically discovers nested fields such as `transaction.response.code` and `transaction.request.host`
+### Step 3: Understand the Query
 
-- `filter transaction.response.code = "400"`
-    - Filters logs where the response code indicates an error (HTTP 400)
+| Line | What it does |
+|---|---|
+| `fields @timestamp, @message` | Displays the timestamp and message of each log entry. |
+| `filter transaction.response.code = "400"` | Keeps log entries whose response code indicates an error (HTTP 400). |
+| `filter transaction.request.host = "sts.us-iso-east-1.c2s.ic.gov"` | Keeps log entries for the STS service in the C2S Region. |
+| `sort @timestamp desc` | Sorts the results, most recent first. |
+| `limit 50` | Limits the output to the first 50 log entries. |
 
-- `filter transaction.request.host = "sts.us-iso-east-1.c2s.ic.gov"`
-    - Focuses on logs related to the STS service in the C2S region
+Combine writes each log entry as JSON, so Logs Insights automatically discovers nested fields such as `transaction.response.code` and `transaction.request.host`.
 
-- `sort @timestamp desc`
-    - Sorts results by the most recent first
+### Step 4: Analyze the Results
 
-- `limit 50`
-    - Limits the output to the top 50 records
+The query returns the transaction log entry for the failed request:
 
-4. **Analyze the Results**
-
-- Result Log Snippet from Log Insights Query
-
-``` json
+```json
 {
   "transaction": {
     "success": "false",
@@ -149,28 +145,41 @@ fields @timestamp, @message
 }
 ```
 
-5. **Key Insights Extracted from the Logs**
-    - **Account:** `111122223333`
-    - **Source IP:** `203.0.113.10`
-    - **Invalid Role:** `ARN: arn:aws:iam::444455556666:WLDEVELOPER`
-    - **Error Code:** `400`
-    - **user-agent:** `aws-sdk-java`
+_NOTE: `errorLogCount` counts only the entries in `errorLog`. A message that begins with `ERROR:` in `messages`, as in this example, does not count toward it, so a filter on `errorLogCount` does not find this entry. To find failed AWS API Calls, filter on `transaction.success` or the response code instead._
 
-6. **Response to client**
-    - "We see that account **111122223333** attempted an **AssumeRole** operation from a **Java program** using **IP 203.0.113.10**. The request included an invalid role **arn:aws:iam::444455556666:WLDEVELOPER**."
+For what each part of a transaction log entry holds, see [Endpoint Logs](how-to-view-combine-logs.md#endpoint-logs).
+
+### Step 5: Extract the Key Details
+
+The log entry shows:
+
+- **Account:** `111122223333` (`transaction.metadata.accountNumber`)
+- **Source IP:** `203.0.113.10` (the `x-forwarded-for` header)
+- **Invalid role:** `arn:aws:iam::444455556666:WLDEVELOPER` (the `RoleArn` parameter and the `ERROR` entry in `messages`)
+- **Error code:** `400` (`transaction.response.code`)
+- **User agent:** `aws-sdk-java` (the `user-agent` header)
+
+### Step 6: Respond to the Customer
+
+In this example, the response to the customer was:
+
+> We see that account **111122223333** attempted an **AssumeRole** operation from a **Java program** using **IP 203.0.113.10**. The request included an invalid role **arn:aws:iam::444455556666:WLDEVELOPER**.
 
 ## Best Practices
 
-- Use Descriptive Filters: Filter by error codes and endpoints
-- Regular Monitoring: Set up scheduled queries or CloudWatch alarms
-- Documentation: Track known issues and resolutions
+- **Use descriptive filters.** Filter by error code and endpoint.
+- **Monitor regularly.** Set up scheduled queries or CloudWatch alarms.
+- **Document what you find.** Track known issues and their resolutions.
 
-## Key differences searching Raw Logs vs Log Insights 
-- SQL-like queries (e.g., `fields`, `filter`, `sort`, `parse`)
-- Aggregations using stats (e.g., `count()`, `avg()`, `sum()`)
-- Regular expressions (`parse` function) to extract values
-- Real-time Filtering & Sorting
-- Statistical Analysis & Metrics <!-- TODO: Add wiki for this  -->
-- Log Group Joins (Cross-Log Analysis) <!-- TODO: Add wiki for this  -->
-- Performance & Cost Efficiency <!-- TODO: Add wiki for this  -->
-- Visualization & Dashboards <!-- TODO: Add wiki for this  -->
+## Logs Insights Compared With Searching Log Streams
+
+Compared with searching a Log Group's log streams with a filter pattern (see [Sample Queries](how-to-view-combine-logs.md#sample-queries)), CloudWatch Logs Insights offers:
+
+- SQL-like queries (for example `fields`, `filter`, `sort`, and `parse`)
+- Aggregations with `stats` (for example `count()`, `avg()`, and `sum()`)
+- Regular expressions (the `parse` command) to extract values
+- Filtering and sorting
+- Statistical analysis and metrics <!-- TODO: Add wiki for this  -->
+- Querying several Log Groups at once (cross-log analysis) <!-- TODO: Add wiki for this  -->
+- Performance and cost efficiency <!-- TODO: Add wiki for this  -->
+- Visualization and dashboards <!-- TODO: Add wiki for this  -->

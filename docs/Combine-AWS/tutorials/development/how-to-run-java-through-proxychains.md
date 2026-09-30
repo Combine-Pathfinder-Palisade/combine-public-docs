@@ -1,116 +1,105 @@
-# Run Java Through Socks Proxy with proxychains
+# Run Java Through a SOCKS Proxy with ProxyChains
 
-### **Steps to Get the `cap-credentials-provider` Java Application to Work with ProxyChains**  
+This guide shows you how to configure ProxyChains to route the traffic of a Java application (`cap-credentials-provider`) through a SOCKS5 proxy.
 
-This guide details all the required steps to configure **ProxyChains** to route Java application (`cap-credentials-provider`) traffic through a SOCKS5 proxy.
-A SOCKS proxy can be used to provide a different exit point for traffic that is originating from the application, almost like a lightweight VPN tunnel. When the application is run with proxychains all of its traffic is captured and redirected through the SSH based SOCKS proxy (established later in this example). The traffic then exits out of the end of the SSH tunnel and all replies are routed back through the SSH tunnel to the originating application.
+A SOCKS proxy gives the application's traffic a different exit point, much like a lightweight VPN tunnel. When you run the application with ProxyChains, ProxyChains captures all of the application's traffic and redirects it through an SSH-based SOCKS proxy (you start this proxy in [step 3](#3-start-the-socks5-proxy)). The traffic exits at the far end of the SSH tunnel, and all replies return through the tunnel to the application.
 
-#### **This guide currently works ONLY with Linux based operating systems.**
-At this time it appears that Mac OS does not allow network traffic to be redirected from Java through proxychains / SOCKS and the issue will need to be resolved in order to utilize the functionality. The primary suspect is SIP (System Integrity Protection).
+_NOTE: This guide currently works only on Linux. At this time, macOS does not appear to allow network traffic from Java to be redirected through ProxyChains / SOCKS, and this issue must be resolved before you can use this approach on macOS. The primary suspect is System Integrity Protection (SIP). Once it is resolved, you will be able to develop and debug Java applications locally while they effectively run within the VPC._
 
-Should this problem be resolved it will allow for local development and debugging of Java applications while they are effectively executed within the VPC.
+## 1. Install ProxyChains
 
----
-
-## **1. Install Proxychains**
-Ensure the following are installed on your system:
+Install the `proxychains4` package:
 
 ```sh
 sudo apt install proxychains4
 ```
 
----
+## 2. Configure ProxyChains
 
-## **2. Configure ProxyChains**
-Modify the configuration file `/etc/proxychains.conf`:
+Open the configuration file `/etc/proxychains4.conf`:
 
 ```sh
-sudo nano /etc/proxychains.conf
+sudo nano /etc/proxychains4.conf
 ```
 
-### **Required Changes:**
-Many of these options are already present within the configuration file. Ensure that they are not commented out.
-1. **Set the proxy mode to strict**:
-   ```
+### Required Changes
+
+Many of these options are already present in the configuration file. Make sure they are not commented out.
+
+1. Set the proxy mode to strict:
+   ```text
    strict_chain
    ```
-2. **Enable DNS resolution via proxy**:
-   ```
+2. Enable DNS resolution through the proxy:
+   ```text
    proxy_dns
    ```
-3. **Add your SOCKS5 proxy at the end of the file**:
-   ```
+3. Add your SOCKS5 proxy at the end of the file:
+   ```text
    [ProxyList]
    socks5  127.0.0.1 9050
    ```
-   *(Replace `127.0.0.1 9050` with the actual proxy settings if different.)*
+   If your proxy uses a different address or port, replace `127.0.0.1 9050` with your proxy settings.
 
-Save and exit (`Ctrl + X`, then `Y`, then `Enter`).
+Save and exit (**Ctrl + X**, then **Y**, then **Enter**).
 
----
+## 3. Start the SOCKS5 Proxy
 
-## **3. Ensure the Proxy is Running**
-If using an **SSH-based SOCKS5 proxy**, start it with:
+If you use an SSH-based SOCKS5 proxy, start it:
+
 ```sh
 ssh -D 9050 -i /path/to/key.pem -N -f user@proxy-server-ip
 ```
-Confirm it’s running:
+
+Confirm that it is running:
+
 ```sh
 ss -pantu | grep 9050
 ```
 
----
+## 4. Run the Java Application with ProxyChains
 
-## **4. Run Java Application with ProxyChains**
-Run the built Java application using `proxychains`:
+Run the built Java application with ProxyChains. Make sure you use the correct JAR file name.
 
 ```sh
 proxychains4 java -jar target/cap-credentials-provider.jar
 ```
-*(Ensure the correct JAR file name is used.)*
 
-Successful execution should yield output similar to the following:
+A successful run produces output similar to the following:
+
 ```sh
-[proxychains] config file found: /etc/proxychains.conf
+[proxychains] config file found: /etc/proxychains4.conf
 [proxychains] preloading /usr/lib/x86_64-linux-gnu/libproxychains.so.4
 [proxychains] DLL init: proxychains-ng 4.16
 ...
 [proxychains] Strict chain  ...  127.0.0.1:9050  ...  website.target.something.mil:443  ...  OK
 ```
 
----
+## 5. Debug and Test
 
-## **5. Debugging & Testing**
-- **Check network traffic via proxy:**
+- Check network traffic through the proxy. If the command returns the proxy's IP address, ProxyChains is working.
   ```sh
   proxychains4 curl ifconfig.me
   ```
-  If it returns the proxy’s IP, ProxyChains is working.
-
-- **Run Java with debugging logs:**
+- Run Java with debugging logs to get detailed networking logs:
   ```sh
   proxychains4 java -Djavax.net.debug=all -jar target/cap-credentials-provider.jar [arguments]
   ```
-  This provides detailed networking logs.
 
----
+## 6. Verify DNS Resolution Over the Proxy
 
-## **6. Verify DNS Resolution Over Proxy**
-Since Java applications may directly resolve DNS, test if `proxychains` is handling DNS correctly:
+Java applications may resolve DNS directly. Test whether ProxyChains handles DNS correctly:
 
 ```sh
 proxychains4 dig +tcp website.target.something.mil
 ```
 
----
+## Checklist
 
-### **Final Checklist**
-✅ **Install proxychains4** (`sudo apt install proxychains4`)
-✅ **Configure ProxyChains** (`/etc/proxychains.conf`).  
-✅ **Ensure the SOCKS5 proxy is running** (`ssh -D 9050`).  
-✅ **Run Java through ProxyChains** (`proxychains4 java -jar ...`).  
-✅ **Verify traffic & DNS resolution** (`proxychains4 dig +tcp ...`).  
+When you finish, all network requests from the Java application are routed through the SOCKS5 proxy by ProxyChains. To confirm your setup, check that you have:
 
----
-
-This setup will ensure **all network requests from the Java application are routed through the SOCKS5 proxy** via ProxyChains.
+- Installed `proxychains4` (`sudo apt install proxychains4`).
+- Configured ProxyChains (`/etc/proxychains4.conf`).
+- Started the SOCKS5 proxy (`ssh -D 9050`).
+- Run Java through ProxyChains (`proxychains4 java -jar ...`).
+- Verified traffic and DNS resolution (`proxychains4 dig +tcp ...`).

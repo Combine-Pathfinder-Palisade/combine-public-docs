@@ -1,19 +1,23 @@
-# View Customer Firewall Logs
+# View Combine Firewall Logs
 
-### Steps
+The Combine Firewall writes the connections it alerts on or blocks to the `Combine_Firewall` CloudWatch Log Group. For which connections appear in this Log Group, see [Log Streams](../how-to-view-combine-logs.md#log-streams) in View Combine Logs.
 
-1. Log into the AWS Console.
-2. Navigate to CloudWatch Console.
-3. In the left pane, expand **"Logs"** and click on **"Log Groups"**.
-4. In the **Log Groups** window, locate and click on the Log Group `Combine_Firewall` (or `Combine_[SHARD ID]_Firewall` if your Combine Deployment has a Shard ID)
-5. Ensure the **"Log Streams"** tab is open at the bottom. Click the **"Search all log streams"** button on the right. (For real-time logs, click **"Start Tailing"** instead.)
-6. Use the **"Highlight Term"** field to highlight specific strings of interest. (For example, to highlight the IP address `1.2.3.4`, type `1.2.3.4` into the **"Highlight Term"** field.)
-7. Look for log entries containing the terms **"reject"** or **"block"**.
+## Steps
 
-### Filtering firewall entries for blocked traffic:
+1. Sign in to the AWS Console.
+2. Open the CloudWatch console.
+3. In the left pane, expand **Logs** and choose **Log Groups**.
+4. In the **Log Groups** window, choose the `Combine_Firewall` Log Group (or `Combine_<shard id>_Firewall` if your Combine Deployment has a Shard ID).
+5. Make sure the **Log Streams** tab is open at the bottom, and choose **Search all log streams** on the right. For real-time logs, choose **Start Tailing** instead.
+6. To highlight a string of interest, type it in the **Highlight Term** field. For example, to highlight the IP address `1.2.3.4`, type `1.2.3.4`.
+7. Look for log entries that contain `reject` or `block`.
 
-The following filter will find sets of IP addresses that are being blocked:
+## Filter for Blocked Traffic
 
- ```sh
+The following filter pattern finds blocked traffic to a set of IP addresses:
+
+```sh
 { ($.event.dest_ip = "1.2.3.4" || $.event.dest_ip = "5.6.7.8" || $.event.dest_ip = "9.10.11.12") && $.event.alert.action = "blocked" }
- ```
+```
+
+For more filter patterns and for CloudWatch Logs Insights, see [Sample Queries](../how-to-view-combine-logs.md#sample-queries) and [Use CloudWatch Logs Insights](../how-to-view-combine-logs-log-insights.md). To exempt a domain from the Combine Firewall, see [Firewall Exception List](how-to-configure-airgap-layer.md#firewall-exception-list).

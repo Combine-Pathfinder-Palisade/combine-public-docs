@@ -1,18 +1,16 @@
 # Add Follower Account
 
-## Overview
+A Follower is a Combine Deployment that uses another Combine Deployment, the Leader (also called the User Management Account), for its Users, Groups, AWS Role Mappings, and Certificate Authority chain. You create a user once in the Leader, and the user signs in to the Leader's TAP and to every Follower's TAP with the same certificate. The Follower's servers also "bridge" cross account Role assumptions through the Leader Account, so the Accounts they reach need to trust only the Leader Account.
 
-A Follower is a Combine Deployment that uses another Combine Deployment, the Leader (also called the User Management Account), for its Users, Groups, AWS Role Mappings, and Certificate Authority chain. A user is created once in the Leader and signs in to the Leader's TAP and to every Follower's TAP with the same certificate. The Follower's servers also "bridge" cross account Role assumptions through the Leader Account, so the Accounts they reach need to trust only the Leader Account.
+Add a Follower when you run more than one Combine Deployment (for example, one per Account or one per Shard) and want a single user base and a single Certificate Authority chain across them. If you run a single Combine Deployment, you do not need Follower Mode.
 
-Add a Follower when you run more than one Combine Deployment (for example one per Account, or one per Shard) and want a single user base and a single Certificate Authority chain across them. If you run a single Combine Deployment you do not need Follower Mode.
-
-This page is the procedure. For the definition of each `clients.json` field see [Follower Mode](how-to-combine-deployment.md#follower-mode) in the deployment guide.
+This guide is only for customers who have access to the Combine automation tool and perform their own build and deployment operations. It is the step by step procedure. For the definition of each `clients.json` field, see [Follower Mode](how-to-combine-deployment.md#follower-mode) in the Combine Deployment Process guide.
 
 ## Prerequisites
 
-- **The Leader is fully built.** The Leader is an ordinary Combine 3.14.x Deployment built with the `build` command in its Master Region. Its `clients.json` profile keeps `hasUserManagementAccount` set to `false`. A Follower build reads the Leader's Certificate Authority chain, and the Managed Policy the Follower principal needs is created by the Leader's Combine CloudFormation Stack, so the Leader must exist first.
-- **The Leader has an Admin User.** A Follower build does not create an Admin User, because Users come from the Leader. You will use an existing Leader administrator to assign the Follower's AWS Roles to users.
-- **The Follower Account is ready for a normal build.** Everything in the deployment guide's [Prerequisites](how-to-combine-deployment.md#prerequisites) applies, including the Provisioning Role (see [Shared Role](../../start-here/3-before-deployment-shared-role.md)) and Service Quota.
+- **The Leader is fully built.** The Leader is an ordinary Combine 3.14.x Deployment built with the `build` command in its Master Region. Its `clients.json` profile keeps `hasUserManagementAccount` set to `false`. A Follower build reads the Leader's Certificate Authority chain, and the Leader's Combine CloudFormation Stack creates the Managed Policy that the Follower principal needs, so the Leader must exist first.
+- **The Leader has an Admin User.** A Follower build does not create an Admin User, because Users come from the Leader. You use an existing Leader administrator to assign the Follower's AWS Roles to users.
+- **The Follower Account is ready for a normal build.** Everything in the Combine Deployment Process guide's [Prerequisites](how-to-combine-deployment.md#prerequisites) applies, including the Combine Provisioning Role (see [Shared Role](../../start-here/3-before-deployment-shared-role.md)) and Service Quota.
 - **Both are in the same host partition.** Combine builds the Leader's ARNs with the Follower's own partition, and the Follower's IAM Roles trust `arn:<partition>:iam::<leader account id>:root` in that same partition. A Leader in AWS Commercial and a Follower in AWS GovCloud (or the reverse) cannot work.
 
 Gather these values from the Leader's `clients.json` profile before you start:
@@ -32,14 +30,14 @@ The Follower's TAP and Endpoint Servers reach the Leader's DynamoDB Tables and S
 
 The Policy allows `sts:AssumeRole` on any Role, `dynamodb:*` on the Leader's `combine-*` Tables in the Leader's Master Region, and `secretsmanager:*` on the Leader's `combine/*` Secrets.
 
-Create the principal before you run the Follower build, since the Follower's servers start using it as soon as the build launches them. Use an IAM Role where your environment allows it. One Role or User can be shared by every Follower as long as its Trust Policy (for a Role) trusts each Follower Account.
+Create the principal before you run the Follower build, because the Follower's servers start using it as soon as the build launches them. Use an IAM Role where your environment allows it. Every Follower can share one Role or User, as long as the Role's Trust Policy trusts each Follower Account.
 
 ### Option A: IAM Role
 
 Create an IAM Role in the Leader Account:
 
 - Use the IAM root path (`/`). Combine builds the Role ARN as `arn:<partition>:iam::<leader account id>:role/<role name>`.
-- Choose any name, for example `Combine-I-Follower-Role`. You will enter this **name** (not the ARN) as `followerConfigRole`.
+- Choose any name, for example `Combine-I-Follower-Role`. You enter this **name** (not the ARN) as `followerConfigRole`.
 - Attach the `CombinePolicy[<ShardId>]FollowerAccount` Managed Policy.
 - Give it a Trust Policy that trusts the Follower Account:
 
@@ -60,7 +58,7 @@ Create an IAM Role in the Leader Account:
 
 (Use `arn:aws-us-gov:` instead of `arn:aws:` if your Combine Deployments are hosted in AWS GovCloud.)
 
-The Follower's servers assume this Role with their Instance Profile credentials and the Role Session Name `CombineUserManagementAccount`. TAP servers run as the `Combine-TAP` Role and Endpoint Servers run as the `Combine-Endpoints` Role (`Combine-<ShardId>-TAP` and `Combine-<ShardId>-Endpoints` if the Follower has a Shard ID). Both already have permission to call `sts:AssumeRole`. To trust only those two Roles, add a condition:
+The Follower's servers assume this Role with their Instance Profile credentials and the Role Session Name `CombineUserManagementAccount`. TAP Servers run as the `Combine-TAP` Role and Endpoint Servers run as the `Combine-Endpoints` Role (`Combine-<ShardId>-TAP` and `Combine-<ShardId>-Endpoints` if the Follower has a Shard ID). Both already have permission to call `sts:AssumeRole`. To trust only those two Roles, add a condition:
 
 ```json
 {
@@ -87,17 +85,17 @@ The Follower's servers assume this Role with their Instance Profile credentials 
 
 Use the condition rather than listing the two Role ARNs as the `Principal`. The Follower's Roles do not exist until its build creates them, and IAM does not accept a Role ARN as a `Principal` if that Role does not exist.
 
-> _NOTE: With a Role, the credentials that the Follower's TAP issues to users come from a chained Role session, and AWS limits a chained session to one hour. Keep the Follower's `combine.tap.users.session.duration.limit`, `combine.tap.users.session.duration.default`, and `combine.tap.users.session.dashboard.duration.default` Configuration Values at their default of `3600` or less._
+_NOTE: With a Role, the credentials that the Follower's TAP issues to users come from a chained Role session, and AWS limits a chained session to one hour. Keep the Follower's `combine.tap.users.session.duration.limit`, `combine.tap.users.session.duration.default`, and `combine.tap.users.session.dashboard.duration.default` Configuration Values at their default of `3600` or less._
 
 ### Option B: IAM User
 
-Create an IAM User in the Leader Account (for example `combine-follower`), attach the `CombinePolicy[<ShardId>]FollowerAccount` Managed Policy, and create an Access Key for it. You will enter the Access Key ID as `followerConfigKey` and the Secret Access Key as `followerConfigKeySecret`.
+Create an IAM User in the Leader Account (for example, `combine-follower`), attach the `CombinePolicy[<ShardId>]FollowerAccount` Managed Policy, and create an Access Key for it. You enter the Access Key ID as `followerConfigKey` and the Secret Access Key as `followerConfigKeySecret`.
 
-An Access Key is a long lived credential. It is stored in the Follower Account's Secrets Manager and must be rotated by you. (See [Rotating the Follower Credentials](#rotating-the-follower-credentials).)
+An Access Key is a long lived credential. The build stores it in the Follower Account's Secrets Manager, and you must rotate it. (See [Rotating the Follower Credentials](#rotating-the-follower-credentials).)
 
 ## Step 2: Give the Automation Tool Access to the Leader Account
 
-The automation tool also needs credentials in the Leader Account while the build runs. These are separate from the Follower principal in Step 1. Set one of:
+The tool also needs credentials in the Leader Account while the build runs. These are separate from the Follower principal in Step 1. Set one of:
 
 - `leaderAccountRoleArn` - ARN of a Role in the Leader Account. This is typically the Leader's own `Combine-Provisioning-Role`.
 - `leaderAccountKey`, `leaderAccountKeySecret`, and optionally `leaderAccountSessionToken` - AWS Credentials for the Leader Account.
@@ -119,7 +117,7 @@ Every command, not only `build`, obtains Leader credentials when `hasUserManagem
 
 ## Step 3: Add the Follower Profile to `clients.json`
 
-Add a profile for the Follower. This example shows the Leader's existing profile next to it so you can see which Leader values the Follower refers to:
+Add a profile for the Follower. The following example shows the Leader's existing profile next to the Follower's, so you can see which Leader values the Follower refers to:
 
 ```json
 {
@@ -190,14 +188,14 @@ For `tapMissionName`, `leaderAccountRoleArn`, and the `followerConfig...` fields
 
 Run the `build` command with the Follower's profile:
 
-```
+```bash
 java -classpath "deployment/lib/*:deployment/combine-aws-account-automation.jar" -Dcombine.configuration.partitions.localFile=deployment/release/configuration/cloud-partitions.json com.sequoia.combine.accounts.CombineCommandExecutor build --config-store-profile myFollowerEnvironment --bricks-release-version bricks_v_x_x_x
 ```
 
 The build performs the normal steps (see [Performing Deployment (New Account)](how-to-combine-deployment.md#performing-deployment-new-account)) with these differences:
 
 - **Leader access.** At startup the tool assumes `leaderAccountRoleArn` (Role Session Name `CombineProvisioning`) or uses the Leader Access Key.
-- **Certificate Authority.** Instead of generating a new Certificate Authority chain, the tool loads the Leader's root and signer certificates and keys (`Loading certificates from user management account...`), copies them into the Follower's DevOps bucket, and issues the Follower's TAP and Endpoint Server certificates with the Leader's signer. It does not write Certificate Authority password Secrets in the Follower Account; the Follower's servers read them from the Leader.
+- **Certificate Authority.** Instead of generating a new Certificate Authority chain, the tool loads the Leader's root and signer certificates and keys (`Loading certificates from user management account...`), copies them into the Follower's Combine DevOps bucket, and issues the Follower's TAP and Endpoint Server certificates with the Leader's signer. It does not write Certificate Authority password Secrets in the Follower Account; the Follower's servers read them from the Leader.
 - **Follower credential Secrets.** It writes the Step 1 values to Secrets Manager in the Follower Account's Master Region as `combine/[<shard id>/]configuration/integrations/userManagementAccount/role`, or `.../credentials/key` and `.../credentials/key/secret` for an Access Key (`<shard id>` is the Follower's, in lower case).
 - **Combine CloudFormation Stack.** It passes the `UserManagementAccount`, `UserManagementAccountMasterRegion`, `UserManagementShardId`, and `UserManagementShardIdLowerCase` Parameters. The stack writes them as the `combine.account.userManagement`, `combine.account.userManagement.region.master`, and `combine.account.userManagement.shardId` Configuration Values, together with the names of the Leader's Tables (`combine.account.userManagement.tableName.*`). The Follower's TAP and Endpoint Servers use these to find the Leader's Users, Groups, AWS Role Mappings, and credential cache.
 - **Combine Policy CloudFormation Stack.** It passes the `UserManagementAccount` Parameter. Every IAM Role the stack creates, such as the `WLDEVELOPER` Roles and `Combine-[<ShardId>-]Read-Only`, then also trusts `arn:<partition>:iam::<leader account id>:root`.
@@ -207,20 +205,20 @@ The build performs the normal steps (see [Performing Deployment (New Account)](h
 ## Step 5: Verify
 
 1. **Check the build output.** Look for `Loading certificates from user management account...` and `Generating TAP Role Mappings...`, and check that neither `[ERROR] Was not able to assume role programatically!` nor `Could not create default AWS Role mappings for CAP/SCAP!` appears.
-2. **Check the Secrets.** In the Follower Account, confirm the credential Secret exists in the Follower's Master Region:
+2. **Check the Secrets.** In the Follower Account, confirm that the credential Secret exists in the Follower's Master Region:
 
-   ```
+   ```bash
    aws secretsmanager describe-secret --region us-east-1 --secret-id combine/dmz/configuration/integrations/userManagementAccount/role
    ```
 
    (For an Access Key, check `.../credentials/key` and `.../credentials/key/secret`.) You can also confirm that the Follower's `combine.account.userManagement` Configuration Value is the Leader's AWS Account ID. (See [Edit Combine Configuration Values](../operations/how-to-edit-combine-configuration.md).)
-3. **Find the new AWS Role Mappings in the Leader's TAP.** Sign in to the Leader's TAP as an administrator, choose `Admin Settings`, then `TAP Role Mapping`. On the `AWS Roles` page, search for the `tapMissionName` value. The Follower's Roles are listed with it as the Account Label. (See [How to Add TAP Role Mappings](../administration/how-to-add-tap-role-mappings.md).)
-4. **Assign the Roles to users.** In the Leader's TAP, open each user who needs the Follower, and in the user's `AWS Roles` section select the Follower's Roles (grouped by emulated partition, then by the `tapMissionName` Account Label and the Follower's Account ID). Save the user.
+3. **Find the new AWS Role Mappings in the Leader's TAP.** Sign in to the Leader's TAP as an administrator, and choose **Admin Settings**, then **TAP Role Mapping**. On the **AWS Roles** page, search for the `tapMissionName` value. The Follower's Roles are listed with it as the Account Label. (See [Add TAP Role Mappings](../administration/how-to-add-tap-role-mappings.md).)
+4. **Assign the Roles to users.** In the Leader's TAP, open each user who needs the Follower. In the user's **AWS Roles** section, select the Follower's Roles (grouped by emulated partition, then by the `tapMissionName` Account Label and the Follower's Account ID). Save the user.
 5. **Sign in to the Follower's TAP** with that user's existing certificate. The user's AWS Roles include the Follower's. Opening AWS Console access for one of the Follower's Roles from the Follower's TAP exercises both trust relationships: the Follower's servers to the Leader principal, and the Leader Account to the Follower's Role.
 
 ## Cross Account Role Assumption Through the Leader
 
-When a Deployment is a Follower, its TAP and Endpoint Servers make every Role assumption with the Leader principal's credentials: the credentials TAP issues to users, and the Roles the Endpoint Server assumes to sign requests (the Role of the EC2 Instance or Lambda Function that made a request, or the Default Role in the request's source Account). The target Account sees the caller as `arn:<partition>:sts::<leader account id>:assumed-role/<followerConfigRole>/CombineUserManagementAccount` (or as the IAM User for Option B).
+When a Combine Deployment is a Follower, its TAP and Endpoint Servers make every Role assumption with the Leader principal's credentials: the credentials TAP issues to users, and the Roles the Endpoint Server assumes to sign requests (the Role of the EC2 Instance or Lambda Function that made a request, or the Default Role in the request's source Account). The target Account sees the caller as `arn:<partition>:sts::<leader account id>:assumed-role/<followerConfigRole>/CombineUserManagementAccount` (or as the IAM User for Option B).
 
 The Roles that the Combine Policy CloudFormation Stack creates in the Follower Account already trust the Leader Account. Any other Role that a Follower's servers must assume needs to trust the Leader Account:
 

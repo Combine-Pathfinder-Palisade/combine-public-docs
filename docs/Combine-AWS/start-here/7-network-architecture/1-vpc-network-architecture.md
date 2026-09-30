@@ -3,46 +3,44 @@ sidebar_position: 1
 title: VPC Network Architecture
 ---
 
-# Overview
+# VPC Network Architecture
 
-Each Combine VPC emulates a specific Region in your production environment based on the Region it is hosted in.
+Each Combine VPC emulates a specific Region of your production environment, based on the Region it is hosted in.
 
-The network architecture of an _individual_ Combine VPC is discussed below.
-
-The network architecture of _one or more_ Combine VPCs working together in a topology is [discussed here](/category/network-topology).
+This page describes the network architecture of an _individual_ Combine VPC. For how _one or more_ Combine VPCs work together in a topology to provide emulation for your entire workload, see [Network Topology](/category/network-topology).
 
 ## Combine VPC Architecture
 
-Each Combine VPC has several basic functions:
+Each Combine VPC has three basic functions:
 
 - Emulate AirGap Networking
 - Emulate AWS API Endpoints
 - Emulate API Endpoints (such as CAP/SCAP)
 
-Multiple Combine VPCs might work together in a particular network topology to provide emulation for your entire workload.
-
 ### AirGap Networking
 
-Combine routes network egress for each workload subnet via a Route Table to the appropriate Combine Firewall. The Combine Firewall has a rule set that controls how traffic is allowed to egress.
+Combine routes network egress for each workload subnet through a Route Table to the appropriate Combine Firewall. The Combine Firewall has a rule set that controls which traffic is allowed to egress. To change that rule set, see [Configure AirGap Layer](../../tutorials/operations/firewall-airgap/how-to-configure-airgap-layer.md).
 
-Combine can create default workload subnets that are correctly configured for your convenience. If you prefer to create your own subnets, you will need to configure each subnet to use the appropriate Combine Route Table in order to control egress.
+For your convenience, Combine can create default workload subnets that are already configured correctly. If you create your own subnets, configure each subnet to use the appropriate Combine Route Table so that Combine controls its egress.
 
 ### Emulated AWS Service Endpoints
 
-Combine uses a Route 53 Private Hosted Zone to implement the DNS for each emulated AWS Service Endpoint. The DNS Zone routes traffic to an internal Combine Load Balancer for the Combine Endpoint servers which proxy the AWS API calls to/from the hosted Region/Partition.
+Combine uses a Route 53 Private Hosted Zone to implement the DNS for each emulated AWS Service Endpoint. The Private Hosted Zone routes traffic to an internal Combine Load Balancer for the Endpoint Servers, which proxy AWS API calls to and from the host Region and Partition. For how this proxying works, see [Rewriting](../5-orientation.md#rewriting).
 
 ### Emulated API Endpoints
 
-Combine uses a Route 53 Private Hosted Zone to implement the DNS for each emulated API Endpoint. This DNS Zone routes traffic to an internal Combine Load Balancer for the Combine TAP servers which host these Emulated API services.
+Combine uses a Route 53 Private Hosted Zone to implement the DNS for each emulated API Endpoint. The Private Hosted Zone routes traffic to an internal Combine Load Balancer for the TAP Servers, which host these emulated API services.
 
 ### Internal Architecture
 
-Each Combine VPC is configured with at least a pair of `/24` CIDR Blocks (by default `10.0.255.0/24` for the Combine Subnets and `10.0.254.0/24` for the Combine Firewall Subnets, within a default VPC CIDR Block of `10.0.0.0/16`). It divides these into several groups of subnets:
+Each Combine VPC is configured with at least a pair of `/24` CIDR Blocks. By default, these are `10.0.255.0/24` for the Combine Subnets and `10.0.254.0/24` for the Combine Firewall Subnets, within a default VPC CIDR Block of `10.0.0.0/16`. Combine divides these CIDR Blocks into several groups of subnets:
 
-- _Combine Private Subnets_ - Used to deploy Combine TAP/Endpoint servers and their Load Balancers.
-- _Combine Public Subnets_ - Used to deploy Combine TAP Public Load Balancer and the Combine NAT Gateway. (Prior to Combine Version 3.14.0 these also housed the Combine Bastion server.)
-- _Combine Private Firewall Subnets_ - Used to house the Private Combine Firewall (controls egress for Private Subnets).
-- _Combine Public Firewall Subnets_ - Used to house the Public Combine Firewall (controls egress for Public Subnets).
+| Subnet Group | Purpose |
+| --- | --- |
+| Combine Private Subnets | The Combine TAP Servers and Endpoint Servers, and their Load Balancers. |
+| Combine Public Subnets | The Combine TAP Public Load Balancer and the Combine NAT Gateway. Before Combine 3.14.0, these also housed the Combine Bastion server. |
+| Combine Private Firewall Subnets | The Private Combine Firewall, which controls egress for private subnets. |
+| Combine Public Firewall Subnets | The Public Combine Firewall, which controls egress for public subnets. |
 
 ### Internal Architecture Diagram
 
@@ -50,10 +48,10 @@ Each Combine VPC is configured with at least a pair of `/24` CIDR Blocks (by def
 
 ## Wrapping an Existing VPC
 
-By default each Combine VPC CloudFormation Stack builds a new VPC. Combine can instead "wrap" a VPC that already exists (for example when your account does not permit Combine to create network resources, or when your workload already runs in an established VPC). Combine then adds its resources to the existing VPC, and the architecture described above otherwise stays the same.
+By default, each Combine VPC CloudFormation Stack builds a new VPC. Combine can instead "wrap" a VPC that already exists, for example when your account does not permit Combine to create network resources, or when your workload already runs in an established VPC. Combine then adds its resources to the existing VPC, and the architecture described above otherwise stays the same.
 
 See [VPC Wrapping](../10-advanced-features/vpc-wrapping.md) for what Combine builds in a wrapped VPC, what you must configure yourself, and the parameters that configure it.
 
 ## Questions
 
-If you have any questions please consult the Combine Support Team!
+If you have any questions, contact the Combine Support Team.

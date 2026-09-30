@@ -5,16 +5,17 @@ title: Troubleshooting
 
 # Troubleshooting
 
-If you are experiencing unexpected behavior in Combine here are several tips to help you troubleshoot:
+If you experience unexpected behavior in Combine, start with these checks:
 
-- Consult your TAP Dashboard for Alert Events (formerly Violations). Combine will attempt to proactively report any issues it encounters with a request through the Alert Events interface. (For long time Combine customers, starting in Combine Version 3.13.10 many many new Alert Events were added to help troubleshooting.)
+- **Check the TAP Dashboard for Alert Events** (formerly Violations). Combine attempts to proactively report any issue it encounters with a request as an Alert Event. Combine 3.13.10 added many new Alert Events to help with troubleshooting.
+- **Look for HTTP 501 (Not Implemented) responses.** In most cases where Combine blocks an unsupported Service or Service feature, it returns an HTTP 501 status code. Starting in Combine 3.13.10, Combine also returns JSON or XML error messages, even when they do not match normal AWS API behavior, to speed up troubleshooting.
+- **Review the known issues.** See [Known Issues](6-known-issues.md) for current issues and limitations.
 
-- Combine will return a 501 (Not Implemented) HTTP Code in most cases where it is blocking an unsupported Service or Service Feature. (For long time Combine customers, starting in Combine Version 3.13.10 Combine has also started returning JSON/XML error messages even if it does not match the normal AWS API behavior. This was done to accelerate troubleshooting.)
+For deeper investigation, see [View Combine Logs](../tutorials/operations/how-to-view-combine-logs.md). If you still need help, contact the Combine Support Team.
 
 ## Pitfalls
 
-While Combine enforces access to AWS Services only through emulated Endpoints, it must have unimpeded access to AWS Services to function. There are several common issues that can cause Combine to malfunction (and even eliminate our ability to warn that this has happened):
+Combine restricts your workload to the emulated Endpoints, but Combine itself needs unimpeded access to AWS Services to function. These common issues can cause Combine to malfunction, and can even prevent Combine from warning you that this has happened:
 
-- Do not create VPC PrivateLink Endpoints for AWS Services with a security group that excludes Combine server access. The Combine Team can help determine what security group rules are needed. (As of Combine Version 3.14 Combine blocks creating a VPC Endpoint for an AWS Service that uses a Security Group by default.)
-
-- As noted on the [Troubleshooting - EKS Guidance](/Combine-AWS/start-here/troubleshooting-eks/guidance) page the EKS Security Group will have to allow Combine server access as well.
+- **VPC Endpoints with a restrictive Security Group.** Do not create PrivateLink VPC Endpoints for AWS Services with a Security Group that excludes access from the Combine servers. The Combine Team can help determine which Security Group rules you need. As of Combine 3.14, Combine by default blocks creating a VPC Endpoint for an AWS Service that uses a Security Group (see [Emulation Protection Restrictions](5-orientation.md#emulation-protection-restrictions)).
+- **EKS Security Groups.** The EKS Security Group must also allow access from the Combine servers, as described in [Troubleshooting - EKS Guidance](9-troubleshooting-eks/1-guidance.md).

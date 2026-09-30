@@ -1,22 +1,20 @@
 # Editing the Whitelist
 
-Combine Azure uses a [Squid Cache](https://www.squid-cache.org/) proxy (with SSL interception) to emulate the airgap.
+Combine Azure uses a [Squid Cache](https://www.squid-cache.org/) proxy (with SSL interception) to emulate the airgap. The proxy's whitelist is the `allowed` file on the `Combine-Proxy` Virtual Machine. This page shows you how to edit it.
 
 :::tip[This is handled on the Dashboard in new versions]
 
-If you are on Combine Azure version 5.3.6 or later (released February 2026), you're in luck! You can edit the whitelist from the 'Airgap Configuration' page on your Dashboard instead of following the steps below.
+If you are on Combine Azure version 5.3.6 or later (released February 2026), you can edit the whitelist from the **Airgap Configuration** page on your Dashboard instead of following the steps below.
 
 :::
 
-To edit the whitelist, you can follow these steps:
+## 1. Connect to the `Combine-Proxy` Virtual Machine
 
-## 1. Connect to the `Combine-Proxy` virtual machine
+How you connect to the proxy Virtual Machine depends on your Combine configuration. If you are unable to connect, [contact the Combine Support Team](mailto:service-request@sequoiainc.com).
 
-Connecting to the proxy virtual machine depends on your Combine configuration. If you are unable to do this please [reach out to a Combine Team member](mailto:service-request@sequoiainc.com).
+## 2. Edit the `allowed` File
 
-## 2. Edit the `allowed` file
-
-Once you're in the machine, you can:
+On the Virtual Machine, become root and open the `allowed` file:
 
 ```bash
 sudo -s
@@ -24,22 +22,22 @@ cd /etc/squid
 vi allowed
 ```
 
-Edit the file as you please. Things to note:
+Edit the file as needed. Keep the following in mind:
 
-- Comments are allowed, you can use `#` to add a comment
-- Only domain names are allowed, i.e. `google.com` or `mystorageaccount.blob.core.windows.net` is allowed, `google.com/123` is NOT
-- The `allowed` file is copied from Combine's Storage Account when the `Combine-Proxy` virtual machine is provisioned, so edits made here are lost if the virtual machine is re-deployed
+- Comments are allowed. Use `#` to add a comment.
+- Only domain names are allowed. For example, `google.com` and `mystorageaccount.blob.core.windows.net` are allowed, but `google.com/123` is not.
+- The `allowed` file is copied from Combine's Storage Account when the `Combine-Proxy` Virtual Machine is provisioned. Edits you make here are lost if the Virtual Machine is redeployed.
 
-## 3. Restart the `squid` service
+## 3. Restart the `squid` Service
 
-You can restart the service (still as root) with:
+Still as root, restart the service and check its status:
 
 ```bash
 systemctl restart squid
 systemctl status squid
 ```
 
-The status should show similar to:
+The status output should look similar to the following:
 
 ```bash
 ● squid.service - Squid caching proxy

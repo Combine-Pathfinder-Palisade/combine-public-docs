@@ -4,7 +4,7 @@ This page is a reference for the parts of `clients.json` that need more detail t
 
 ## Common CloudFormation Parameters
 
-`combineStackParameters`, `combinePolicyStackParameters`, and each entry of `combineVPCStacks` map a CloudFormation Parameter name to the value to use:
+`combineStackParameters`, `combinePolicyStackParameters`, and each entry of `combineVPCStacks` map a CloudFormation Parameter name to the value to use. For example:
 
 ```json
 "combineStackParameters": {
@@ -14,12 +14,12 @@ This page is a reference for the parts of `clients.json` that need more detail t
 
 ### How the Tool Applies Them
 
-- Give each value as a JSON string (`"true"`, `"3600"`). For a comma delimited list Parameter give one comma separated string.
+- Give each value as a JSON string (`"true"`, `"3600"`). For a comma delimited list Parameter, give one comma separated string.
 - The tool supplies its own values for some Parameters (see [Parameters the Tool Sets](#parameters-the-tool-sets)). An entry in `clients.json` replaces the tool's value. The tool output shows `Replacing default parameter [<name>] with value [<value>]` when this happens.
 - The tool passes every entry to CloudFormation as is. A misspelled Parameter name, or a Parameter that the template for your emulated partition does not have, makes the stack creation fail.
 - The values are only used when the tool creates a stack. `build` creates the Combine, Combine Policy, and Combine VPC CloudFormation Stacks. `build_region` creates the Combine and Combine VPC CloudFormation Stacks in `region`. `build_vpc_only` creates the Combine VPC CloudFormation Stacks. Each of them skips a Combine VPC CloudFormation Stack that already exists.
 - The Combine Policy CloudFormation Stack is only created in the Master Region, so `combinePolicyStackParameters` is only read there.
-- `upgrade` keeps each stack's current Parameter values (other than setting `BricksReleaseVersion` on each Combine VPC CloudFormation Stack) and does not apply these fields. To change a Parameter on an existing stack, update the stack in the AWS CloudFormation Console.
+- `upgrade` keeps each stack's current Parameter values (other than setting `BricksReleaseVersion` on each Combine VPC CloudFormation Stack) and does not apply these fields. To change a Parameter on an existing stack, update the stack in the AWS Console.
 
 ### Parameters the Tool Sets
 
@@ -37,16 +37,16 @@ The tool fills in these Parameters from other `clients.json` fields and from the
 | `combine-policy.yaml` | `UserManagementAccount` | `userManagementAccountId` when `hasUserManagementAccount` is `true`, otherwise blank |
 | `combine-policy.yaml` | `CombineServiceAugment` | ARN of the `iamAugment` IAM Policy (only when `iamAugment` is set) |
 | `combine-policy.yaml` | `EnableTS`, `EnableS`, or `EnableGovCloud` | `true` for the emulated partition: `EnableTS` for `AWS_C2S`, `EnableS` for `AWS_SC2S`, `EnableGovCloud` for `AWS_GOV_CLOUD`. (None for `AWS_EUSC`.) |
-| `combine-policy.yaml` | `MappedRegionUsIsoEast1`, `MappedRegionUsIsoBEast1`, `MappedRegionUsGovCloudWest1`, or `MappedRegionEuscDeEast1` | `region`, so the first Region of the emulated partition (for example `us-iso-east-1`) is hosted there |
+| `combine-policy.yaml` | `MappedRegionUsIsoEast1`, `MappedRegionUsIsoBEast1`, `MappedRegionUsGovCloudWest1`, or `MappedRegionEuscDeEast1` | `region`, so the first Region of the emulated partition (for example, `us-iso-east-1`) is hosted there |
 | `combine-vpc.yaml` | `ShardId`, `ShardIdLowerCase`, `MasterRegion` | Same as `combine.yaml` |
 | `combine-vpc.yaml` | `BricksReleaseVersion` | `--bricks-release-version` (or `bricksReleaseVersion`) |
 | `combine-vpc.yaml` | `DnsTapAPI`, `DnsTapDomain`, `DnsEndpointsDomain`, `DnsEndpointsServicesRegionA`, `DnsEndpointsServicesRegionB`, `DnsEndpointsServicesGlobal` | DNS names of the emulated partition. (`DnsEndpointsDomain` is not set for GovCloud, there is one `DnsEndpointsServicesRegion*` value per emulated Region, and `DnsEndpointsServicesGlobal` is only set for an emulated partition with a global endpoint domain.) |
 
-> _NOTE: Do not set these Parameters in `clients.json`. Set the field they come from instead. The tool also uses those fields elsewhere (for example `shardId` names the Combine DevOps bucket and the Combine Configuration table), so overriding `ShardId`, `MasterRegion`, `BricksReleaseVersion`, a DNS Parameter, or a `UserManagement*` Parameter leaves the stack out of step with the rest of the Combine Deployment. The exceptions are `HealthMonitoringEmail` and `CombineServiceAugment`, which you may set._
+_NOTE: Do not set these Parameters in `clients.json`. Set the field they come from instead. The tool also uses those fields elsewhere (for example, `shardId` names the Combine DevOps bucket and the Combine Configuration table), so overriding `ShardId`, `MasterRegion`, `BricksReleaseVersion`, a DNS Parameter, or a `UserManagement*` Parameter leaves the stack out of step with the rest of the Combine Deployment. The exceptions are `HealthMonitoringEmail` and `CombineServiceAugment`, which you may set._
 
 ### `combineStackParameters` (`combine.yaml`)
 
-The Combine CloudFormation Stack creates the account level resources of the Combine Deployment. The tool creates it in each Region. Role names below gain a `<ShardId>-` element after `Combine-` when you set a Shard ID.
+The Combine CloudFormation Stack creates the Account level resources of the Combine Deployment. The tool creates it in each Region. Role names below gain a `<ShardId>-` element after `Combine-` when you set a Shard ID.
 
 | Parameter | Default | Allowed values | What it does |
 | --- | --- | --- | --- |
@@ -59,9 +59,9 @@ The Combine CloudFormation Stack creates the account level resources of the Comb
 | `LambdaFirewallAlertsEventIgnorePortConnections` | `udp:123` | | Space delimited list of `protocol:port` pairs. An outbound connection through the Combine Firewall that matches one does not create an Alert Event. |
 | `LambdaFirewallAlertsEventIgnorePortConnectionsEphemeral` | `true` | `true`, `false` | When `true`, an outbound connection to a destination port from 49152 to 65535 does not create an Alert Event. (This reduces Alert Events where HTTP/HTTPS responses pass through the Combine Firewall.) |
 | `LambdaFirewallAlertsEventIgnoreServiceEndpointConnections` | `ssm` | | Space delimited list of AWS Service Endpoint prefixes. An outbound connection to the commercial endpoint of one of these Services does not create an Alert Event. |
-| `BucketBlockPublicAccess` | `true` | `true`, `false` | Applies S3 Block Public Access to the Combine Buckets. Set to `false` if your environment does not allow you to change Block Public Access settings. |
-| `BucketLogging`, `BucketLoggingBucket`, `BucketLoggingBucketPrefix` | `false`, (blank), `logs/bucket/combine` | `BucketLogging`: `true`, `false` | Sends S3 server access logs for the Combine Buckets to `BucketLoggingBucket` under `BucketLoggingBucketPrefix`. Logging is only turned on when `BucketLogging` is `true` and `BucketLoggingBucket` is set. |
-| `BucketPolicyDefault` | `true` | `true`, `false` | Applies the default Combine Bucket Policy to each Combine Bucket. Set to `false` if your environment has its own Bucket Policy requirements. |
+| `BucketBlockPublicAccess` | `true` | `true`, `false` | Applies S3 Block Public Access to the Combine buckets. Set to `false` if your environment does not allow you to change Block Public Access settings. |
+| `BucketLogging`, `BucketLoggingBucket`, `BucketLoggingBucketPrefix` | `false`, (blank), `logs/bucket/combine` | `BucketLogging`: `true`, `false` | Sends S3 server access logs for the Combine buckets to `BucketLoggingBucket` under `BucketLoggingBucketPrefix`. Logging is only turned on when `BucketLogging` is `true` and `BucketLoggingBucket` is set. |
+| `BucketPolicyDefault` | `true` | `true`, `false` | Applies the default Combine Bucket Policy to each Combine bucket. Set to `false` if your environment has its own Bucket Policy requirements. |
 | `InfrastructurePermissionBoundary` | (blank) | | ARN of an IAM Policy to set as the Permissions Boundary of the `Combine-Bastion`, `Combine-TAP`, and `Combine-Endpoints` Roles. |
 | `AuxiliaryPolicyListTAP`, `AuxiliaryPolicyListEndpoint`, `AuxiliaryPolicyListBastion` | (blank) | | Comma delimited list of IAM Policy ARNs to attach to the `Combine-TAP`, `Combine-Endpoints`, or `Combine-Bastion` Role. |
 
@@ -135,7 +135,15 @@ Related Parameters:
 
 ### Example
 
-A C2S profile with Shard ID `Dev` that sets the Health Monitoring email, turns on DynamoDB Deletion Protection, allows the TerraForm exceptions, raises the CAP / SCAP token limit and TAP Dashboard default to 8 hours, moves the VPC to `10.172.0.0/16`, limits TAP access to your own Security Group, and stops the servers overnight:
+The following example is a C2S profile with Shard ID `Dev` that:
+
+- Sets the Health Monitoring email.
+- Turns on DynamoDB Deletion Protection.
+- Allows the TerraForm exceptions.
+- Raises the CAP / SCAP token limit and TAP Dashboard default to 8 hours.
+- Moves the VPC to `10.172.0.0/16`.
+- Limits TAP access to your own Security Group.
+- Stops the servers overnight.
 
 ```json
 {
@@ -191,7 +199,7 @@ Each entry has three fields:
 - `prefix` - `TS` for an overlay attached to the C2S default Roles, or `S` for the SC2S default Roles.
 - `policy` - The IAM Policy document, as a JSON object (not a string). Its statements apply as written.
 
-The tool creates an IAM Managed Policy named `<prefix>PolicyCombine<ShardId>Overlay<name>` for each entry (for example `TSPolicyCombineDevOverlayCustom` with Shard ID `Dev`, or `TSPolicyCombineOverlayCustom` without one). If the policy already exists the tool adds a new default version to it, so the Roles pick up the change without a stack update. IAM limits a Managed Policy document to 6,144 characters and keeps at most five versions of a Managed Policy, so delete old versions if an update fails.
+The tool creates an IAM Managed Policy named `<prefix>PolicyCombine<ShardId>Overlay<name>` for each entry (for example, `TSPolicyCombineDevOverlayCustom` with Shard ID `Dev`, or `TSPolicyCombineOverlayCustom` without one). If the policy already exists the tool adds a new default version to it, so the Roles pick up the change without a stack update. IAM limits a Managed Policy document to 6,144 characters and keeps at most five versions of a Managed Policy, so delete old versions if an update fails.
 
 The tool does not attach the policy itself. The Combine Policy CloudFormation Stack attaches `<TS or S>PolicyCombine<ShardId>Overlay<CombineOverlay>` to these Roles:
 
@@ -207,7 +215,7 @@ The tool creates the overlays:
 
 `upgrade` does not create or update overlays.
 
-Example (the `combinePolicyStackParameters` entry selects the overlay during `build`):
+The following example creates a `Custom` overlay for the C2S default Roles. Its `combinePolicyStackParameters` entry selects the overlay during `build`:
 
 ```json
 "combinePolicyStackParameters": {
@@ -242,6 +250,8 @@ Example (the `combinePolicyStackParameters` entry selects the overlay during `bu
 - A `CombineServiceAugment` entry in `combinePolicyStackParameters` replaces the value the tool sets.
 - The `build_iam_augment_policy` command creates or updates the policy from `iamAugment` and then updates the Combine Policy CloudFormation Stack (keeping its other Parameter values) to set `CombineServiceAugment` to the policy's ARN. It does nothing if `iamAugment` is not set.
 
+The following example shows the shape of the field:
+
 ```json
 "iamAugment": {
   "name": "<policy name>",
@@ -264,7 +274,7 @@ For the read only default Roles, set `CombineServiceAugmentReadOnly` to the ARN 
 
 ## User Management Account
 
-These fields build the Combine Deployment as a Follower of a Leader (User Management Account) Deployment. See [Follower Mode](how-to-combine-deployment.md#follower-mode) for the full field reference and [Add Follower Account](how-to-add-follower-account.md) for the procedure.
+These fields build the Combine Deployment as a Follower of a Leader (User Management Account) Combine Deployment. See [Follower Mode](how-to-combine-deployment.md#follower-mode) for the full field reference and [Add Follower Account](how-to-add-follower-account.md) for the procedure.
 
 - `hasUserManagementAccount` - `true` builds this Combine Deployment as a Follower. The fields below apply only when it is `true`.
 - `userManagementAccountId` - AWS Account ID of the Leader. The tool passes it as the `UserManagementAccount` Parameter of the Combine and Combine Policy CloudFormation Stacks.
@@ -272,7 +282,7 @@ These fields build the Combine Deployment as a Follower of a Leader (User Manage
 - `userManagementMasterRegion` - Master Region of the Leader.
 - `leaderAccountRoleArn`, or `leaderAccountKey` / `leaderAccountKeySecret` / `leaderAccountSessionToken` - Credentials the tool uses while the build runs to reach the Leader Account.
 - `followerConfigRole`, or `followerConfigKey` / `followerConfigKeySecret` - Credentials stored in the Follower Account's Secrets Manager that the Follower's TAP and Endpoint Servers use at runtime to reach the Leader Account.
-- `tapMissionName` - Account Alias of the TAP Role Mappings the build generates for this Follower. Required in Follower Mode. (A Combine Deployment that is not a Follower uses `CCustomer`.)
+- `tapMissionName` - Account Label of the TAP Role Mappings the build generates for this Follower. Required in Follower Mode. (A Combine Deployment that is not a Follower uses `CCustomer`.)
 
 ## Stack Tags and Termination Protection
 

@@ -1,25 +1,23 @@
 # Rotate the Combine CA and Signer Certificates
 
-On reserved regions, the CA and Signer certificates expire every few years. Therefore it is a useful exercise to roleplay and even work through rotation of these certificates while your workload is running in Combine.
+In the reserved Regions, the Certificate Authority (CA) and Signer certificates expire every few years. It is useful to rehearse, and even work through, a rotation of these certificates while your workload runs in Combine.
 
-Here is a standard operating procedure to do so, in order. 
+For where the Combine trust chain files are in your Credential Package, see the [Combine Onboarding Guide](../../../start-here/4-orientation-onboarding-guide.md).
 
-Note that 'customer' below refers not to the sponsoring agency, but to the Combine customer. 
+## Rotation Procedure
 
-1. Sequoia issues a new Certificate Authority.
+Follow these steps in order.
 
-2. Sequoia provides a combined trust chain containing both the old and the new Certificate Authorities.
+_NOTE: In these steps, "customer" means the Combine customer, not the sponsoring agency._
 
-3. Customer deploys/rotates this combined trust chain throughout its infrastructure.
-
-4. Sequoia updates TAP and Endpoint servers to use certificates issued by new CA and the combined trust chain. 
-	- At this point any customer infrastructure that did not trust the combined trust chain will not be able to connect to the TAP / Endpoints servers.
-	- Calls to the CAP API will continue to function since Combine authentication is based on trust of CA (which is provided by the combined trust chain) plus the serial number of the certificate (which is unchanged for existing certificates).
-
-5. Customer issues new certificates to all active users and server / NPE certificates. These certificates are deployed / rotated throughout each applicable service.
-	- At this point any customer peer-to-peer connections that did not trust the combined trust chain will not be able to connect to each other. All connections that use the combined trust chain will work even with certificates issued by different authorities.
-	- There is no interruption of service because Combine TAP servers are serving combined trust chain. Endpoints servers do not validate client certificates.
-
-6. Sequoia removes combined trust chain and replaces it with new Certificate Authority trust chain only.
-
-7. Customer deploys/rotates this new Certificate Authority trust chain only throughout its infrastructure.
+1. The Combine Team issues a new Certificate Authority.
+2. The Combine Team provides a combined trust chain that contains both the old and the new Certificate Authorities.
+3. The customer deploys or rotates this combined trust chain throughout its infrastructure.
+4. The Combine Team updates the TAP Servers and Endpoint Servers to use the combined trust chain and certificates issued by the new Certificate Authority.
+   - From this point, customer infrastructure that does not trust the combined trust chain cannot connect to the TAP Servers or Endpoint Servers.
+   - Calls to the CAP API continue to work. Combine authenticates a caller by trust of the Certificate Authority (which the combined trust chain provides) plus the serial number of the certificate (which does not change for existing certificates).
+5. The customer issues new certificates to all active users and new server / NPE certificates, and deploys or rotates them in each service that uses them.
+   - From this point, customer peer-to-peer connections that do not trust the combined trust chain cannot connect to each other. All connections that use the combined trust chain work, even with certificates issued by different Certificate Authorities.
+   - Service is not interrupted, because the TAP Servers serve the combined trust chain and the Endpoint Servers do not validate client certificates.
+6. The Combine Team removes the combined trust chain and replaces it with a trust chain for the new Certificate Authority only.
+7. The customer deploys or rotates this new trust chain throughout its infrastructure.

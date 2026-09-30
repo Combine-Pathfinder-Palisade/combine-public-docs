@@ -4,4 +4,4 @@ sidebar_position: 5
 
 # Example Code
 
-We have a [public repository](https://github.com/Combine-Pathfinder-Palisade/combine-examples) containing some of the most common paradigms implemented in Combine. Please check it out!
+The Combine Team maintains a public [Combine examples repository](https://github.com/Combine-Pathfinder-Palisade/combine-examples) on GitHub. It implements some of the most common paradigms in Combine.

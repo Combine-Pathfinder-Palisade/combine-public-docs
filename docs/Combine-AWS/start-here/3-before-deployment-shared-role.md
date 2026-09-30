@@ -5,25 +5,22 @@ title: Before Deployment - Shared Role
 
 # Shared Role
 
-Before the Combine Team can deploy Combine to the AWS Account you have provided we need you to deploy a shared IAM Role that we can assume.
+Before the Combine Team can deploy Combine to the AWS Account you provide, you deploy a shared IAM Role that we can assume. We provide this role as an AWS CloudFormation Template.
 
-This is provided as an [AWS CloudFormation Template](./combine-provisioning.yaml).
+## CloudFormation Template
 
-### CloudFormation Template
+1. Deploy the [CloudFormation Template](./combine-provisioning.yaml) as a CloudFormation Stack, preferably in the same AWS Region where Combine will be deployed. For help, see the AWS documentation on [creating a CloudFormation Stack from the console](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-console-create-stack.html).
+2. After the CloudFormation Stack deploys successfully, give the Combine Support Team the AWS Account ID of the AWS Account.
 
-Please deploy the AWS CloudFormation Template above as an AWS CloudFormation Stack preferably in the same AWS Region that Combine will be deployed in.
+## CloudFormation Template - Advanced Configuration
 
-(For help deploying the AWS CloudFormation Template please see the relevant [AWS Documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-console-create-stack.html).)
+The CloudFormation Template has several CloudFormation Parameters that support advanced use cases:
 
-Once the AWS CloudFormation Stack has been successfully deployed please provide the Combine Support Team with the AWS Account ID of the AWS Account.
-
-### CloudFormation Template - Advanced Configuration
-
-The AWS CloudFormation Template has several Configuration Parameters to support several advanced use cases.
-
-- `EnablePermissionsFollowerAccountCredentials` is set to `true` for certain Combine Network Topologies.
-- `ProvisioningRoleNameOverride` can be set to change the default name of the Combine Provisioning Role. (Default value is `Combine-Provisioning-Role`.)
-- `PrincipalAccount` is set to `true` to allow the Combine Provisioning Role to be assumed from a Combine DevOps account. (Default value is `true`.)
-- `PrincipalAccountNumberOverride` can be set to change the default account number for a Combine DevOps account. This can be used if you are using the internal automation tool to deploy Combine yourself.
-- `PrincipalEC2` is set to `true` if you want to create an EC2 Instance Profile for the Combine Provisioning Role. This can be used if you are using the internal automation tool to deploy Combine yourself.
-- `ReadOnlyMode` is set to `true` if you want to restrict the Combine Provisioning Role to have only `ReadOnlyAccess`. This can be used to limit the Combine Team's access to your account after a deployment if desired.
+| CloudFormation Parameter | Description |
+| --- | --- |
+| `EnablePermissionsFollowerAccountCredentials` | Set to `true` for certain Combine network topologies. |
+| `ProvisioningRoleNameOverride` | Changes the default name of the Combine Provisioning Role. The default name is `Combine-Provisioning-Role`. |
+| `PrincipalAccount` | Set to `true` to allow the Combine Provisioning Role to be assumed from a Combine DevOps account. The default value is `true`. |
+| `PrincipalAccountNumberOverride` | Changes the default account number for the Combine DevOps account. Use this if you deploy Combine yourself with the internal automation tool. |
+| `PrincipalEC2` | Set to `true` to create an EC2 Instance Profile for the Combine Provisioning Role. Use this if you deploy Combine yourself with the internal automation tool. |
+| `ReadOnlyMode` | Set to `true` to restrict the Combine Provisioning Role to `ReadOnlyAccess`. Use this to limit the Combine Team's access to your account after a deployment, if desired. |

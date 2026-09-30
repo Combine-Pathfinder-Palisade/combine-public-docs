@@ -3,29 +3,31 @@ sidebar_position: 3
 title: Topology - Multiple VPC
 ---
 
-# Architecture
+# Topology - Multiple VPC
 
-This Combine Network Architecture is used when your workload must span multiple VPCs (and even multiple AWS Accounts).
+## Architecture
 
-In this architecture Combine is deployed to each of the VPCs in your workload. Route 53 Private DNS entries redirect all emulated endpoint traffic to local Combine Endpoint servers.
+Use this topology when your workload must span multiple VPCs, and even multiple AWS Accounts.
 
-# Architecture Diagram
+In this topology, Combine is deployed to each VPC in your workload. Route 53 private DNS entries redirect all emulated endpoint traffic to the local Endpoint Servers.
+
+## Architecture Diagram
 
 ![Multiple VPC Architecture](/aws/combine_network_architecture_multiple_vpc.png)
 
-_Note that this diagram is for Combine AWS but is analogous to Combine Azure from a networking perspective._
+_NOTE: This diagram is for Combine AWS, but from a networking perspective it is analogous to Combine Azure._
 
-# Advantages
+## Advantages
 
-- This architecture is simple and very very predictable.
+- This architecture is simple and predictable.
 - Each AWS Account can be configured independently.
 
-# Disadvantages
+## Disadvantages
 
-- At present User Management can only be performed in a single designated AWS Account. This account is referred to in Combine as the "User Management Account" (the other AWS Accounts are referred to as "Follower Accounts").
-- At present the Combine Alert Events for an AWS Account are only displayed on the TAP Dashboard of that AWS Account. (_NOTE: We are designing a new architecture for the TAP Dashboard with the capability for multiple accounts and multiple tenants._)
-- Higher AWS spend due to additional infrastructure deployed to each VPC.
+- At present, User Management can be performed only in a single designated AWS Account. Combine calls this account the "User Management Account" and calls the other AWS Accounts "Follower Accounts". (See [Add Follower Account](../../../tutorials/operations-self-service-deployment/how-to-add-follower-account.md).)
+- At present, the Alert Events for an AWS Account are displayed only on the TAP Dashboard of that AWS Account. We are designing a new architecture for the TAP Dashboard with the capability for multiple accounts and multiple tenants.
+- AWS spend is higher because additional infrastructure is deployed to each VPC.
 
-# Shared Responsibilities
+## Shared Responsibilities
 
 - None.

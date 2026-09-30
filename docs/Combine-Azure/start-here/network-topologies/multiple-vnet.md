@@ -3,31 +3,30 @@ sidebar_position: 2
 title: Topology - Multiple VNet
 ---
 
-# Architecture
+# Topology - Multiple VNet
 
-This Combine Network Architecture is used when your workload must span multiple VNets.
+## Architecture
 
-In this architecture Combine is deployed to each of the VNets in your workload. Private DNS entries redirect all emulated endpoint traffic to local Combine Endpoint servers. The 'Customer' subnets (reserved for your use) are routed to local Combine Proxy machines which act as an airgap.
+Use this topology when your workload must span multiple VNets.
 
+In this topology, Combine is deployed to each VNet in your workload. Private DNS entries redirect all emulated endpoint traffic to the local Endpoint Servers. The Customer subnets (reserved for your use, see [Default VNet](../onboarding-guide.md#default-vnet)) are routed to local Combine Proxy machines, which act as an airgap.
 
-# Architecture Diagram
+## Architecture Diagram
 
 ![Multiple VNet Architecture](/aws/combine_network_architecture_multiple_vpc.png)
 
-_Note that this diagram is for Combine AWS but is analogous to Combine Azure from a networking perspective._
+_NOTE: This diagram is for Combine AWS, but from a networking perspective it is analogous to Combine Azure._
 
+## Advantages
 
-# Advantages
-
-- This architecture is simple and very very predictable.
+- This architecture is simple and predictable.
 - Each VNet can be configured independently.
 
-# Disadvantages
+## Disadvantages
 
+- Cloud spend is higher because additional infrastructure is deployed to each VNet.
+- At present, each VNet has its own independent Combine Dashboard, because violation information is not shared between VNets.
 
-- Higher cloud spend due to additional infrastructure deployed to each VNet.
-- Currently each VNet will have its own independent Combine dashboard, as violation information is not shared between VNets.
-
-# Shared Responsibilities
+## Shared Responsibilities
 
 - None.

@@ -1,37 +1,37 @@
 # Edit Combine Configuration Values
 
-### Overview
+## Overview
 
-_NOTE: This is an advanced operation for users who are operating a self service deployment of Combine. If you have any questions please contact your Combine Support Team._
+_NOTE: This is an advanced operation for users who operate a self-service Combine Deployment. If you have questions, contact your Combine Support Team._
 
-Combine Configuration allows almost every aspect of Combine's behavior to be modified, frequently without a server restart. Combine Configuration is stored as a series of Parameter / Parameter Value pairs.
+Combine Configuration lets you change almost every aspect of Combine's behavior, often without a server restart. Combine Configuration is stored as a series of Configuration Values, each a pair of a parameter name and a parameter value.
 
-### Configuration Store
+Combine caches Configuration Values for a configurable duration (60 seconds by default). Some Configuration Values take effect only after a server restart.
 
-To override a Combine Configuration value you must make an entry in the Combine Configuration AWS DynamoDB Table. This table is in the Master Region of your Combine Deployment.
+## Configuration Store
 
-The table name is:
+To override a Configuration Value, add an entry to the Combine Configuration table. This DynamoDB table is in the Master Region of your Combine Deployment.
 
-`combine-configuration`
+| Combine Deployment | Table name |
+|---|---|
+| Without a Shard ID | `combine-configuration` |
+| With a Shard ID | `combine-<shard id>-configuration` (with the Shard ID in lowercase) |
 
-If your Combine environment has a Shard ID, then the table name is (with the Shard ID in lowercase):
+### Configuration Value Schema
 
-`combine-<shard id>-configuration`
+Each entry in the Combine Configuration table has these attributes:
 
-### Configuration Store Values
+| Attribute | Type | Description |
+|---|---|---|
+| `parameter_name` | String | The name of the Configuration Value. |
+| `parameter_value` | String | The value of the Configuration Value. |
+| `parameter_type` | String (optional) | The parameter type. This attribute is for internal use only. Do not set `parameter_type` manually. |
 
-Combine Configuration Values have a simple schema:
+You can add an entry with the form in the DynamoDB console. Be sure to add `parameter_value` as a new String attribute.
 
-- `parameter_name` - String Value of the parameter name.
-- `parameter_value` - String Value of the parameter value.
-- `parameter_type` - Optional String Value indicating the parameter type. (_NOTE: This is for internal use only. Do not set a `parameter_type` manually._)
+You can also add an entry in DynamoDB JSON. The general schema is:
 
-
-You may add an entry using the DynamoDB user interface. Be sure to add a new string attribute to set the `parameter_value`.
-
-You may add an entry using the DynamoDB JSON notation as well. The general schema is:
-
-```
+```json
 {
   "parameter_name": {
     "S": "<parameter_name>"
@@ -42,9 +42,9 @@ You may add an entry using the DynamoDB JSON notation as well. The general schem
 }
 ```
 
-For example:
+For example, this entry sets `combine.log.level` (see [Log Level](how-to-view-combine-logs.md#log-level)) to `VERBOSE`:
 
-```
+```json
 {
   "parameter_name": {
     "S": "combine.log.level"
@@ -55,61 +55,59 @@ For example:
 }
 ```
 
-Combine Configuration Values are cached for a configurable duration (default is 60 seconds). Some Combine Configuration Values require a server restart to take effect.
+## Change a Configuration Value
 
-### Example - Changing Configuration Values
+In Combine 3.13 and later, you can edit Configuration Values in the TAP Dashboard. In earlier versions, edit them in the DynamoDB console.
 
-If your Combine account is on version 3.13 or later, you can edit configuration values within the TAP Dashboard. If you're on an older version you'll need to update them via the DynamoDB console.
+### Change a Configuration Value in the TAP Dashboard
 
-#### Changing Configuration Values via the TAP Dashboard
+_NOTE: You must be an `Admin` in the TAP Dashboard to change a Configuration Value._
 
-Note that to change a config value, you must be an `Admin` on the dashboard.
+For example, suppose you want to change the session duration of CAP credentials and the duration of AWS Console sessions started from the TAP Dashboard. Two Configuration Values control these:
 
+| Configuration Value | What it controls |
+|---|---|
+| `combine.tap.users.session.duration.limit` | The maximum duration, in seconds, of CAP credentials. |
+| `combine.tap.users.session.dashboard.duration.default` | The duration, in seconds, of AWS Console sessions started from the TAP Dashboard. |
 
-Say you wanted to update the session duration for CAP credentials, as well as the duration of the AWS Console sessions started from the TAP Dashboard. These are handled by two configurations: `combine.tap.users.session.duration.limit` (the maximum duration, in seconds, of CAP credentials) and `combine.tap.users.session.dashboard.duration.default` (the duration, in seconds, of AWS Console sessions started from the TAP Dashboard). Here's how you'd do it!
+To change them:
 
-Navigate to the Metadata Page on the Dashboard. The link to the Metadata Page is in the footer of the Dashboard, next to the Release Notes link.
+1. Open the **Metadata** page. The **Metadata** link is in the footer of the TAP Dashboard, next to the **Release Notes** link.
 
-_NOTE: The Metadata Page is only shown when the `combine.tap.application.feature.metadata` configuration value is `true` (the default is `false`). If you do not see the link, set this value via the DynamoDB console as described below._
+   _NOTE: The **Metadata** link appears only when the `combine.tap.application.feature.metadata` Configuration Value is `true` (the default is `false`). If you do not see the link, set this value in the DynamoDB console (see [Change a Configuration Value in the DynamoDB Console](#change-a-configuration-value-in-the-dynamodb-console))._
 
-![Navigate to the Metadata Page on the Dashboard.](/aws/change-config-metadata-page.png)
+   ![The Metadata link in the footer of the TAP Dashboard.](/aws/change-config-metadata-page.png)
 
-Click on the 'Configurations' Tab.
+2. Choose the **Configurations** tab.
 
-![Click on the 'Configurations' Tab.](/aws/change-config-config-tab.png)
+   ![The Configurations tab on the Metadata page.](/aws/change-config-config-tab.png)
 
-Type in a subset of the configuration value `parameter_name`.
+3. In the **Search Configurations** field, type part of the `parameter_name`.
 
-![Type in a subset of the configuration value `parameter_name`.](/aws/change-config-search.png)
+   ![Searching for a Configuration Value by part of its parameter name.](/aws/change-config-search.png)
 
-Enter in the new value.
+4. Enter the new value.
 
-![Enter in the new value.](/aws/change-config-change-values.png)
+   ![Entering a new value for a Configuration Value.](/aws/change-config-change-values.png)
 
-Press 'Enter' to persist the changes.
+5. Press **Enter** to save the change.
 
-#### Changing Configuration Values via the DynamoDB Console
+### Change a Configuration Value in the DynamoDB Console
 
-Navigate to your Combine configuration table in the DynamoDB console. Click 'Explore table items.'
+1. In the DynamoDB console, open your Combine Configuration table and choose **Explore table items**.
 
-![](/aws/change-config-dynamodb-table.png)
+   ![The Explore table items button on the Combine Configuration table.](/aws/change-config-dynamodb-table.png)
 
+2. Expand **Filters**. Enter `parameter_name` in the **Attribute name** field, change **Condition** to **Contains**, and type part of the Configuration Value name in the **Value** field. Then choose **Run**.
 
-Expand 'Filters', then enter `parameter_name` in the Attributes field, change the Condition to 'Contains', and type in a subset of the configuration value name. Then click 'Run'.
+   ![A filter on the parameter_name attribute in the DynamoDB console.](/aws/change-config-dynamodb-search.png)
 
-![](/aws/change-config-dynamodb-search.png)
+3. If the Configuration Value exists, choose **Edit** (the pencil icon on its row) and change it to the new value.
 
-Click 'Edit' if the configuration value exists; if not, you'll have to click 'Create Item'.
+   ![Editing an existing Configuration Value in the DynamoDB console.](/aws/change-config-dynamodb-edit.png)
 
-Edit the config to the desired value.
+4. If the Configuration Value does not exist, choose **Create item** and create it with the attributes described in [Configuration Value Schema](#configuration-value-schema). Make sure `parameter_value` is a String.
 
-![](/aws/change-config-dynamodb-edit.png)
+   ![Creating a Configuration Value in the DynamoDB console.](/aws/change-config-dynamodb-create.png)
 
-If creating, create a new config value according to the schema described above. Please ensure the `parameter_value` is a string.
-
-![](/aws/change-config-dynamodb-create.png)
-
-Whether creating or editing, the change will take effect in 3-5 minutes.
-
-
-Please contact your Combine Support Team for additional information!
+Whether you create or edit a Configuration Value, the change takes effect within 60 seconds, when Combine refreshes its cached Configuration Values. (Some Configuration Values take effect only after a server restart.)

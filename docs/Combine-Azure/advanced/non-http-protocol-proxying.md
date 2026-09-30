@@ -1,108 +1,100 @@
-# Combine and non-HTTP/s Protocol Proxying
+# Combine and Non-HTTP/S Protocol Proxying
 
-Combine excels at proxying **HTTP and HTTPS** traffic. However, some foundational services — such as **Redis**, **PostgreSQL**, and other TCP-based protocols — do not speak HTTP/S and therefore **cannot be proxied directly by Combine**.
+Combine proxies **HTTP and HTTPS** traffic. Some foundational services, such as **Redis**, **PostgreSQL**, and other TCP-based protocols, do not speak HTTP/S, so Combine **cannot proxy them directly**.
 
-That said, Combine *can* still provide secure, private access to these services by leveraging:
+Combine can still provide secure, private access to these services by using:
 
 - Azure Private Endpoints
 - Azure Private DNS Zones
 - A Combine-managed DNS indirection layer
 
-This pattern keeps all traffic private while giving customers a stable, Combine-owned DNS name for non-HTTP/S services.
-
----
+This pattern keeps all traffic private and gives you a stable, Combine-owned DNS name for non-HTTP/S services.
 
 ## High-Level Architecture
 
 At a high level, the flow looks like this:
 
-1. The customer deploys a managed service (e.g., Azure Cache for Redis).
-2. The service is exposed privately via an **Azure Private Endpoint**.
-3. Azure creates a **`privatelink.*` Private DNS Zone** mapping the service name to a private IP.
-4. The Combine team creates an **additional Private DNS Zone**: `scombine.database.scloud`
-5. That zone maps the Combine-owned hostname to the **same private IP**, providing a stable entry point.
-
----
+1. You deploy a managed service (for example, Azure Cache for Redis).
+2. The service is exposed privately through an **Azure Private Endpoint**.
+3. Azure creates a **`privatelink.*` Private DNS Zone** that maps the service name to a private IP address.
+4. The Combine Team creates an **additional Private DNS Zone**, `scombine.database.scloud`.
+5. That zone maps the Combine-owned hostname to the **same private IP address**, which provides a stable entry point.
 
 ## Example: Azure Cache for Redis
 
 ### Resulting Hostname
 
-From inside the VNet, Redis is accessed via the Combine-managed DNS name:
+From inside the VNet, you access Redis through the Combine-managed DNS name:
 
-```
+```text
 <redis-namespace>.redis.cache.cloudapi.scombine.database.scloud
 ```
 
-This hostname ultimately resolves to the private endpoint IP of the Redis instance.
-
----
+This hostname resolves to the Private Endpoint IP address of the Redis instance.
 
 ## Step-by-Step Responsibilities
 
-### 1. Customer: Create the Redis Cluster
+You perform steps 1, 2, and 4. The Combine Team performs step 3.
 
-The customer provisions an **Azure Cache for Redis** instance (or another non-HTTP/S service such as PostgreSQL).
+### 1. Create the Redis Cluster (You)
 
-Key notes:
-- TLS **must remain enabled**
-- Public network access may be disabled (recommended)
+Provision an **Azure Cache for Redis** instance (or another non-HTTP/S service, such as PostgreSQL).
+
+Keep the following in mind:
+
+- TLS **must remain enabled**.
+- Public network access may be disabled. We recommend that you disable it.
 
 Example hostname: `mycache.redis.cache.windows.net`
 
 ![Redis Cache Overview](/azure/redis-cache-commercial-endpoint.png)
 
----
+### 2. Add a Private Endpoint (You)
 
-### 2. Customer: Add a Private Endpoint
-
-The customer creates a **Private Endpoint** for the Redis instance to allow access from within their VNet.
+Create a **Private Endpoint** for the Redis instance to allow access from within your VNet.
 
 Azure automatically:
-- Assigns a **private IP address**
-- Creates (or links) a Private DNS Zone: `privatelink.redis.cache.windows.net`
 
-An `A` record is added similar to:
+- Assigns a **private IP address**.
+- Creates (or links) a Private DNS Zone, `privatelink.redis.cache.windows.net`.
+
+An `A` record similar to the following is added:
 
 ```bash
 mycache → 10.3.104.4
 ```
 
-- Private Endpoint attached to Redis  
-  ![Redis Private Endpoint](/azure/redis-cache-private-endpoint.png)
-- Private DNS zone created by Azure  
-  ![Redis Private DNS Zone](/azure/redis-cache-private-dns-zone.png)
+_Private Endpoint attached to Redis_
 
-At this point, workloads inside the VNet can already resolve `mycache.privatelink.redis.cache.windows.net`, but of course this is not ideal since you would rather not use the commercial endpoints.
+![Redis Private Endpoint](/azure/redis-cache-private-endpoint.png)
 
----
+_Private DNS Zone created by Azure_
 
-### 3. Combine Team: Deploy Combine DNS Indirection
+![Redis Private DNS Zone](/azure/redis-cache-private-dns-zone.png)
 
-The Combine team deploys (or updates) a **Combine-managed Private DNS Zone**: `scombine.database.scloud` pointing to the same IP address as the Private Endpoint. (For a Top Secret emulation the zone is `tscombine.database.tscloud`, e.g. `mycache.redis.cache.cloudapi.tscombine.database.tscloud`.)
+At this point, workloads inside the VNet can already resolve `mycache.privatelink.redis.cache.windows.net`. This is not ideal, because you would rather not use the commercial endpoints.
 
+### 3. Deploy the Combine DNS Indirection (Combine Team)
 
-Within this zone, an `A` record is created:
+The Combine Team deploys (or updates) a **Combine-managed Private DNS Zone**, `scombine.database.scloud`, that points to the same IP address as the Private Endpoint. For a Top Secret emulation, the zone is `tscombine.database.tscloud` (for example, `mycache.redis.cache.cloudapi.tscombine.database.tscloud`).
 
-```
+Within this zone, the Combine Team creates an `A` record:
+
+```text
 mycache.redis.cache.cloudapi → 10.3.104.4
 ```
 
+This Private DNS Zone is linked to the same VNets where Combine and your workloads run.
 
-This DNS zone is linked to the same VNet(s) where Combine and customer workloads run.
+_Combine-managed Private DNS Zone with a custom `A` record_
 
-
-*Combine-managed Private DNS zone with custom A record*  
 ![Combine Additional DNS Zone](/azure/scombine-database-scloud-additional-dns-zone.png)
 
-> This is the key indirection step:  
-> Combine does **not** proxy Redis traffic, but provides a stable DNS namespace that resolves privately to the service.
+_NOTE: This is the key indirection step. Combine does **not** proxy Redis traffic. Instead, it provides a stable DNS namespace that resolves privately to the service._
 
----
+### 4. Connect Using the Combine DNS Name (You)
 
-### 4. Customer: Connect Using the Combine DNS Name
-
-From any workload **inside the VNet**, the customer can now connect using the Combine-provided hostname.
+From any workload **inside the VNet**, you can now connect using the Combine-provided hostname.
 
 #### Example Redis CLI Command
 
@@ -119,10 +111,9 @@ Warning: Using a password with '-a' or '-u' option on the command line interface
 mycache.redis.cache.cloudapi.scombine.database.scloud:6380> PING
 ```
 
-
 ## Supported Protocols
 
-This approach works for any TCP-based service exposed via Azure Private Endpoint, including:
+This approach works for any TCP-based service exposed through an Azure Private Endpoint, including:
 
 - Redis
 - PostgreSQL

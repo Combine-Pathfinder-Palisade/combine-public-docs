@@ -1,36 +1,37 @@
 # PKI Certificates: OCSP Support
 
-Combine Version 3.13.2 added support for OCSP and provides an OCSP Responder Endpoint through the TAP Dashboard servers.
+Combine supports the Online Certificate Status Protocol (OCSP) and provides an OCSP Responder Endpoint through the TAP Servers. Combine 3.13.2 added OCSP support.
 
-### Configuration
+## How It Works
 
-To enable OCSP you [set the following](../../tutorials/operations/how-to-edit-combine-configuration) configuration value to `true`:
+When OCSP is enabled, User and Server/NPE certificates issued by the TAP Dashboard include an AIA Block. The AIA Block lists an OCSP Responder URL (`http://<OCSP Endpoint>/tap/api/v1/certificate/ocsp`) for each emulated Partition that defines an OCSP Endpoint, for example:
 
-`combine.tap.certificates.ocsp`
+- `ocsp.c2s.ic.gov`
+- `ocsp.sc2s.sgov.gov`
 
-(You can also toggle **OCSP Support** in the TAP Dashboard under **Admin Settings > TAP Settings > Application Configuration**, in the **Certificate Settings** section.)
+## Configuration
 
-Once enabled User and Server/NPE certificates issued by the TAP Dashboard will include an AIA Block listing an OCSP Responder URL (`http://<OCSP Endpoint>/tap/api/v1/certificate/ocsp`) for each emulated Partition that defines an OCSP Endpoint, for example:
+Set these Configuration Values in the Combine Configuration table. See [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions.
 
-`ocsp.c2s.ic.gov`
-`ocsp.sc2s.sgov.gov`
+To enable OCSP, set `combine.tap.certificates.ocsp` to `true`. You can also toggle **OCSP Support** in the TAP Dashboard, in the **Certificate Settings** section of **Admin Settings > TAP Settings > Application Configuration**.
 
-There are additional configuration parameters:
+| Configuration Value | Default | Description |
+|---|---|---|
+| `combine.tap.certificates.ocsp` | `false` | Set to `true` to enable OCSP support. |
+| `combine.tap.ocsp.responder.signerCertificate.cache.duration` | `900000` (15 minutes) | How long, in milliseconds, to cache the Signer Certificate before refreshing it from S3. |
+| `combine.tap.ocsp.responder.nextUpdate.duration` | `86400000` (24 hours) | How long, in milliseconds, Combine advertises before the next update to OCSP. |
+| `combine.tap.ocsp.responder.request.byteLimit` | `8192` | Maximum size of an OCSP Request, in bytes. |
 
-`combine.tap.ocsp.responder.signerCertificate.cache.duration` which is how long in milliseconds to cache the Signer Certificate before refreshing it from S3. Defaults to 15 minutes.
+## Certificate Revocation
 
-`combine.tap.ocsp.responder.nextUpdate.duration` which is how long in milliseconds Combine advertises before the next update to OCSP. Defaults to 24 hours.
+To revoke a certificate, set this Configuration Value for it:
 
-`combine.tap.ocsp.responder.request.byteLimit` which is the maximum size in bytes of an OCSP Request. Defaults to `8192`.
+`combine.tap.certificates.revocation.certificate.<serial number>.date`
 
-### Certificate Revocation
+Set the value to the epoch time, in milliseconds, at which the certificate was revoked. `<serial number>` is the certificate serial number in decimal.
 
-Combine supports Certificate Revocation by setting a configuration value for each revoked certificate.
+The TAP Dashboard respects certificate revocation during authentication.
 
-`combine.tap.certificates.revocation.certificate.<serial number>.date` which is the epoch time in milliseconds at which the certificate was revoked. (The `<serial number>` is the certificate serial number in decimal.)
+## Pitfalls
 
-The TAP Dashboard will respect certificate revocation during authentication.
-
-### Notes
-
-_*WARNING*: Browsers are very very aggressive about enforcing OCSP for certificates and will not validate a certificate if they cannot reach at least one of the advertised OCSP Responder Endpoints. This means that if you use an OCSP Signed Certificate for a server, and try to reach that server with a client browser, the browser must have access to the OCSP Endpoint through Private DNS for your client!_
+Browsers enforce OCSP aggressively. A browser does not validate a certificate if it cannot reach at least one of the advertised OCSP Responder Endpoints. If you use an OCSP Signed Certificate for a server and reach that server from a browser, the browser must be able to reach the OCSP Endpoint through Private DNS for your client.

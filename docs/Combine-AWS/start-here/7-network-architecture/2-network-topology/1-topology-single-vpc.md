@@ -3,22 +3,24 @@ sidebar_position: 2
 title: Topology - Single VPC
 ---
 
-# Architecture
+# Topology - Single VPC
 
-This is the most commonly used Combine Network Architecture. In this topology Combine is deployed to a single VPC. Route 53 Private DNS entries redirect all emulated endpoint traffic to local Combine Endpoint servers.
+## Architecture
 
-# Architecture Diagram
+This is the most commonly used Combine network topology. In this topology, Combine is deployed to a single VPC. Route 53 private DNS entries redirect all emulated endpoint traffic to the local Endpoint Servers.
+
+## Architecture Diagram
 
 ![Single VPC Architecture](/aws/combine_network_architecture_single_vpc.png)
 
-# Advantages
+## Advantages
 
-- This architecture is simple and very very predictable.
+- This architecture is simple and predictable.
 
-# Disadvantages
+## Disadvantages
 
-- None inherently. If your workload spans a single VPC this is the ideal configuration. If your workload spans more than one VPCs then you must use a different topology.
+- None inherently. If your workload runs in a single VPC, this is the ideal configuration. If your workload spans more than one VPC, you must use a different topology, such as [Multiple VPC](2-topology-multiple-vpc.md) or [Multiple VPC - Central Combine VPC](3-topology-multiple-vpc-central-combine-vpc.md).
 
-# Shared Responsibilities
+## Shared Responsibilities
 
 - None.

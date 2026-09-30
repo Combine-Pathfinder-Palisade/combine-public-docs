@@ -8,9 +8,9 @@ Request Reflection is always active. No Configuration Value turns it on or off.
 
 Some authentication schemes use `sts:GetCallerIdentity` as proof of identity. The client signs an `sts:GetCallerIdentity` call, either as a Presigned URL or as a set of signed headers, and hands it to a server instead of sending it. The server replays the call to AWS STS, and the identity in the response is the identity of the client. Tokens in the style of `aws-iam-authenticator` and the HashiCorp Vault AWS auth method are common examples.
 
-Combine does not normally forward the AWS API Calls it receives. Instead it infers the credentials that signed the call and sends a new call to the host Partition, signed with those credentials (see the `Rewriting` section of [Orientation](../5-orientation.md)). A replayed `sts:GetCallerIdentity` call breaks this in two ways:
+Combine does not normally forward the AWS API Calls it receives. Instead it infers the credentials that signed the call and sends a new call to the host Partition, signed with those credentials (see [Rewriting](../5-orientation.md#rewriting) in Orientation). A replayed `sts:GetCallerIdentity` call breaks this in two ways:
 
-- The server that replays the call sends it to Combine, not the client. If Combine cannot infer the client's credentials (for example credentials from an EC2 Instance Profile), it signs the new call with other credentials. These can be the Default Role or, for a call signed in the `Authorization` header, the IAM Role that [Resource Role Masquerade](resource-role-masquerade.md) finds for the replaying server. The server then sees the wrong identity, or an error if Combine cannot derive any credentials.
+- The server that replays the call sends it to Combine, not the client. If Combine cannot infer the client's credentials (for example, credentials from an EC2 Instance Profile), it signs the new call with other credentials. These can be the Default Role or, for a call signed in the `Authorization` header, the IAM Role that [Resource Role Masquerade](resource-role-masquerade.md) finds for the replaying server. The server then sees the wrong identity, or an error if Combine cannot derive any credentials.
 - A call signed for an emulated Region (for example `us-iso-east-1` at `sts.us-iso-east-1.c2s.ic.gov`) is not valid in the host Partition, so Combine cannot forward it unchanged either.
 
 Request Reflection solves this for a call that the client signs for the host Partition. Combine recognizes the call and sends it to AWS unchanged (it "reflects" the call).
@@ -49,6 +49,8 @@ The signature covers the `Host` header, so the client must sign for the same hos
 
 ## Configuration
 
+Set these Configuration Values in the Combine Configuration table. See [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions.
+
 | Configuration Value | Default | Description |
 |---|---|---|
 | `combine.endpoints.aws.request.reflection.endpoint.override` | _(empty)_ | A host name (not a URL) that replaces the destination host of **every** Reflected Request, for example `sts.amazonaws.com`. When empty, Combine uses the destination from the table above. |
@@ -63,8 +65,6 @@ The Combine Policy CloudFormation Template writes `combine.endpoints.aws.request
 
 - For a Combine Deployment that emulates the US Top Secret, US Secret, or US GovCloud Partition, the value comes from the `DefaultPartitionForReflectedRequests` Parameter ("Default Partition ID - Reflected Requests"), which defaults to `AWS_C2S`. If your Combine Deployment emulates a different Partition, set this Parameter to that Partition's ID (for example `AWS_SC2S`).
 - For a Combine Deployment that emulates the EUSC Partition, the value is `AWS_EUSC`.
-
-See [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md) for instructions on setting a Configuration Value.
 
 _NOTE: `combine.endpoints.aws.filter.requestReflection.enable` (default `false`) and `combine.endpoints.aws.request.reflection.target.region.endpoint.override` belong to a legacy Request Reflection Filter and have no effect on Request Reflection. Use `combine.endpoints.aws.request.reflection.endpoint.override` to override the destination._
 
@@ -93,7 +93,7 @@ The legacy global endpoint belongs to AWS Commercial. In a Combine Deployment ho
 
 ### AWS SDK and CLI Settings
 
-Configure the client that generates the signed call (and only that client) as follows:
+Configure only the client that generates the signed call, as follows:
 
 - Set its Region to the host Region that your emulated Region is mapped to (for example `AWS_REGION=us-east-1`).
 - Make it use Regional STS Endpoints. Set `AWS_STS_REGIONAL_ENDPOINTS=regional`, or `sts_regional_endpoints = regional` in the shared AWS config file, for SDKs and CLI versions that support the setting. The default differs by SDK and version: older SDKs, such as AWS CLI version 1 and older boto3 releases, have defaulted to `legacy`, while newer SDKs use Regional endpoints. Set the value explicitly instead of relying on the default, and check the documentation for your SDK version.
@@ -108,17 +108,17 @@ To check a Presigned URL, look at its host and its `X-Amz-Credential` parameter.
 - While running in Combine, the client that generates the signed call must use host Partition values (the host Region and its STS Endpoint). In the emulated Partition itself that client would use the emulated Region, so keep this setting configurable in your workload.
 - Combine applies no request Filters to a Reflected Request. The request is not checked the way other AWS API Calls are.
 - The replaying server must send the call to Combine through the emulated STS Endpoint. If it calls an STS Endpoint in the host Partition directly, Combine is not involved.
-- For a Presigned URL without an `X-Amz-Security-Token` parameter (for example one signed with IAM User Access Keys), Combine forwards only the default headers and the headers in `combine.endpoints.aws.request.reflection.headers`. Add any other signed header names to that Configuration Value.
-- Request Reflection does not handle an EKS Bearer Token sent to an EKS Cluster endpoint through Combine. Combine's Kubernetes proxy rewrites that token separately.
+- For a Presigned URL without an `X-Amz-Security-Token` parameter (for example, one signed with IAM User Access Keys), Combine forwards only the default headers and the headers in `combine.endpoints.aws.request.reflection.headers`. Add any other signed header names to that Configuration Value.
+- Request Reflection does not handle an EKS Bearer Token sent to an EKS Cluster endpoint through Combine. Combine's [Kubernetes Proxy](kubernetes-proxy-access-control.md) rewrites that token separately.
 
 ## Troubleshooting
 
 - In the Combine Log (see [View Combine Logs](../../tutorials/operations/how-to-view-combine-logs.md)), a Reflected Request has `transaction.metadata.reflected` set to `"true"`. `transaction.metadata.hostHeaderMismatched` is `"true"` when the `Host` header named an endpoint in the host Partition. (By default a Combine Deployment does not log AWS API Calls that succeed.)
-- When a request has a `Host` header for the host Partition but does not qualify for Request Reflection, Combine logs `Request has a mismatched Host Header but does not match rules to be a Reflected Request!`. If `combine.endpoints.aws.request.hostHeaderMismatch.reject.unless.reflected` is `true`, Combine also raises a `Request Host Header Mismatch` Alert Event and returns HTTP `400` with the error code `EmulationError` and the message `Request had a Host Header that did not match the emulated Partition but was not a Reflected Request. Rejecting this Request as malformed.` The most common cause is a client that signed the call for an emulated Region instead of the host Region.
+- When a request has a `Host` header for the host Partition but does not qualify for Request Reflection, Combine logs `Request has a mismatched Host Header but does not match rules to be a Reflected Request!`. If `combine.endpoints.aws.request.hostHeaderMismatch.reject.unless.reflected` is `true`, Combine also raises a **Request Host Header Mismatch** Alert Event and returns HTTP `400` with the error code `EmulationError` and the message `Request had a Host Header that did not match the emulated Partition but was not a Reflected Request. Rejecting this Request as malformed.` The most common cause is a client that signed the call for an emulated Region instead of the host Region.
 - When `combine.endpoints.aws.request.reflection.endpoint.override` is applied, Combine logs `Request Reflection : Overwriting detected Endpoint [<endpoint>] with Endpoint [<override>]!` when `combine.log.level` is `VERBOSE` or `VERBOSE_LOW_LEVEL` (see [Log Level](../../tutorials/operations/how-to-view-combine-logs.md#log-level)).
 
 ## Notes
 
-- Combine `3.14` began forwarding every signed header of a Reflected Request.
-- Combine `3.14.3` (backported to `3.14.1.1` and `3.14.1.2`) fixed three Request Reflection issues: a duplicate `Content-Length` header, an unnormalized request path, and incorrect handling of `combine.endpoints.aws.request.reflection.endpoint.override`.
-- Combine `3.14.4` added `combine.endpoints.aws.request.hostHeaderMismatch.reject.unless.reflected` and the `Request Host Header Mismatch` Alert Event.
+- Combine 3.14 began forwarding every signed header of a Reflected Request.
+- Combine 3.14.3 (backported to Combine 3.14.1.1 and 3.14.1.2) fixed three Request Reflection issues: a duplicate `Content-Length` header, an unnormalized request path, and incorrect handling of `combine.endpoints.aws.request.reflection.endpoint.override`.
+- Combine 3.14.4 added `combine.endpoints.aws.request.hostHeaderMismatch.reject.unless.reflected` and the **Request Host Header Mismatch** Alert Event.

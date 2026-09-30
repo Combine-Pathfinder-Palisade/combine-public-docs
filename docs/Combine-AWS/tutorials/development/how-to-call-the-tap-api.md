@@ -2,9 +2,9 @@
 
 The TAP API is the HTTPS API behind the TAP Dashboard. You can use it to script Dashboard tasks: manage Users, Servers, Groups and AWS Roles, sign certificates, review Alert Events, read partition and configuration data, and (when enabled) request temporary AWS credentials through the CAP / SCAP compatible endpoints.
 
-Every endpoint, parameter and response is documented in the **Combine API** section of this site. This page covers what you need to make your first call. For a worked example of one endpoint, see [PKI Certificates: CSR Signing API](../../start-here/10-advanced-features/pki-certificates-csr-signing-api.md).
+The **Combine API** section of this site documents every endpoint, parameter and response. This page covers what you need to make your first call. For a worked example of one endpoint, see [PKI Certificates: CSR Signing API](../../start-here/10-advanced-features/pki-certificates-csr-signing-api.md).
 
-### Base URL
+## Base URL
 
 TAP API paths start with `/tap/api/v1/`. (The CAP / SCAP compatible endpoints use `/api/v1/`, `/api/v2/` and `/cap/gxCAP/`.) Send requests over HTTPS on port 443 to a TAP host name:
 
@@ -13,19 +13,19 @@ TAP API paths start with `/tap/api/v1/`. (The CAP / SCAP compatible endpoints us
 
 For example: `https://cap.cia.ic.gov/tap/api/v1/users/current`
 
-The TAP server certificate is issued by your Combine Certificate Authority, so your client must trust `certificates/ca-chain.cert.pem` from your Credential Package. Connect with a host name, not an IP address, so host name verification succeeds.
+Your Combine Certificate Authority issues the TAP Server certificate, so your client must trust `certificates/ca-chain.cert.pem` from your Credential Package. Connect with a host name, not an IP address, so host name verification succeeds.
 
-### Authentication
+## Authentication
 
 The TAP API uses mutual TLS. There is no login, token or session. Every request must present your Personal Certificate from your Credential Package: either `certificates/<username>.cert.pem` with `certificates/<username>.key.pem`, or `certificates/<username>.p12`. (`<username>` is your User name in lowercase, with everything except letters, digits and `_` removed.)
 
 - **Identity**: the certificate's serial number is your User Id. TAP looks up the User on every request, so a new User can call the API as soon as they have their Credential Package, and a deactivated User is blocked from their next request. `GET /tap/api/v1/users/current` returns the User that your certificate maps to.
 - **Roles**: every User has one of three roles: `user`, `admin` or `super_admin`. Administrative endpoints require `admin`, and `super_admin` passes every role check. Some endpoints also let a `user` act on their own record, for example `GET /tap/api/v1/users/{userId}` with their own User Id. Only a Super Admin can act on a Super Admin User. A request without the required role gets a `403`.
-- **Authentication failures**: some requests fail authentication: a request with no client certificate, a revoked certificate, an unknown or inactive User, or a request sent over plain HTTP. These requests do not get a JSON error. TAP returns its HTML error page ("Combine Dashboard Error") with status `200`. TAP asks for a client certificate during the TLS handshake but does not require one, so the handshake itself succeeds. In scripts, treat a response from a JSON endpoint without a `Content-Type` of `application/json` as an authentication failure.
+- **Authentication failures**: a request fails authentication if it has no client certificate, uses a revoked certificate, maps to an unknown or inactive User, or is sent over plain HTTP. These requests do not get a JSON error. Instead, TAP returns its HTML error page ("Combine Dashboard Error") with status `200`. TAP asks for a client certificate during the TLS handshake but does not require one, so the handshake itself succeeds. In scripts, treat a response from a JSON endpoint without a `Content-Type` of `application/json` as an authentication failure.
 
 The OCSP responder (`/tap/api/v1/certificate/ocsp`) and the health check (`GET /combine/api/health`) do not require a client certificate.
 
-### Required Headers
+## Required Headers
 
 | Header | When | Value |
 | --- | --- | --- |
@@ -33,7 +33,7 @@ The OCSP responder (`/tap/api/v1/certificate/ocsp`) and the health check (`GET /
 | `Content-Type` | Requests with a JSON body | `application/json`. Most endpoints only accept JSON. `curl -d` sends `application/x-www-form-urlencoded` by default, and TAP rejects that with `415`. |
 | `Accept` | Optional | curl and Python `requests` send `*/*` by default, which works everywhere. If you set `Accept`, include `application/json`. Also include `text/plain` for Reference Data (`GET /tap/api/v1/reference-data/{id}`) and CSR signing. If `Accept` is only `text/html`, TAP rejects the request with `406`. |
 
-### Examples
+## Examples
 
 Run these commands from the folder where you unzipped your Credential Package. First, set the TAP host name and read the Credential Package password. The password file starts with a literal `Password: ` prefix, which is not part of the password:
 
@@ -64,7 +64,7 @@ curl --cacert certificates/ca-chain.cert.pem \
   "$TAP/tap/api/v1/groups"
 ```
 
-#### Encrypted Private Key
+### Encrypted Private Key
 
 By default, `<username>.key.pem` is not encrypted. Some Combine Deployments set the `combine.tap.certificates.user.key.encrypted` Configuration Value to `true`. In that case, the key is encrypted with your Credential Package password. Pass the password with `--pass "$PASSWORD"` (otherwise curl prompts for it), or decrypt the key once and use the decrypted copy:
 
@@ -74,7 +74,7 @@ openssl pkey -in certificates/<username>.key.pem -passin "pass:$PASSWORD" -out <
 
 Keep the decrypted key private.
 
-#### PKCS12
+### PKCS12
 
 You can also authenticate with the `.p12` file instead of the PEM files:
 
@@ -86,9 +86,9 @@ curl --cacert certificates/ca-chain.cert.pem \
 
 _NOTE: The `.p12` file encrypts its certificates with the legacy RC2-40 algorithm. OpenSSL 3 cannot read it without its legacy provider, so a curl built with OpenSSL 3 may reject it. If that happens, use the PEM files._
 
-#### Python
+### Python
 
-`requests` needs an unencrypted private key. (If your key is encrypted, use the decrypted copy from above.)
+`requests` needs an unencrypted private key. If your key is encrypted, use the decrypted copy from [Encrypted Private Key](#encrypted-private-key).
 
 ```python
 import requests
@@ -109,7 +109,7 @@ response = session.post(f"{TAP}/tap/api/v1/groups", json={"name": "Example Group
 print(response.json())
 ```
 
-### Errors
+## Errors
 
 Error responses come in three shapes:
 
@@ -128,7 +128,7 @@ Common status codes:
 - `404`: the resource does not exist, or the feature is disabled. A disabled feature returns `{"success": false, "message": "API not enabled."}`. A disabled OCSP responder returns `404` without a JSON body, and an unknown path returns an HTML "not found" page.
 - `413`: the upload is too large. A CloudFormation Template sent to `POST /tap/api/v1/tools/analyze/cloudformation/template` is limited by `combine.tap.tools.analyzeCloudFormationTemplate.byteLimit` (default `2097152` bytes). A CSR sent to `POST /tap/api/v1/admin/certificate/custom` is limited by `combine.tap.api.certificates.signCustomCSR.byteLimit` (default `65536` bytes).
 
-### Feature Flags
+## Feature Flags
 
 Some endpoints are disabled unless a Configuration Value turns them on. See [Edit Combine Configuration Values](../operations/how-to-edit-combine-configuration.md) to change one.
 

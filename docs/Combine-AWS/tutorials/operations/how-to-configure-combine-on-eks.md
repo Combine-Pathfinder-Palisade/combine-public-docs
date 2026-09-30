@@ -1,47 +1,66 @@
-# How to configure Combine on EKS (with helm!)
+# Configure Combine on EKS with Helm
 
-:::tip[🚧 Work in Progress 🚧 ]
+:::tip[Work in Progress]
 
-Please note that this tutorial may change as we are working for a seamless tutorial!
+This tutorial may change as we continue to refine it.
 
 :::
 
-_Note that the Combine team must allow your aws account id to access our ECR registries where the images are stored._
+This tutorial walks you through installing Combine on an Amazon EKS cluster from the Combine Team's Helm repository, and sending the Combine logs to CloudWatch with CloudWatch Container Insights and Fluent Bit.
 
-This guide walks you through installing **Combine** via our Helm repository, then enabling CloudWatch Container Insights / Fluent Bit logging.
+## Before You Begin
 
-Some things to be aware of:
-- These instructions are tailored for use with an EKS cluster created with EKS Auto mode; the vpc cni, coredns and kube-proxy are managed by AWS and will not show up in the cluster.
-- The region in the snippets below is assumed to be `us-east-1`. This region is the region that your Combine deployment is hosted in, and not a high side region.
-- You'll need the name of the cluster before you create it, as tags containing the cluster's name need to be present before the cluster is created.
+- The Combine Team must allow your AWS Account ID to access the Combine Team's ECR registries, where the Combine images are stored.
+- These instructions are written for an EKS cluster created with EKS Auto Mode. In EKS Auto Mode, AWS manages the VPC CNI, CoreDNS, and kube-proxy, so they do not appear in the cluster.
+- The snippets use `us-east-1` as the Region. This is the host Region of your Combine Deployment, not an emulated Region.
+- Choose the cluster name before you create the cluster. The subnet tags in [Step 1](#step-1-tag-the-cluster-subnets) contain the cluster name and must be present before the cluster is created.
 
----
+### Placeholders
 
-## 1. Add OIDC Provider of cluster as an Identity Provider in IAM
+Replace these placeholders in the commands, policies, and Helm values on this page:
 
-- with audience `sts.amazonaws.com`
+| Placeholder | Replace with |
+| --- | --- |
+| `CLUSTER_NAME` | The name of your EKS cluster. |
+| `ACCOUNT_NUMBER` | Your AWS Account ID (the account that hosts your Combine Deployment). |
+| `COMBINE_TEAM_ACCOUNT_NUMBER` | The AWS Account ID that hosts the Combine Team's ECR registry. |
+| `YOUR_OIDC_ID` | The ID of your cluster's OIDC provider. |
+| `COMBINE_NAMESPACE` | The namespace you install Combine into (`combine` in [Step 6](#step-6-install-combine)). |
+| `SHARD_ID` | Only for a sharded Combine Deployment: the Shard ID, in lowercase. |
 
-## 1.5 Ensure the subnets that the cluster will use have the following tags:
+## Step 1: Tag the Cluster Subnets
 
-For the endpoints service load balancer (which is default internal to the VPC):
-```
+The Load Balancers for the Endpoint Server and the TAP Server are placed in subnets according to their tags. Complete this step before you create the cluster.
+
+Tag the subnets for the Endpoint Server's Load Balancer, which is internal to the VPC by default, with:
+
+```text
 kubernetes.io/role/internal-elb: 1
 kubernetes.io/cluster/CLUSTER_NAME: owned
 ```
 
-For the TAP service load balancer (which is default open to the public internet):
-```
+Tag the subnets for the TAP Server's Load Balancer, which is open to the public internet by default, with:
+
+```text
 kubernetes.io/role/elb: 1
 kubernetes.io/cluster/CLUSTER_NAME: owned
 ```
 
-## 2. Create the appropriate roles for Combine Service Accounts
+## Step 2: Add the Cluster's OIDC Provider to IAM
 
-You can name them `combine-endpoints-irsa-role` and `combine-tap-irsa-role`, respectively. In the trust policies below, replace `YOUR_OIDC_ID` with your cluster's OIDC provider ID and `COMBINE_NAMESPACE` with the namespace you install Combine into (`combine` in step 5).
+IRSA lets the Combine Pods assume IAM Roles through the cluster's OIDC provider. After you create the cluster, add its OIDC provider as an identity provider in IAM, with the audience `sts.amazonaws.com`.
 
-The S3 bucket in the policies below is the Combine DevOps bucket, `combine-devops-ACCOUNT_NUMBER-us-east-1`. If you have a sharded (namespaced) Combine Deployment, it is named `combine-SHARD_ID-devops-ACCOUNT_NUMBER-us-east-1` (with the Shard ID in lowercase) instead.
+## Step 3: Create the IAM Roles for the Combine ServiceAccounts
 
-The Endpoints IRSA role must have the following permissions and trust:
+The Endpoint Server and the TAP Server each run under their own ServiceAccount and IAM Role. Create one IAM Role for each. This tutorial names them `combine-endpoints-irsa-role` and `combine-tap-irsa-role`, and later steps use these names.
+
+In the trust policies, replace `YOUR_OIDC_ID` and `COMBINE_NAMESPACE` as described in [Placeholders](#placeholders). Both trust policies also let the `cloudwatch-agent` ServiceAccount in the `amazon-cloudwatch` namespace assume the role. [Step 5](#step-5-install-amazon-cloudwatch-observability) creates that ServiceAccount.
+
+The S3 bucket in the permissions is the Combine DevOps bucket, `combine-devops-ACCOUNT_NUMBER-us-east-1`. If you have a sharded (namespaced) Combine Deployment, the bucket is named `combine-SHARD_ID-devops-ACCOUNT_NUMBER-us-east-1` instead, with the Shard ID in lowercase.
+
+### Endpoint Server Role
+
+Create `combine-endpoints-irsa-role` with the following permissions and trust policy.
 
 <details>
   <summary>Permissions</summary>
@@ -187,7 +206,9 @@ The Endpoints IRSA role must have the following permissions and trust:
 ```
 </details>
 
-The TAP IRSA role must have the following permissions and trust:
+### TAP Server Role
+
+Create `combine-tap-irsa-role` with the following permissions and trust policy.
 
 <details>
   <summary>Permissions</summary>
@@ -326,7 +347,6 @@ The TAP IRSA role must have the following permissions and trust:
 ```
 </details>
 
-
 <details>
   <summary>Trust</summary>
 
@@ -366,35 +386,28 @@ The TAP IRSA role must have the following permissions and trust:
 
 </details>
 
+## Step 4: Log In to the Combine Team's ECR Registry
 
+The Combine Helm chart is stored in the Combine Team's ECR registry. Log your Helm client in to that registry.
 
-## 3. Log in your Helm client to our ECR registry
+_NOTE: You log in to the Combine Team's ECR registry, so `COMBINE_TEAM_ACCOUNT_NUMBER` is a different account from the `ACCOUNT_NUMBER` in the previous steps._
 
-Note that you will be logging into the Combine team's ECR, so the account number here will be different than above.
-
-```
+```bash
 aws ecr get-login-password --region us-east-1 \
   | helm registry login --username AWS --password-stdin \
     COMBINE_TEAM_ACCOUNT_NUMBER.dkr.ecr.us-east-1.amazonaws.com
 ```
 
-## 4. Install CloudWatch Observability
+## Step 5: Install Amazon CloudWatch Observability
 
-Beware, you might have to add an IAM Access Entry to the cluster (or another access method, perhaps ConfigMap) to be able to kubectl to the cluster.
+The Amazon CloudWatch Observability Helm chart installs the CloudWatch agent and Fluent Bit in the cluster. The values in this step send the Endpoint Server and TAP Server container logs to their own Log Groups, and exclude them from the default Container Insights application Log Group. For more about the Combine logs, see [View Combine Logs](how-to-view-combine-logs.md).
 
-```
-helm repo add aws-observability https://aws-observability.github.io/helm-charts
-helm repo update
-helm upgrade --install amazon-cloudwatch \
-  aws-observability/amazon-cloudwatch-observability \
-  -n amazon-cloudwatch --create-namespace \
-  -f cloudwatch-helm-values.yaml
-```
+_NOTE: To access the cluster (for example, with `kubectl`), you might have to add an IAM Access Entry to the cluster or use another access method, such as a ConfigMap. [Step 8](#step-8-test-the-deployment) shows how to update your kubeconfig for the cluster._
 
-The contents of the `cloudwatch-helm-values.yaml`:
+Save the following as `cloudwatch-helm-values.yaml`. Replace `CLUSTER_NAME` in `clusterName` and `ACCOUNT_NUMBER` in the role ARN.
 
 <details>
-  <summary>CloudWatch Helm values</summary>
+  <summary>CloudWatch Helm Values</summary>
 
 ```yaml
 clusterName: CLUSTER_NAME
@@ -546,18 +559,24 @@ containerLogs:
 ```
 </details>
 
-## 5. Install Combine
+Then install the chart:
 
-```
-helm upgrade --install combine \
-  oci://COMBINE_TEAM_ACCOUNT_NUMBER.dkr.ecr.us-east-1.amazonaws.com/combine \
-  -n combine --create-namespace \
-  -f combine-helm-values.yaml \
-  --set tap.serviceAccount.roleArn=arn:aws:iam::ACCOUNT_NUMBER:role/combine-tap-irsa-role \
-  --set endpoints.serviceAccount.roleArn=arn:aws:iam::ACCOUNT_NUMBER:role/combine-endpoints-irsa-role
+```bash
+helm repo add aws-observability https://aws-observability.github.io/helm-charts
+helm repo update
+helm upgrade --install amazon-cloudwatch \
+  aws-observability/amazon-cloudwatch-observability \
+  -n amazon-cloudwatch --create-namespace \
+  -f cloudwatch-helm-values.yaml
 ```
 
-The contents of `combine-helm-values.yaml` (if you have a sharded Combine Deployment, use `combine-SHARD_ID-devops-ACCOUNT_NUMBER-us-east-1` and `combine-SHARD_ID-configuration`, with the Shard ID in lowercase):
+## Step 6: Install Combine
+
+The Combine Helm chart runs the Endpoint Server and the TAP Server in the cluster. This step installs it into the `combine` namespace.
+
+Save the following as `combine-helm-values.yaml`.
+
+_NOTE: If you have a sharded Combine Deployment, use `combine-SHARD_ID-devops-ACCOUNT_NUMBER-us-east-1` for the DevOps bucket values and `combine-SHARD_ID-configuration` for the Combine Configuration table name, with the Shard ID in lowercase._
 
 <details>
   <summary>Combine Helm Values</summary>
@@ -610,11 +629,24 @@ tap:
 
 </details>
 
-Then, wait for combine pods to show healthy...
+Then install the chart:
 
-## 6. Add DNS records in Route 53 to map C2S domains to Combine's load balancers
+```bash
+helm upgrade --install combine \
+  oci://COMBINE_TEAM_ACCOUNT_NUMBER.dkr.ecr.us-east-1.amazonaws.com/combine \
+  -n combine --create-namespace \
+  -f combine-helm-values.yaml \
+  --set tap.serviceAccount.roleArn=arn:aws:iam::ACCOUNT_NUMBER:role/combine-tap-irsa-role \
+  --set endpoints.serviceAccount.roleArn=arn:aws:iam::ACCOUNT_NUMBER:role/combine-endpoints-irsa-role
+```
 
-Create a Route 53 private hosted zone for `c2s.ic.gov`, associate it with your VPC, and add CNAME records that point to the Endpoints service's load balancer (`combine-endpoints-service`):
+Wait until the Combine Pods are healthy before you continue.
+
+## Step 7: Create DNS Records for the Emulated Domains
+
+Your workload reaches Combine through the emulated domain names, so those names must resolve to the Combine Load Balancers. For how Combine uses Route 53 Private Hosted Zones for this, see [VPC Network Architecture](../../start-here/7-network-architecture/1-vpc-network-architecture.md).
+
+Create a Route 53 Private Hosted Zone for `c2s.ic.gov` and associate it with your VPC. In it, add CNAME records that point to the Endpoint Server's Load Balancer (`combine-endpoints-service`):
 
 - `*.c2s.ic.gov`
 - `*.us-iso-east-1.c2s.ic.gov`
@@ -622,13 +654,18 @@ Create a Route 53 private hosted zone for `c2s.ic.gov`, associate it with your V
 - `*.eks.c2s.ic.gov`
 - `*.es.c2s.ic.gov`
 
-To reach TAP by its emulated name, create a private hosted zone for `cia.ic.gov` with a CNAME record `cap.cia.ic.gov` that points to the TAP service's load balancer (`combine-tap-service`).
+To reach TAP by its emulated name, create a Private Hosted Zone for `cia.ic.gov`. In it, add a CNAME record for `cap.cia.ic.gov` that points to the TAP Server's Load Balancer (`combine-tap-service`).
 
-When emulating SC2S, use `sc2s.sgov.gov` with the `us-isob-east-1` and `us-isob-west-1` Regions, add `*.global.sc2s.sgov.gov`, and use `geoaxis.nga.smil.mil` for TAP.
+These names are for the US Top Secret Partition (C2S). When you emulate the US Secret Partition (SC2S):
 
-## 7. Test!
+- Use `sc2s.sgov.gov` in place of `c2s.ic.gov`.
+- Use the `us-isob-east-1` and `us-isob-west-1` Regions in place of `us-iso-east-1` and `us-iso-west-1`.
+- Also add a `*.global.sc2s.sgov.gov` record.
+- Use `geoaxis.nga.smil.mil` as the TAP host name in place of `cap.cia.ic.gov`.
 
-Use `kubectl` or the console to get the load balancer endpoints for TAP and endpoints servers:
+## Step 8: Test the Deployment
+
+Confirm that the Endpoint Server and the TAP Server respond. First, use `kubectl` or the AWS Console to find the Load Balancer addresses for the TAP Server and the Endpoint Server:
 
 ```bash
 # login to cluster
@@ -638,8 +675,10 @@ aws eks update-kubeconfig --region us-east-1 --name CLUSTER_NAME
 kubectl get svc -n combine
 ```
 
-#### For testing Endpoints
-From a test box within the Combine VPC, try running an `aws sts get-caller-identity` and see if you can follow the logs.
+### Test the Endpoint Server
 
-#### For testing TAP
-See if you can get a response back from the tap server in the browser.
+From a test instance inside the Combine VPC, run `aws sts get-caller-identity`. Then check that you can follow the request in the Endpoint Server's logs. For how to configure a client inside Combine, see [Orientation](../../start-here/5-orientation.md).
+
+### Test the TAP Server
+
+In a browser, check that the TAP Server returns a response.

@@ -1,42 +1,40 @@
 # Change the Default Role
 
-### Overview
-
-When Combine receives a request, it derives which IAM Role should be used to sign the emulated request. It checks, in order:
+When Combine receives a request, it determines which IAM Role to use to sign the emulated request. It checks, in order:
 
 1. A session token previously issued through Combine.
 2. User credentials issued through Combine.
-3. The IAM Role attached to the EC2 instance or Lambda function that made the request.
+3. The IAM Role attached to the EC2 Instance or Lambda Function that made the request.
 
-If none of these match, Combine falls back to the **Default Role** for the emulated partition. Out of the box this is the `WLDEVELOPER` role that Combine creates in each account (for example, `Combine-TS-WLDEVELOPER`).
+If none of these match, Combine falls back to the Default Role for the emulated partition. By default this is the `WLDEVELOPER` Role that Combine creates in each Account (for example, `Combine-TS-WLDEVELOPER`).
 
-This guide explains how to replace `WLDEVELOPER` with an IAM Role of your own, so that Combine defaults to your role whenever it cannot otherwise infer credentials.
+This guide explains how to replace `WLDEVELOPER` with an IAM Role of your own, so that Combine uses your Role whenever it cannot otherwise determine credentials.
 
-> _NOTE: The Default Role is only used as a fallback. Requests that carry Combine-issued credentials (including CAP / SCAP credentials) or that originate from a recognized EC2 instance or Lambda function are not affected by this change._
+_NOTE: The Default Role is only a fallback. This change does not affect requests that carry Combine-issued credentials (including CAP / SCAP credentials) or that come from a recognized EC2 Instance or Lambda Function._
 
-### Step 1: Create the IAM Role
+## Step 1: Create the IAM Role
 
-Create an IAM Role with your preferred permissions.
+Create an IAM Role with the permissions you want.
 
-Combine assumes the Default Role **by name, in the source account of each request**. This means:
+Combine assumes the Default Role **by name, in the source Account of each request**. This means:
 
-- You must create the role in every Combine-managed account where requests may originate.
-- The role must have the same name in every account.
+- You must create the Role in every Combine-managed Account where requests may originate.
+- The Role must have the same name in every Account.
 
-### Step 2: Attach the Combine Policies
+## Step 2: Attach the Combine Policies
 
-In addition to your own permissions, the role must carry the Combine-managed policies that keep the emulation consistent. Attach the same Combine policies that are attached to the existing `WLDEVELOPER` role for the partition:
+In addition to your own permissions, the Role must have the Combine Managed Policies that keep the emulation consistent. Attach the same Combine Managed Policies that are attached to the existing `WLDEVELOPER` Role for the partition:
 
-- The **Emulation Protection** policy (for example, `PolicyCombineEmulationProtection`).
-- The **Overlay Base** policies for the partition (for example, `TSPolicyCombineOverlayBase` and its per-region variants such as `TSPolicyCombineOverlayBaseRegionE1`).
+- The Emulation Protection policy (for example, `PolicyCombineEmulationProtection`).
+- The Overlay Base policies for the partition (for example, `TSPolicyCombineOverlayBase` and its per-Region variants such as `TSPolicyCombineOverlayBaseRegionE1`).
 
-The easiest way to get the exact list is to open the `WLDEVELOPER` role for the partition in the IAM console and copy its attached Combine policies. (Policy names include your Shard ID if your deployment has one.)
+To get the exact list, open the `WLDEVELOPER` Role for the partition in the IAM Console and copy its attached Combine Managed Policies. Policy names include your Shard ID if your Combine Deployment has one.
 
-### Step 3: Set the Trust Policy
+## Step 3: Set the Trust Policy
 
-Your role's trust policy must let Combine's service roles (`Combine-Endpoints` and `Combine-TAP`) call `sts:AssumeRole`. (The default `WLDEVELOPER` role allows this by trusting the account's root principal.)
+Your Role's Trust Policy must allow the Combine service Roles (`Combine-Endpoints` and `Combine-TAP`) to call `sts:AssumeRole`. The default `WLDEVELOPER` Role allows this by trusting the Account's root principal.
 
-At a minimum, the role must trust the `Combine-Endpoints`/`Combine-<shard-id>-Endpoints` role:
+At a minimum, the Role must trust the `Combine-Endpoints` (or `Combine-<ShardId>-Endpoints`) Role. The following example trusts both service Roles:
 
 ```json
 {
@@ -56,43 +54,47 @@ At a minimum, the role must trust the `Combine-Endpoints`/`Combine-<shard-id>-En
 }
 ```
 
-> _NOTE_: If your deployment uses a User Management Account, role assumptions are bridged through that account, so its account principal must be trusted as well:
->
-> ```json
-> "Principal": {
->   "AWS": [
->     "arn:aws:iam::<combine-account-id>:role/Combine-Endpoints",
->     "arn:aws:iam::<user-management-account-id>:root"
->   ]
-> }
-> ```
+If your Combine Deployment uses a User Management Account, Role assumptions are bridged through that Account, so the Role must also trust the User Management Account's root principal:
 
-### Step 4: Update the Combine-Policy CloudFormation Stack
-
-Update the `Combine-Policy` (or `Combine-<ShardId>-Policy`) CloudFormation Stack in each affected account and set the **name** of your IAM Role (not the ARN) in the parameter for each partition you want to override:
-
-| Parameter | Emulated Partition | Configuration Value Written |
-| --- | --- | --- |
-| `Default Signing Role Override - TS` | C2S (`us-iso`) | `combine.endpoints.aws.authorization.defaultRole.aws_c2s` |
-| `Default Signing Role Override - S` | SC2S (`us-isob`) | `combine.endpoints.aws.authorization.defaultRole.aws_sc2s` |
-| `Default Signing Role Override - GovCloud` | GovCloud (`us-gov`) | `combine.endpoints.aws.authorization.defaultRole.aws_gov_cloud` |
-
-Leaving a parameter blank keeps the default `WLDEVELOPER` role for that partition.
-
-The stack update writes the Configuration Values listed above. No server restart is required. (See [Edit Combine Configuration Values](../operations/how-to-edit-combine-configuration.md) for details on how Combine Configuration works.)
-
-### Verify the Change
-
-From a machine whose credentials Combine cannot otherwise derive (for example, an EC2 instance with no instance role), run:
-
+```json
+"Principal": {
+  "AWS": [
+    "arn:aws:iam::<combine-account-id>:role/Combine-Endpoints",
+    "arn:aws:iam::<user-management-account-id>:root"
+  ]
+}
 ```
+
+(See [Cross Account Role Assumption Through the Leader](how-to-add-follower-account.md#cross-account-role-assumption-through-the-leader).)
+
+## Step 4: Update the Combine Policy CloudFormation Stack
+
+Update the `Combine-Policy` (or `Combine-<ShardId>-Policy`) CloudFormation Stack in each affected Account. For each emulated partition you want to override, set the Parameter to the **name** of your IAM Role (not the ARN):
+
+| Parameter | Console Label | Emulated Partition | Configuration Value Written |
+| --- | --- | --- | --- |
+| `DefaultSigningRoleTS` | **Default Signing Role Override - TS** | C2S (`us-iso`) | `combine.endpoints.aws.authorization.defaultRole.aws_c2s` |
+| `DefaultSigningRoleS` | **Default Signing Role Override - S** | SC2S (`us-isob`) | `combine.endpoints.aws.authorization.defaultRole.aws_sc2s` |
+| `DefaultSigningRoleGovCloud` | **Default Signing Role Override - GovCloud** | GovCloud (`us-gov`) | `combine.endpoints.aws.authorization.defaultRole.aws_gov_cloud` |
+
+Leave a Parameter blank to keep the default `WLDEVELOPER` Role for that partition.
+
+The stack update writes the Configuration Values listed above. No server restart is required. (See [Edit Combine Configuration Values](../operations/how-to-edit-combine-configuration.md) for how Combine Configuration works.)
+
+For a new Combine Deployment, you can instead set these Parameters in `combinePolicyStackParameters` before you run `build`. (See [Reference - clients.json](reference-clients-json.md#combinepolicystackparameters-combine-policyyaml).)
+
+## Step 5: Verify the Change
+
+From a machine whose credentials Combine cannot otherwise determine (for example, an EC2 Instance with no IAM Role attached), run:
+
+```bash
 aws sts get-caller-identity
 ```
 
-The returned ARN should reference your new role. You can also confirm in the Endpoint Server logs, which will record:
+The returned ARN should reference your new Role. The Endpoint Server logs also record:
 
 `Request Authorization: Authorized by Role [<your-role-name>] in AWS Account [<account-id>].`
 
-(Releases before 3.14.6 record `Request Authorization: Authorized by default role [<your-role-name>] in account [<account-id>].`)
+Releases before Combine 3.14.6 record `Request Authorization: Authorized by default role [<your-role-name>] in account [<account-id>].` (See [View Combine Logs](../operations/how-to-view-combine-logs.md#endpoint-logs).)
 
-Please contact your Combine Support Team for additional information!
+For more information, contact the Combine Support Team.
