@@ -118,6 +118,12 @@ If your production environment uses the `WLDEVELOPER` series of enterprise IAM R
 
 Production environment sponsors generally do _not_ provide this role by default, but you can generally request it before your production deployment.
 
+### `KEYMANAGER` Role
+
+Combine creates `KEYMANAGER` user roles for C2S and SC2S (for example, `Combine-TS-KEYMANAGER` and `Combine-S-KEYMANAGER`) to mirror the production environment's separation of KMS key administration from general development. Use `KEYMANAGER` to create keys, change key policies, manage grants, or schedule key deletion. Its default policy does not allow general workload operations or KMS encryption and decryption.
+
+Use `WLDEVELOPER` for all other workload and infrastructure operations. Its default policy allows use of existing KMS keys, including encryption and decryption, and grants for AWS resources, but not key creation or policy changes.
+
 ## What Can You Use/Change?
 
 _Under development._
