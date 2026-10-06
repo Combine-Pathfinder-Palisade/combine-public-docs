@@ -14,7 +14,8 @@ These are temporary issues that are currently unsolved but that we expect to res
 
 ### TerraForm Support
 
-- **TerraForm AWS Provider 5.46.0 and above:** The provider always tries to invoke `ec2:DescribeAddressesAttribute` when it manages an Elastic IP resource. This call returns an error on the high side. Combine allows you to stop blocking this call, but the problem persists and requires a TerraForm Provider change or a rearchitecture.
+- **TerraForm AWS Provider 5.46.0 to 5.93.0:** The provider always tries to invoke `ec2:DescribeAddressesAttribute` when it manages an Elastic IP resource. This call returns an error on the high side (which Combine emulates by sending the same error.) While Combine can be configured to not block this call, the problem is intractable on the high side. **Resolution: TerraForm Provider Version 5.93.0 no longer fails when `ec2:DescribeAddressesAttribute` returns an error.**
+
 - **Resolved in Combine 3.13.13.1.7:** Some versions of the TerraForm AWS Provider would not create an Application Load Balancer because they always send a value for the Desync Mitigation Mode attribute, which was not supported on the high side. Combine now supports the Desync Mitigation Mode attribute in the US Top Secret Partition (C2S) and the US Secret Partition (SC2S).
 
 ### CBOR Support for AWS API Calls
