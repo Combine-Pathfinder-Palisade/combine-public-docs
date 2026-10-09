@@ -116,6 +116,8 @@ The legacy behavior is controlled per emulated Region by these Configuration Val
 
 To disable the legacy behavior (so Combine returns `rds.amazonaws.com`), set both Configuration Values to a blank (empty) value. To restore the legacy behavior, delete the entries or set them back to `rds`. (See [Edit Combine Configuration Values](../tutorials/operations/how-to-edit-combine-configuration.md).)
 
+For the Combine Command and `clients.json` entries that opt in to `rds.amazonaws.com`, see [RDS Service Principal Default](10-advanced-features/rds-service-principal-default.md).
+
 ### `WLDEVELOPER` Role
 
 If your production environment uses the `WLDEVELOPER` series of enterprise IAM Roles, you might encounter a discrepancy between Combine's `WLDEVELOPER` definition and your production environment's `WLDEVELOPER` definition.
