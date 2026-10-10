@@ -53,7 +53,7 @@ This will require one of the following:
 
 Also confirm network access to the following:
 
-- **CloudFormation Bucket.** The `CFN_CF` Lambda Functions report their result to CloudFormation by uploading it to a Presigned URL in the CloudFormation S3 Bucket owned by AWS (`cloudformation-custom-resource-response-<region>`). If you use an S3 Gateway Endpoint, then ensure the Endpoint Policy must allows `s3:PutObject` to that bucket. If the upload fails, the Stack does not immediately fail right away. It idles until the Custom Resource time out (one hour).
+- **CloudFormation Bucket.** The `CFN_CF` Lambda Functions report their result to CloudFormation by uploading it to a Presigned URL in the CloudFormation S3 Bucket owned by AWS (`cloudformation-custom-resource-response-<region>`). If you use an S3 Gateway Endpoint, then ensure the Endpoint Policy must allows `s3:PutObject` to that bucket. If the upload fails, the Stack does not immediately fail right away. It idles until the Custom Resource time out (15 minutes).
 - **Additional Regions.** If you have deployed a multiple Region Combine Deployment: `Combine_Alerts_Event_Listener_Firewall` publishes to an SNS Topic in the Master Region. An SNS Interface Endpoint in an additional Region does not reach the Master Region's SNS Topic, so the Subnets there need another path to it, such as a NAT Gateway or an Outbound HTTP Proxy. The Alert Events from that Region's Combine Firewall are lost otherwise.
 
 ## CloudFormation Parameters
