@@ -45,11 +45,13 @@ Your Credential Package contains these files:
 
 | File | Contents |
 | --- | --- |
-| `certificates/ca.cert.pem` or `certificates/ca.cert.der` | Public Certificate of the Certificate Authority (the Combine Trust Chain). Use the file format you prefer. |
-| `certificates/signer.cert.pem` or `certificates/signer.cert.der` | Public Certificate of the Certificate Authority Signer, in case you also need it. |
+| `certificates/ca.cert.pem` | Public Certificate of the Certificate Authority (the Combine Trust Chain). |
+| `certificates/signer.cert.pem` | Public Certificate of the Certificate Authority Signer, in case you also need it. |
 | `certificates/ca-chain.cert.pem` | The full chain. |
 | `certificates/<username>.p12` | Your Personal Certificate. |
 | `certificates/<username>_password.txt` | The password for your Personal Certificate. |
+
+_NOTE: A Credential Package issued before Combine 3.15 also includes DER encoded copies of these Public Certificates (`certificates/ca.cert.der`, `certificates/signer.cert.der`, and `certificates/<username>.cert.der`). A Credential Package issued by Combine 3.15 or later includes only the PEM encoded files._
 
 The following steps install these certificates for the Chrome browser.
 
