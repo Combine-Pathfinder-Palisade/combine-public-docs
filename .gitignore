@@ -12,6 +12,7 @@
 
 # Generated OpenAPI docs
 /docs/combine-api/
+/docs/cap-scap-api/
 
 # Misc
 .DS_Store

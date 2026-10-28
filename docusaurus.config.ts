@@ -90,6 +90,16 @@ const config: Config = {
               categoryLinkSource: 'tag',
             },
           } satisfies OpenApiPlugin.Options,
+          capScap: {
+            specPath: 'openapi/cap-scap.yaml',
+            outputDir: 'docs/cap-scap-api',
+            hideSendButton: true,
+            externalJsonProps: true,
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+              categoryLinkSource: 'tag',
+            },
+          } satisfies OpenApiPlugin.Options,
         },
       },
     ],

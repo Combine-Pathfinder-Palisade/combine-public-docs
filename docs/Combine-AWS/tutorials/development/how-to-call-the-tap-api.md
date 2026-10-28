@@ -2,7 +2,7 @@
 
 The TAP API is the HTTPS API behind the TAP Dashboard. You can use it to script Dashboard tasks: manage Users, Servers, Groups and AWS Roles, sign certificates, review Alert Events, read partition and configuration data, and (when enabled) request temporary AWS credentials through the CAP / SCAP compatible endpoints.
 
-The **Combine API** section of this site documents every endpoint, parameter and response. This page covers what you need to make your first call. For a worked example of one endpoint, see [PKI Certificates: CSR Signing API](../../start-here/10-advanced-features/pki-certificates-csr-signing-api.md).
+The **Combine API** section of this site documents every TAP endpoint, parameter and response, and the **CAP / SCAP API** section documents the CAP / SCAP compatible endpoints. This page covers what you need to make your first call. For a worked example of one endpoint, see [PKI Certificates: CSR Signing API](../../start-here/10-advanced-features/pki-certificates-csr-signing-api.md).
 
 ## Base URL
 

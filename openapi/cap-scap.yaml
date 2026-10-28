@@ -1,0 +1,641 @@
+openapi: 3.1.0
+info:
+  title: CAP / SCAP API
+  description: |-
+    The CAP / SCAP API issues temporary AWS credentials and lists the AWS accounts and roles a caller may access. It is compatible with the CAP and SCAP credential services: the CAP endpoints use the `/api/v1/` and `/api/v2/` paths, and the SCAP endpoints use the `/cap/gxCAP/` path.
+
+    The CAP endpoints are enabled when the `combine.tap.api.cap.enable` Configuration Value is `true`, which is the default in a Combine Deployment that emulates C2S. The SCAP endpoints are enabled when `combine.tap.api.scap.enable` is `true`, which is the default in a Combine Deployment that emulates SC2S. A disabled endpoint returns 404.
+
+    All requests must use HTTPS and mutual TLS with a valid client certificate issued for the deployment. The certificate's serial number identifies the caller's user account, and credentials are issued only for the AWS roles assigned to that account. A request without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page instead of a JSON response.
+
+    For a step-by-step guide with curl and Python examples, see [Call the TAP API](/Combine-AWS/tutorials/development/how-to-call-the-tap-api).
+  version: "3.15"
+servers:
+  - url: "https://{host}"
+    description: Base URL for a shard's TAP API.
+    variables:
+      host:
+        description: External TAP load balancer DNS name for the shard.
+        default: tap.example.com
+security:
+  - mutualTLS: []
+tags:
+  - name: CAP
+    description: Issue temporary AWS credentials and list the accounts a caller may
+      access through the CAP-compatible endpoints.
+  - name: SCAP
+    description: Issue temporary AWS credentials and list the accounts a caller may
+      access through the SCAP-compatible endpoints.
+paths:
+  /api/v2/user/accesslist:
+    get:
+      tags:
+        - CAP
+      summary: List the caller's access
+      description: "Returns the AWS accounts and roles the caller may access, grouped\
+        \ by account. Authenticated with a client certificate. Requires the CAP API\
+        \ to be enabled."
+      operationId: getCredentialsList
+      responses:
+        "200":
+          description: The caller's accessible accounts and roles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapAccessListEntry"
+        "404":
+          description: The CAP API is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The access list could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+  /api/v1/credentials:
+    get:
+      tags:
+        - CAP
+      summary: Get temporary AWS credentials
+      description: Returns temporary AWS credentials for an assumed role. Authenticated
+        with a client certificate. Credentials are issued only for roles assigned
+        to the caller. Requires the CAP API to be enabled.
+      operationId: getAccess
+      parameters:
+        - name: duration
+          in: query
+          description: Requested session duration in seconds. Must be between 900 and
+            the configured maximum. Defaults to the configured value when omitted.
+          schema:
+            type: string
+        - name: policy
+          in: query
+          description: Optional IAM policy that further restricts the session.
+          schema:
+            type: string
+        - name: agency
+          in: query
+          description: Agency the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: mission
+          in: query
+          description: Mission the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: role
+          in: query
+          description: Name of the role to assume.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The temporary credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialsResponse"
+        "400":
+          description: A required parameter is missing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "403":
+          description: The caller is not authorized to assume the requested role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "404":
+          description: "No role matches the requested parameters, or the CAP API\
+            \ is not enabled."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CapStatusResponse"
+                  - $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "The credentials could not be issued, including when the\
+            \ requested duration is not a number or is outside the allowed range."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+  /api/v1/accounts/{accountId}/activity:
+    get:
+      tags:
+        - CAP
+      summary: List account activity
+      description: Returns a per-user summary of AWS access to the account. Requires
+        the CAP API to be enabled.
+      operationId: getActivity
+      parameters:
+        - name: accountId
+          in: path
+          description: AWS account number.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The account's access summary.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapTrailSummary"
+        "404":
+          description: The CAP API is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/accounts/{accountId}/trailevents:
+    get:
+      tags:
+        - CAP
+      summary: List account trail events
+      description: Returns a paginated list of AWS access trail events for the account.
+        Requires the CAP API to be enabled.
+      operationId: getTrailEvents
+      parameters:
+        - name: accountId
+          in: path
+          description: AWS account number.
+          required: true
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          description: "Inclusive lower bound for the event time, as a UTC ISO8601 timestamp\
+            \ (YYYY-MM-DDTHH:MM:SSZ). Defaults to 7 days before now when omitted. Must\
+            \ not be more than 90 days in the past."
+          schema:
+            type: string
+        - name: stop_time
+          in: query
+          description: "Inclusive upper bound for the event time, as a UTC ISO8601 timestamp\
+            \ (YYYY-MM-DDTHH:MM:SSZ). Defaults to now when omitted. Must not be before\
+            \ start_time or more than 7 days after it."
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: "Page number to return, starting at 1."
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: page_size
+          in: query
+          description: "Number of events per page, between 10 and 500."
+          schema:
+            type: integer
+            format: int32
+            default: 100
+        - name: sort
+          in: query
+          description: Sort order by event time. Either asc or desc.
+          schema:
+            type: string
+            default: desc
+      responses:
+        "200":
+          description: The matching trail events.
+          headers:
+            X-Returned-Rows:
+              description: Number of events returned in this page.
+              style: simple
+              schema: {}
+            X-Total-Rows:
+              description: Total number of matching events.
+              style: simple
+              schema: {}
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapTrailEvent"
+        "400":
+          description: A query parameter is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "404":
+          description: The CAP API is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /cap/gxCAP/getAccessList:
+    get:
+      tags:
+        - SCAP
+      summary: List the caller's access
+      description: "Returns the AWS accounts and roles the caller may access, grouped\
+        \ by account. Authenticated with a client certificate. Requires the SCAP API\
+        \ to be enabled."
+      operationId: getCredentialsList_1
+      responses:
+        "200":
+          description: The caller's accessible accounts and roles.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScapAccessListResponse"
+        "404":
+          description: The SCAP API is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: The access list could not be retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+  /cap/gxCAP/getTemporaryCredentials:
+    get:
+      tags:
+        - SCAP
+      summary: Get temporary AWS credentials
+      description: Returns temporary AWS credentials for an assumed role. Authenticated
+        with a client certificate. Credentials are issued only for roles assigned
+        to the caller. Requires the SCAP API to be enabled.
+      operationId: getTemporaryCredentials
+      parameters:
+        - name: duration
+          in: query
+          description: Requested session duration in seconds. Must be between 900 and
+            the configured maximum. Defaults to the configured value when omitted.
+          schema:
+            type: string
+        - name: policy
+          in: query
+          description: Optional IAM policy that further restricts the session.
+          schema:
+            type: string
+        - name: agency
+          in: query
+          description: Agency the account belongs to.
+          required: true
+          schema:
+            type: string
+        - name: accountName
+          in: query
+          description: Name of the account.
+          required: true
+          schema:
+            type: string
+        - name: roleName
+          in: query
+          description: Name of the role to assume.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The temporary credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialsResponse"
+        "400":
+          description: A required parameter is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "403":
+          description: The caller is not authorized to assume the requested role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+        "404":
+          description: "The agency, account, or role is not registered or is disabled,\
+            \ or the SCAP API is not enabled."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CapStatusResponse"
+                  - $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "The credentials could not be issued, including when the\
+            \ requested duration is not a number or is outside the allowed range."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapStatusResponse"
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+    CapStatusResponse:
+      type: object
+      description: An error result carrying an HTTP status code and a message.
+      properties:
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code of the error.
+          example: 400
+        message:
+          type: string
+          description: Human-readable description of the error.
+          example: "Missing parameter [agency]!"
+      required:
+        - message
+        - status
+    CapAccessListEntry:
+      type: object
+      description: "An account the caller may access, with its available roles."
+      properties:
+        account_number:
+          type: string
+          description: AWS account number.
+          example: "123456789012"
+        agency:
+          type: string
+          description: Agency the account belongs to.
+          example: EXAMPLE
+        mission:
+          type: string
+          description: Mission the account belongs to.
+          example: Example Mission
+        roles:
+          type: array
+          description: Roles the caller may assume within the account.
+          items:
+            $ref: "#/components/schemas/CapAccessRole"
+    CapAccessRole:
+      type: object
+      description: A role the caller may assume within an account.
+      properties:
+        role_name:
+          type: string
+          description: Name of the role.
+          example: PowerUser
+        favorite:
+          type: boolean
+          description: Whether the caller has marked this role as a favorite.
+          example: false
+        granted_by:
+          type: string
+          description: Identifier of the entitlement that granted this role.
+          example: C2S-EXAMPLE-MSN-POWERUSER
+        account_session_duration_seconds:
+          type: integer
+          format: int32
+          description: "Maximum session duration allowed for this account, in seconds."
+          example: 3600
+        user_session_duration_seconds:
+          type: integer
+          format: int32
+          description: Always null.
+        last_access:
+          type: string
+          description: "Time the caller last accessed this role, in UTC. Null when\
+            \ never accessed."
+          example: 2026-07-06T12:34:56Z
+    ScapAccessListResponse:
+      type: object
+      description: The accounts and roles the caller may access.
+      properties:
+        gxCAPAccessList:
+          type: array
+          description: The accounts the caller may access.
+          items:
+            $ref: "#/components/schemas/ScapAccessGroup"
+    ScapAccessGroup:
+      type: object
+      description: "An account the caller may access, with its available roles."
+      properties:
+        agency:
+          type: string
+          description: Agency the account belongs to.
+          example: EXAMPLE
+        accountName:
+          type: string
+          description: Name of the account.
+          example: Example Account
+        accountNumber:
+          type: string
+          description: AWS account number.
+          example: "123456789012"
+        roles:
+          type: array
+          description: Roles the caller may assume within the account.
+          items:
+            $ref: "#/components/schemas/ScapAccessRole"
+    ScapAccessRole:
+      type: object
+      description: A role the caller may assume within an account.
+      properties:
+        roleName:
+          type: string
+          description: Name of the role.
+          example: PowerUser
+    CredentialsResponse:
+      type: object
+      description: Temporary AWS credentials and the assumed role session.
+      properties:
+        Credentials:
+          $ref: "#/components/schemas/AwsCredentials"
+        AssumedRoleUser:
+          $ref: "#/components/schemas/AssumedRoleUser"
+      required:
+        - AssumedRoleUser
+        - Credentials
+    AwsCredentials:
+      type: object
+      description: Temporary AWS security credentials for the assumed role.
+      properties:
+        AccessKeyId:
+          type: string
+          description: AWS access key ID.
+          example: ASIAIOSFODNN7EXAMPLE
+        SecretAccessKey:
+          type: string
+          description: AWS secret access key.
+          example: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+        SessionToken:
+          type: string
+          description: AWS session token for the temporary credentials.
+          example: FQoGZXIvYXdzEExampleSessionTokenABC123
+        Expiration:
+          type: string
+          description: "Expiration time of the credentials, in UTC."
+          example: 2026-07-06T12:34:56Z
+      required:
+        - AccessKeyId
+        - Expiration
+        - SecretAccessKey
+        - SessionToken
+    AssumedRoleUser:
+      type: object
+      description: Identifiers of the assumed role session.
+      properties:
+        AssumedRoleId:
+          type: string
+          description: Unique identifier of the assumed role session.
+          example: AROAEXAMPLEID:session
+        Arn:
+          type: string
+          description: Amazon Resource Name of the assumed role session.
+          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/session
+      required:
+        - Arn
+        - AssumedRoleId
+    CapTrailSummary:
+      type: object
+      description: A summary of a user's access to an account.
+      properties:
+        user:
+          $ref: "#/components/schemas/CapTrailSummaryUser"
+        account:
+          $ref: "#/components/schemas/CapTrailSummaryAccount"
+        userRole:
+          type: string
+          description: Role the user assumed.
+          example: PowerUser
+        last_access:
+          type: string
+          description: "Time of the most recent access, in UTC."
+          example: 2026-07-06T12:34:56Z
+        cnt_total:
+          type: string
+          description: "Total number of access events, as a string."
+          example: "42"
+    CapTrailSummaryUser:
+      type: object
+      description: The user associated with an activity summary.
+      properties:
+        client_dn:
+          type: string
+          description: Distinguished name from the client certificate.
+          example: "CN=Jane Doe,OU=Example,O=Combine"
+        iaa_dn:
+          type: string
+          description: Distinguished name of the issuing authority.
+          example: "CN=Example CA,O=Combine"
+        org:
+          type: string
+          description: Organization the activity is attributed to.
+          example: Combine
+    CapTrailSummaryAccount:
+      type: object
+      description: The account associated with an activity summary.
+      properties:
+        account_number:
+          type: string
+          description: AWS account number.
+          example: "123456789012"
+        agency:
+          type: string
+          description: Agency the account belongs to.
+          example: EXAMPLE
+        mission:
+          type: string
+          description: Mission the account belongs to.
+          example: Example Mission
+    CapTrailEvent:
+      type: object
+      description: A single AWS access trail event.
+      properties:
+        version:
+          type: string
+          description: Schema version of the event.
+          example: "1.00"
+        id:
+          type: string
+          description: Unique identifier of the event.
+          example: 3f2504e0-4f89-41d3-9a0c-0305e82c3301
+        at:
+          type: string
+          description: "Time the event occurred, in UTC."
+          example: 2026-07-06T12:34:56Z
+        client_dn:
+          type: string
+          description: Distinguished name from the client certificate.
+          example: "CN=Jane Doe,OU=Example,O=Combine"
+        iaa_dn:
+          type: string
+          description: Distinguished name of the issuing authority.
+          example: "CN=Example CA,O=Combine"
+        accountNumber:
+          type: string
+          description: AWS account number the access targeted.
+          example: "123456789012"
+        environment:
+          type: string
+          description: Cloud environment the access targeted.
+          example: AWS_C2S
+        request:
+          $ref: "#/components/schemas/CapTrailEventRequest"
+        credentials:
+          $ref: "#/components/schemas/CapTrailEventCredentials"
+    CapTrailEventRequest:
+      type: object
+      description: The access request that produced a trail event.
+      properties:
+        agency:
+          type: string
+          description: Agency the request targeted.
+          example: EXAMPLE
+        mission:
+          type: string
+          description: Mission the request targeted.
+          example: Example Mission
+        userRole:
+          type: string
+          description: Role the request assumed.
+          example: PowerUser
+    CapTrailEventCredentials:
+      type: object
+      description: The credentials issued for a trail event.
+      properties:
+        arn:
+          type: string
+          description: Amazon Resource Name of the assumed role session.
+          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/session
+        role_id:
+          type: string
+          description: Identifier of the assumed role.
+          example: AROAEXAMPLEID
+        key_id:
+          type: string
+          description: Access key ID of the issued credentials.
+          example: ASIAIOSFODNN7EXAMPLE
+        expiration:
+          type: string
+          description: "Expiration time of the issued credentials, in UTC."
+          example: 2026-07-06T12:34:56Z
+  securitySchemes:
+    mutualTLS:
+      type: mutualTLS
+      description: "Authenticates the caller with an X.509 client certificate issued\
+        \ by the deployment. Combine identifies the caller's user account from the\
+        \ certificate's serial number, and that account's role determines what the\
+        \ caller can access."

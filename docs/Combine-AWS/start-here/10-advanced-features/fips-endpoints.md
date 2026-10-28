@@ -40,7 +40,7 @@ If your workload calls a FIPS endpoint for a service that does not have one in t
 1. Rejects the request with an HTTP `400` response and an `EmulationError` code.
 2. Raises an **Unsupported AWS Endpoint: FIPS** Alert Event in the TAP Dashboard, including the service, the endpoint that was called, and resolution guidance.
 
-The list of AWS Services with FIPS endpoints in the emulated Region is on the **Documentation** page of the TAP Dashboard.
+The AWS Services with FIPS endpoints in the emulated Region, and the FIPS endpoint hostnames for each, are listed under **Service Endpoints (FIPS)** on the **Documentation** page of the TAP Dashboard.
 
 ## Directing Your Workload to FIPS Endpoints
 
@@ -60,6 +60,7 @@ These Configuration Values control the FIPS endpoint availability check. The FIP
 |---|---|---|
 | `combine.endpoints.aws.filter.serviceEndpoints.fips.enable` | `true` | Enables or disables blocking of FIPS endpoint requests for services without a FIPS endpoint in the emulated Region. |
 | `combine.endpoints.aws.metadata.serviceEndpoints.fips.supported.override.<region-id>` | _(empty)_ | Space-separated list of service names (for example `kms s3`) that overrides the list of AWS Services considered to have a FIPS endpoint in the given emulated Region. When set, this list replaces the default list for that Region. |
+| `combine.endpoints.aws.metadata.serviceEndpoints.fips.supported.override.<region-id>.endpoints.<service>` | _(empty)_ | Space-separated list of FIPS endpoint hostnames (for example `secretsmanager-fips.us-gov-west-1.amazonaws.com`) for one AWS Service in the given emulated Region. When set, this list replaces the hostnames shown for that service on the **Documentation** page of the TAP Dashboard. Use it to supply the hostnames for a service you add with the override above. It does not change which requests Combine allows. Available in Combine 3.15 and later. |
 
 ## Troubleshooting
 

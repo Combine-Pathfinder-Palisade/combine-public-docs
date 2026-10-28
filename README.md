@@ -18,7 +18,7 @@ $ npm i
 $ npm run start
 ```
 
-This command regenerates the Combine API reference (`docs/combine-api/`) from `openapi/openapi.yaml`, then starts a local development server on port 3001 and opens a browser window. Most changes are reflected live without restarting the server.
+This command regenerates the Combine API reference (`docs/combine-api/`) from `openapi/openapi.yaml` and the CAP / SCAP API reference (`docs/cap-scap-api/`) from `openapi/cap-scap.yaml`, then starts a local development server on port 3001 and opens a browser window. Most changes are reflected live without restarting the server.
 
 ### Build
 
@@ -26,7 +26,7 @@ This command regenerates the Combine API reference (`docs/combine-api/`) from `o
 $ npm run build
 ```
 
-This command regenerates the Combine API reference, then generates static content into the `build` directory. You can serve that directory with any static content hosting service.
+This command regenerates the Combine API and CAP / SCAP API references, then generates static content into the `build` directory. You can serve that directory with any static content hosting service.
 
 ### Miscellaneous
 
