@@ -6,10 +6,10 @@ info:
 
     The CAP endpoints are enabled when the `combine.tap.api.cap.enable` Configuration Value is `true`, which is the default in a Combine Deployment that emulates C2S. The SCAP endpoints are enabled when `combine.tap.api.scap.enable` is `true`, which is the default in a Combine Deployment that emulates SC2S. A disabled endpoint returns 404.
 
-    All requests must use HTTPS and mutual TLS with a valid client certificate issued for the deployment. The certificate's serial number identifies the caller's user account, and credentials are issued only for the AWS roles assigned to that account. A request without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page instead of a JSON response.
+    All requests must use HTTPS and mutual TLS with a valid client certificate issued for the deployment. The certificate's serial number identifies the caller's user account, and credentials are issued only for the AWS roles assigned directly to that account. A request over plain HTTP, without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page, with HTTP status 200, instead of a JSON response.
 
     For a step-by-step guide with curl and Python examples, see [Call the TAP API](/Combine-AWS/tutorials/development/how-to-call-the-tap-api).
-  version: "3.15"
+  version: "3.14.9.4"
 servers:
   - url: "https://{host}"
     description: Base URL for a shard's TAP API.
@@ -32,9 +32,11 @@ paths:
       tags:
         - CAP
       summary: List the caller's access
-      description: "Returns the AWS accounts and roles the caller may access, grouped\
-        \ by account. Authenticated with a client certificate. Requires the CAP API\
-        \ to be enabled."
+      description: "Returns the AWS roles assigned to the caller's account in the CAP
+        cloud partition (the combine.tap.api.cap.cloudPartitionId Configuration Value,
+        default AWS_C2S), grouped by agency, mission, and account number. The order
+        of the entries is not defined. Authenticated with a client certificate. Requires
+        the CAP API to be enabled."
       operationId: getCredentialsList
       responses:
         "200":
@@ -51,48 +53,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: API not enabled.
         "500":
           description: The access list could not be retrieved.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+              example:
+                status: 500
+                message: Could not get the Credentials List.
   /api/v1/credentials:
     get:
       tags:
         - CAP
       summary: Get temporary AWS credentials
-      description: Returns temporary AWS credentials for an assumed role. Authenticated
-        with a client certificate. Credentials are issued only for roles assigned
-        to the caller. Requires the CAP API to be enabled.
+      description: "Returns temporary AWS credentials for an AWS role in the AWS_C2S
+        cloud partition. Authenticated with a client certificate. Credentials are
+        issued only for roles assigned to the caller's account. Requires the CAP API
+        to be enabled."
       operationId: getAccess
       parameters:
         - name: duration
           in: query
-          description: Requested session duration in seconds. Must be between 900 and
-            the configured maximum. Defaults to the configured value when omitted.
+          description: "Requested session duration in seconds, as a whole number. Must
+            be between 900 and the combine.tap.users.session.duration.limit Configuration
+            Value (default 3600). When omitted or blank, the combine.tap.users.session.duration.default
+            Configuration Value (default 3600) is used. When the User Management Account
+            is reached by assuming a role, a requested duration above 3600 is rejected
+            and a default above 3600 is reduced to 3600. A value that is not a whole
+            number or is out of range returns 500."
           schema:
             type: string
         - name: policy
           in: query
-          description: Optional IAM policy that further restricts the session.
+          description: "Optional IAM session policy (JSON) that further restricts the
+            session. When the combine.tap.api.cap.policy Configuration Value is set,
+            it is used when this parameter is omitted. When combine.tap.api.cap.policy.force
+            is true, a supplied policy is replaced by the configured one, or rejected
+            with 500 when combine.tap.api.cap.policy.force.error is also true."
           schema:
             type: string
         - name: agency
           in: query
-          description: Agency the account belongs to.
+          description: "Agency alias of the AWS role, as returned in agency by /api/v2/user/accesslist.
+            Matched exactly (case-sensitive)."
           required: true
           schema:
             type: string
         - name: mission
           in: query
-          description: Mission the account belongs to.
+          description: "Account alias of the AWS role, as returned in mission by /api/v2/user/accesslist.
+            Matched exactly (case-sensitive)."
           required: true
           schema:
             type: string
         - name: role
           in: query
-          description: Name of the role to assume.
+          description: "Role alias of the AWS role, as returned in role_name by /api/v2/user/accesslist.
+            This is the alias, not the IAM role name. Matched exactly (case-sensitive)."
           required: true
           schema:
             type: string
@@ -104,40 +125,76 @@ paths:
               schema:
                 $ref: "#/components/schemas/CredentialsResponse"
         "400":
-          description: A required parameter is missing.
+          description: "A required parameter (agency, mission, or role) is missing
+            or blank. Only the first missing parameter is reported, and a missing mission
+            is reported as [account]. The duration and policy checks run first."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+              examples:
+                missingAgency:
+                  value:
+                    status: 400
+                    message: "Missing parameter [agency]!"
+                missingMission:
+                  value:
+                    status: 400
+                    message: "Missing parameter [account]!"
+                missingRole:
+                  value:
+                    status: 400
+                    message: "Missing parameter [role]!"
         "403":
-          description: The caller is not authorized to assume the requested role.
+          description: The AWS role exists but is not assigned to the caller's account.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+              example:
+                status: 403
+                message: User not authorized for that role.
         "404":
-          description: "No role matches the requested parameters, or the CAP API\
-            \ is not enabled."
+          description: "No AWS role in the AWS_C2S cloud partition matches agency,
+            mission, and role, or the CAP API is not enabled."
           content:
             application/json:
               schema:
-                oneOf:
+                anyOf:
                   - $ref: "#/components/schemas/CapStatusResponse"
                   - $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                roleNotFound:
+                  value:
+                    status: 404
+                    message: No role found with submitted parameters.
+                apiNotEnabled:
+                  value:
+                    success: false
+                    message: API not enabled.
         "500":
-          description: "The credentials could not be issued, including when the\
-            \ requested duration is not a number or is outside the allowed range."
+          description: "The credentials could not be issued. This includes a duration
+            that is not a whole number or is outside the allowed range, a policy rejected
+            by combine.tap.api.cap.policy.force.error, and an AWS STS failure."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+              example:
+                status: 500
+                message: Internal Server Error
   /api/v1/accounts/{accountId}/activity:
     get:
       tags:
         - CAP
       summary: List account activity
-      description: Returns a per-user summary of AWS access to the account. Requires
-        the CAP API to be enabled.
+      description: "Returns one summary per combination of client certificate subject
+        DN, agency, mission, and role that obtained credentials for the account, most
+        recent last_access first. Only trail events for AWS roles in the CAP cloud partition
+        (the combine.tap.api.cap.cloudPartitionId Configuration Value, default AWS_C2S)
+        are included. Trail events are recorded only when the combine.tap.trails.enable
+        Configuration Value is true (default false); otherwise the array is empty.
+        Requires the CAP API to be enabled."
       operationId: getActivity
       parameters:
         - name: accountId
@@ -161,13 +218,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: API not enabled.
   /api/v1/accounts/{accountId}/trailevents:
     get:
       tags:
         - CAP
       summary: List account trail events
-      description: Returns a paginated list of AWS access trail events for the account.
-        Requires the CAP API to be enabled.
+      description: "Returns a paginated list of credential issuance trail events for
+        the account. Only trail events for AWS roles in the CAP cloud partition (the
+        combine.tap.api.cap.cloudPartitionId Configuration Value, default AWS_C2S)
+        are included. Trail events are recorded only when the combine.tap.trails.enable
+        Configuration Value is true (default false); otherwise the array is empty.
+        Requires the CAP API to be enabled."
       operationId: getTrailEvents
       parameters:
         - name: accountId
@@ -178,37 +242,46 @@ paths:
             type: string
         - name: start_time
           in: query
-          description: "Inclusive lower bound for the event time, as a UTC ISO8601 timestamp\
-            \ (YYYY-MM-DDTHH:MM:SSZ). Defaults to 7 days before now when omitted. Must\
-            \ not be more than 90 days in the past."
+          description: "Exclusive lower bound for the event time, as a UTC ISO8601
+            timestamp (YYYY-MM-DDTHH:MM:SSZ). Defaults to 7 days before now when omitted,
+            even when stop_time is sent. Must not be more than 90 days in the past."
           schema:
             type: string
         - name: stop_time
           in: query
-          description: "Inclusive upper bound for the event time, as a UTC ISO8601 timestamp\
-            \ (YYYY-MM-DDTHH:MM:SSZ). Defaults to now when omitted. Must not be before\
-            \ start_time or more than 7 days after it."
+          description: "Exclusive upper bound for the event time, as a UTC ISO8601
+            timestamp (YYYY-MM-DDTHH:MM:SSZ). Defaults to now when omitted. Must not
+            be before start_time or more than 7 days after it."
           schema:
             type: string
         - name: page
           in: query
-          description: "Page number to return, starting at 1."
+          description: "Page number to return, starting at 1. A page past the last
+            event returns an empty array."
           schema:
             type: integer
             format: int32
+            minimum: 1
             default: 1
         - name: page_size
           in: query
-          description: "Number of events per page, between 10 and 500."
+          description: "Number of events per page, between 10 and 500 inclusive."
           schema:
             type: integer
             format: int32
+            minimum: 10
+            maximum: 500
             default: 100
         - name: sort
           in: query
-          description: Sort order by event time. Either asc or desc.
+          description: "Order of the events by event time. Must be exactly asc or desc.
+            asc returns the most recent event first, and desc returns the oldest event
+            first. Paging is applied after sorting."
           schema:
             type: string
+            enum:
+              - asc
+              - desc
             default: desc
       responses:
         "200":
@@ -217,11 +290,13 @@ paths:
             X-Returned-Rows:
               description: Number of events returned in this page.
               style: simple
-              schema: {}
+              schema:
+                type: integer
             X-Total-Rows:
               description: Total number of matching events.
               style: simple
-              schema: {}
+              schema:
+                type: integer
           content:
             application/json:
               schema:
@@ -234,20 +309,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+              examples:
+                invalidStartTime:
+                  value:
+                    status: 400
+                    message: "Invalid value for 'start_time'. Expecting UTC ISO8601
+                      timestamp matching YYYY-MM-DDTHH:MM:SSZ."
+                invalidStopTime:
+                  value:
+                    status: 400
+                    message: "Invalid value for 'stop_time'. Expecting UTC ISO8601
+                      timestamp matching YYYY-MM-DDTHH:MM:SSZ."
+                startAfterStop:
+                  value:
+                    status: 400
+                    message: Start date cannot be after stop date!
+                startTooOld:
+                  value:
+                    status: 400
+                    message: Start date cannot be more than 90 days in the past!
+                rangeTooLong:
+                  value:
+                    status: 400
+                    message: Maximum of 7 days allowed between start time and stop
+                      time!
+                invalidPageSize:
+                  value:
+                    status: 400
+                    message: Parameter page_size must be between 10 and 500!
+                invalidPage:
+                  value:
+                    status: 400
+                    message: Parameter page must be greater than zero!
+                invalidSort:
+                  value:
+                    status: 400
+                    message: Parameter sort must be either 'asc' or 'desc'!
         "404":
-          description: The CAP API is not enabled.
+          description: "The CAP API is not enabled, or page or page_size is not a
+            whole number (the Combine HTML not-found page)."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: API not enabled.
+            text/html:
+              schema:
+                type: string
   /cap/gxCAP/getAccessList:
     get:
       tags:
         - SCAP
       summary: List the caller's access
-      description: "Returns the AWS accounts and roles the caller may access, grouped\
-        \ by account. Authenticated with a client certificate. Requires the SCAP API\
-        \ to be enabled."
+      description: "Returns the AWS roles assigned to the caller's account in the SCAP
+        cloud partition (the combine.tap.api.scap.cloudPartitionId Configuration Value,
+        default AWS_SC2S), grouped by agency, accountName, and accountNumber. The order
+        of the entries is not defined. Authenticated with a client certificate. Requires
+        the SCAP API to be enabled."
       operationId: getCredentialsList_1
       responses:
         "200":
@@ -262,48 +382,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: API not enabled.
         "500":
           description: The access list could not be retrieved.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+              example:
+                status: 500
+                message: Could not get the Credentials List.
   /cap/gxCAP/getTemporaryCredentials:
     get:
       tags:
         - SCAP
       summary: Get temporary AWS credentials
-      description: Returns temporary AWS credentials for an assumed role. Authenticated
-        with a client certificate. Credentials are issued only for roles assigned
-        to the caller. Requires the SCAP API to be enabled.
+      description: "Returns temporary AWS credentials for an AWS role in the AWS_SC2S
+        cloud partition. Authenticated with a client certificate. Credentials are
+        issued only for roles assigned to the caller's account. Requires the SCAP
+        API to be enabled."
       operationId: getTemporaryCredentials
       parameters:
         - name: duration
           in: query
-          description: Requested session duration in seconds. Must be between 900 and
-            the configured maximum. Defaults to the configured value when omitted.
+          description: "Requested session duration in seconds, as a whole number. Must
+            be between 900 and the combine.tap.users.session.duration.limit Configuration
+            Value (default 3600). When omitted or blank, the combine.tap.users.session.duration.default
+            Configuration Value (default 3600) is used. When the User Management Account
+            is reached by assuming a role, a requested duration above 3600 is rejected
+            and a default above 3600 is reduced to 3600. A value that is not a whole
+            number or is out of range returns 500."
           schema:
             type: string
         - name: policy
           in: query
-          description: Optional IAM policy that further restricts the session.
+          description: "Optional IAM session policy (JSON) that further restricts the
+            session. When the combine.tap.api.scap.policy Configuration Value is set,
+            it is used when this parameter is omitted. When combine.tap.api.scap.policy.force
+            is true, a supplied policy is replaced by the configured one, or rejected
+            with 500 when combine.tap.api.scap.policy.force.error is also true."
           schema:
             type: string
         - name: agency
           in: query
-          description: Agency the account belongs to.
+          description: "Agency alias of the AWS role, as returned in agency by /cap/gxCAP/getAccessList.
+            Matched exactly (case-sensitive)."
           required: true
           schema:
             type: string
         - name: accountName
           in: query
-          description: Name of the account.
+          description: "Account alias of the AWS role, as returned in accountName by
+            /cap/gxCAP/getAccessList. Matched exactly (case-sensitive)."
           required: true
           schema:
             type: string
         - name: roleName
           in: query
-          description: Name of the role to assume.
+          description: "Role alias of the AWS role, as returned in roleName by /cap/gxCAP/getAccessList.
+            This is the alias, not the IAM role name. Matched exactly (case-sensitive)."
           required: true
           schema:
             type: string
@@ -315,33 +454,55 @@ paths:
               schema:
                 $ref: "#/components/schemas/CredentialsResponse"
         "400":
-          description: A required parameter is missing or invalid.
+          description: "A required parameter (agency, accountName, or roleName) is
+            missing or blank. The duration and policy checks run first."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+              example:
+                status: 400
+                message: 400 - Missing or invalid parameters
         "403":
-          description: The caller is not authorized to assume the requested role.
+          description: The AWS role exists but is not assigned to the caller's account.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+              example:
+                status: 403
+                message: "You are not authorized to assume PowerUser for EXAMPLE:Example
+                  Account"
         "404":
-          description: "The agency, account, or role is not registered or is disabled,\
-            \ or the SCAP API is not enabled."
+          description: "No AWS role in the AWS_SC2S cloud partition matches agency,
+            accountName, and roleName, or the SCAP API is not enabled."
           content:
             application/json:
               schema:
-                oneOf:
+                anyOf:
                   - $ref: "#/components/schemas/CapStatusResponse"
                   - $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                roleNotFound:
+                  value:
+                    status: 404
+                    message: "EXAMPLE:Example Account and/or PowerUser is not registered
+                      or is disabled in the Combine TAP"
+                apiNotEnabled:
+                  value:
+                    success: false
+                    message: API not enabled.
         "500":
-          description: "The credentials could not be issued, including when the\
-            \ requested duration is not a number or is outside the allowed range."
+          description: "The credentials could not be issued. This includes a duration
+            that is not a whole number or is outside the allowed range, a policy rejected
+            by combine.tap.api.scap.policy.force.error, and an AWS STS failure."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapStatusResponse"
+              example:
+                status: 500
+                message: Internal Server Error
 components:
   schemas:
     ErrorResponse:
@@ -360,11 +521,11 @@ components:
           type: integer
           format: int32
           description: HTTP status code of the error.
-          example: 400
+          example: 500
         message:
           type: string
           description: Human-readable description of the error.
-          example: "Missing parameter [agency]!"
+          example: Internal Server Error
       required:
         - message
         - status
@@ -378,11 +539,11 @@ components:
           example: "123456789012"
         agency:
           type: string
-          description: Agency the account belongs to.
+          description: Agency alias of the AWS role. Pass it as agency to /api/v1/credentials.
           example: EXAMPLE
         mission:
           type: string
-          description: Mission the account belongs to.
+          description: Account alias of the AWS role. Pass it as mission to /api/v1/credentials.
           example: Example Mission
         roles:
           type: array
@@ -395,30 +556,37 @@ components:
       properties:
         role_name:
           type: string
-          description: Name of the role.
+          description: Role alias of the AWS role (not the IAM role name). Pass it
+            as role to /api/v1/credentials.
           example: PowerUser
         favorite:
           type: boolean
-          description: Whether the caller has marked this role as a favorite.
+          description: Always false.
           example: false
         granted_by:
           type: string
-          description: Identifier of the entitlement that granted this role.
+          description: "Entitlement name built as C2S-<AGENCY>-MSN-<ROLE_NAME> from
+            the upper-cased agency and role_name."
           example: C2S-EXAMPLE-MSN-POWERUSER
         account_session_duration_seconds:
           type: integer
           format: int32
-          description: "Maximum session duration allowed for this account, in seconds."
+          description: "The combine.tap.users.session.duration.limit Configuration
+            Value (default 3600), in seconds. The same value is returned for every account
+            and role."
           example: 3600
         user_session_duration_seconds:
-          type: integer
-          format: int32
+          type: "null"
           description: Always null.
         last_access:
-          type: string
-          description: "Time the caller last accessed this role, in UTC. Null when\
-            \ never accessed."
-          example: 2026-07-06T12:34:56Z
+          type:
+            - string
+            - "null"
+          description: "Time, in UTC, that credentials were last issued for this role
+            to the caller's client certificate. Null when there is no trail event, which
+            is always the case while the combine.tap.trails.enable Configuration Value
+            is false (the default)."
+          example: "2026-07-06T12:34:56Z"
     ScapAccessListResponse:
       type: object
       description: The accounts and roles the caller may access.
@@ -434,11 +602,11 @@ components:
       properties:
         agency:
           type: string
-          description: Agency the account belongs to.
+          description: Agency alias of the AWS role. Pass it as agency to /cap/gxCAP/getTemporaryCredentials.
           example: EXAMPLE
         accountName:
           type: string
-          description: Name of the account.
+          description: Account alias of the AWS role. Pass it as accountName to /cap/gxCAP/getTemporaryCredentials.
           example: Example Account
         accountNumber:
           type: string
@@ -455,7 +623,8 @@ components:
       properties:
         roleName:
           type: string
-          description: Name of the role.
+          description: Role alias of the AWS role (not the IAM role name). Pass it
+            as roleName to /cap/gxCAP/getTemporaryCredentials.
           example: PowerUser
     CredentialsResponse:
       type: object
@@ -487,7 +656,7 @@ components:
         Expiration:
           type: string
           description: "Expiration time of the credentials, in UTC."
-          example: 2026-07-06T12:34:56Z
+          example: "2026-07-06T12:34:56Z"
       required:
         - AccessKeyId
         - Expiration
@@ -518,12 +687,12 @@ components:
           $ref: "#/components/schemas/CapTrailSummaryAccount"
         userRole:
           type: string
-          description: Role the user assumed.
+          description: Role alias of the AWS role the user obtained credentials for.
           example: PowerUser
         last_access:
           type: string
           description: "Time of the most recent access, in UTC."
-          example: 2026-07-06T12:34:56Z
+          example: "2026-07-06T12:34:56Z"
         cnt_total:
           type: string
           description: "Total number of access events, as a string."
@@ -542,7 +711,7 @@ components:
           example: "CN=Example CA,O=Combine"
         org:
           type: string
-          description: Organization the activity is attributed to.
+          description: Always Combine.
           example: Combine
     CapTrailSummaryAccount:
       type: object
@@ -554,19 +723,19 @@ components:
           example: "123456789012"
         agency:
           type: string
-          description: Agency the account belongs to.
+          description: Agency alias of the AWS role.
           example: EXAMPLE
         mission:
           type: string
-          description: Mission the account belongs to.
+          description: Account alias of the AWS role.
           example: Example Mission
     CapTrailEvent:
       type: object
-      description: A single AWS access trail event.
+      description: A single credential issuance trail event.
       properties:
         version:
           type: string
-          description: Schema version of the event.
+          description: Schema version of the event. Always 1.00.
           example: "1.00"
         id:
           type: string
@@ -575,7 +744,7 @@ components:
         at:
           type: string
           description: "Time the event occurred, in UTC."
-          example: 2026-07-06T12:34:56Z
+          example: "2026-07-06T12:34:56Z"
         client_dn:
           type: string
           description: Distinguished name from the client certificate.
@@ -590,7 +759,7 @@ components:
           example: "123456789012"
         environment:
           type: string
-          description: Cloud environment the access targeted.
+          description: Cloud partition of the AWS role.
           example: AWS_C2S
         request:
           $ref: "#/components/schemas/CapTrailEventRequest"
@@ -602,15 +771,15 @@ components:
       properties:
         agency:
           type: string
-          description: Agency the request targeted.
+          description: Agency alias the request targeted.
           example: EXAMPLE
         mission:
           type: string
-          description: Mission the request targeted.
+          description: Account alias the request targeted.
           example: Example Mission
         userRole:
           type: string
-          description: Role the request assumed.
+          description: Role alias the request targeted.
           example: PowerUser
     CapTrailEventCredentials:
       type: object
@@ -622,8 +791,9 @@ components:
           example: arn:aws:sts::123456789012:assumed-role/ExampleRole/session
         role_id:
           type: string
-          description: Identifier of the assumed role.
-          example: AROAEXAMPLEID
+          description: "Unique identifier of the assumed role session, in the form
+            <role ID>:<session name>."
+          example: AROAEXAMPLEID:session
         key_id:
           type: string
           description: Access key ID of the issued credentials.
@@ -631,11 +801,12 @@ components:
         expiration:
           type: string
           description: "Expiration time of the issued credentials, in UTC."
-          example: 2026-07-06T12:34:56Z
+          example: "2026-07-06T12:34:56Z"
   securitySchemes:
     mutualTLS:
       type: mutualTLS
-      description: "Authenticates the caller with an X.509 client certificate issued\
-        \ by the deployment. Combine identifies the caller's user account from the\
-        \ certificate's serial number, and that account's role determines what the\
-        \ caller can access."
+      description: "Authenticates the caller with an X.509 client certificate issued
+        by the deployment. Combine identifies the caller's user account from the
+        certificate's serial number. The credential and access list endpoints are
+        limited to the AWS roles assigned to that account; the account's TAP role
+        (user, admin, or super_admin) is not consulted."
