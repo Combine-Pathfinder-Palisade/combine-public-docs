@@ -124,7 +124,7 @@ Each Combine VPC CloudFormation Stack creates one Combine VPC with its Combine F
 | `EnableAirgapAccessEKS` | `true` | `true`, `false` | Adds Combine Firewall exemption rules that let AWS EKS make commercial outbound calls. (See [Combine EKS Support](../../start-here/9-troubleshooting-eks/1-guidance.md).) |
 | `EnableAirgapAccessSSM` | `true` | `true`, `false` | Adds Combine Firewall exemption rules that let the AWS SSM Agent make commercial outbound calls. (See [Configure the SSM Agent](../operations/how-to-configure-ssm-agent.md).) |
 | `CombineFirewallOverrideRuleGroupBuild` | `true` | `true`, `false` | Builds the Combine Firewall Override Rule Group that an `Admin` manages from the TAP Dashboard. |
-| `VpcEndpointEc2InstanceConnectBuild` | `true` | `true`, `false` | Builds an EC2 Instance Connect Endpoint, which allows SSH connections without SSH keys or external access. |
+| `VpcEndpointEc2InstanceConnectBuild` | `false` | `true`, `false` | Builds an EC2 Instance Connect Endpoint, which allows SSH connections without SSH keys or external access. An AWS account can have at most 5 EC2 Instance Connect Endpoints per Region and 1 per VPC; the `build` and `upgrade` commands check this before they change anything. Before Combine 3.15 the default was `true`. An `upgrade` keeps the value a VPC Stack already has. |
 
 The defaults of `VpcCidrBlockCombine`, `VpcCidrBlockCombineFirewall`, and `VpcCidrBlockCustomer` sit inside the default `VpcCidrBlock`. If you change `VpcCidrBlock`, set each of them to a range inside `VpcCidrBlock` or an Auxiliary CIDR Block (or set `VpcCustomerSubnetsBuild` to `false`).
 

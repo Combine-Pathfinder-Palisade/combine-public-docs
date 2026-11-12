@@ -33,7 +33,8 @@ Combine cannot directly intercept link-local network traffic to the EC2 Instance
 **Recommended Solutions:**
 
 - Use a setting in your application's own configuration as a shim instead of reading these values from IMDS. You can also consider using the `AWS_EC2_METADATA_DISABLED` environment variable to limit access to IMDS.
-- Use the Combine EC2 IMDS Proxy service, which the Combine Team developed. You can install it locally on a server or as a pod in an EKS Cluster. In most cases, you set the `AWS_EC2_METADATA_SERVICE_ENDPOINT` environment variable to override the default IMDS and use the Combine EC2 IMDS Proxy service instead.
+- In Combine 3.15.2 and later, install the [Combine IMDS Proxy](10-advanced-features/imds-proxy.md) on the EC2 Instance, or bake it into the AMI. It intercepts IMDS requests from every process and Container on the EC2 Instance and returns the emulated Partition, Region, and Availability Zone values, with no change to your workload.
+- For earlier Combine releases, use the Combine EC2 IMDS Proxy service, which the Combine Team developed. You can install it locally on a server or as a pod in an EKS Cluster. In most cases, you set the `AWS_EC2_METADATA_SERVICE_ENDPOINT` environment variable to override the default IMDS and use the Combine EC2 IMDS Proxy service instead.
 
 ### Authentication via `sts:GetCallerIdentity`
 

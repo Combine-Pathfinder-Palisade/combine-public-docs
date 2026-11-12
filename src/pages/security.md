@@ -118,7 +118,7 @@
 - How are outside systems connected to the Combine AWS deployment?
   - Outside systems can access the TAP Dashboard front end from the public internet.
     - In order to interact with elements on the dashboard page, systems must have a client certificate installed in their browsers.
-  - Authorized users can open SSH sessions to instances in a Combine VPC through the EC2 Instance Connect Endpoint that Combine builds by default, or through AWS Systems Manager Session Manager. Both are authorized with IAM. (Combine no longer creates a bastion host as of Combine 3.14.0.)
+  - Authorized users can open SSH sessions to instances in a Combine VPC through AWS Systems Manager Session Manager or, when one is built, through the Combine EC2 Instance Connect Endpoint. Both are authorized with IAM. (Combine builds the EC2 Instance Connect Endpoint only when `VpcEndpointEc2InstanceConnectBuild` is `true`, the default before Combine 3.15. Combine no longer creates a bastion host as of Combine 3.14.0.)
 - What elements are deployed outside of AWS?
   - No elements are deployed outside of AWS; see [the Combine Architectural Diagram](https://docs.sequoiacombine.io/aws/combine-architecture.png) for reference.
 - How are AWS services deployed?
