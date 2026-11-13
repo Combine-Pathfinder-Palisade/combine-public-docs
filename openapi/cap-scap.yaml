@@ -6,12 +6,14 @@ info:
 
     The CAP endpoints are enabled when the `combine.tap.api.cap.enable` Configuration Value is `true`, which is the default in a Combine Deployment that emulates C2S. The SCAP endpoints are enabled when `combine.tap.api.scap.enable` is `true`, which is the default in a Combine Deployment that emulates SC2S. A disabled endpoint returns 404.
 
-    All requests must use HTTPS and mutual TLS with a valid client certificate issued for the deployment. The certificate's serial number identifies the caller's user account, and credentials are issued only for the AWS roles assigned directly to that account. A request over plain HTTP, without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page, with HTTP status 200, instead of a JSON response. A request without a client certificate also raises a "No Valid Client Certificate Found" Alert Event when the combine.tap.api.cap.certificate.error.report Configuration Value (for a CAP path) or combine.tap.api.scap.certificate.error.report (for a SCAP path) is true, which is the default.
+    All requests must use HTTPS and mutual TLS with a valid client certificate issued for the deployment. The certificate's serial number identifies the caller's user account, and credentials are issued only for the AWS roles assigned directly to that account. In Combine 3.14.x, a request over plain HTTP, without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page, with HTTP status 200, instead of a JSON response. In Combine 3.15 and later, such a request receives an `ErrorResponse` (`{"success": false, "message": "..."}`) instead: 400 over plain HTTP, 401 without a client certificate or with a revoked certificate, and 403 for an unknown account (also returned when the account cannot be read) or an inactive account. A request that looks like a browser navigation, because it sends `Sec-Fetch-Mode: navigate` or an `Accept` header that contains `text/html`, receives the same status with the Combine HTML error page instead, and an unexpected failure during authentication still returns the Combine HTML error page with status 200. A request without a client certificate also raises a "No Valid Client Certificate Found" Alert Event when the combine.tap.api.cap.certificate.error.report Configuration Value (for a CAP path) or combine.tap.api.scap.certificate.error.report (for a SCAP path) is true, which is the default.
 
-    When the combine.tap.trails.enable Configuration Value is true (default false), Combine records a trail event each time it issues credentials. This includes credentials issued through the TAP AWS console login, so the CAP trail events also cover console logins with AWS roles in the CAP cloud partition. An unhandled server error receives the Combine HTML error page with status 500.
+    When the combine.tap.trails.enable Configuration Value is true (default false), Combine records a trail event each time it issues credentials. This includes credentials issued through the TAP AWS console login, so the CAP trail events also cover console logins with AWS roles in the CAP cloud partition.
+
+    In Combine 3.14.x, a request to a path that no endpoint serves receives the Combine HTML not-found page with 404, and an unhandled server error receives the Combine HTML error page with 500. In Combine 3.15 and later, they receive 404 with `{"success": false, "message": "Not Found"}` and 500 with `{"success": false, "message": "An unexpected error occurred."}`, or the Combine HTML error pages for a browser navigation.
 
     For a step-by-step guide with curl and Python examples, see [Call the TAP API](/Combine-AWS/tutorials/development/how-to-call-the-tap-api).
-  version: "3.14.10.1"
+  version: "1.0"
 servers:
   - url: "https://{host}"
     description: Base URL for a shard's TAP API.
@@ -36,9 +38,12 @@ paths:
       summary: List the caller's access
       description: "Returns the AWS roles assigned to the caller's account in the CAP
         cloud partition (the combine.tap.api.cap.cloudPartitionId Configuration Value,
-        default AWS_C2S), grouped by agency, mission, and account number. The order
-        of the entries is not defined. Authenticated with a client certificate. Requires
-        the CAP API to be enabled."
+        default AWS_C2S), grouped by agency, mission, and account number. In Combine
+        3.14.x, the entries come from the copies of the AWS roles stored on the account.
+        In Combine 3.15 and later, each assigned AWS role id is read from the AWS roles
+        table, and an id that no longer exists is left out. The order of the entries
+        is not defined. Authenticated with a client certificate. Requires the CAP API
+        to be enabled."
       operationId: getCredentialsList
       responses:
         "200":
@@ -72,10 +77,11 @@ paths:
       tags:
         - CAP
       summary: Get temporary AWS credentials
-      description: "Returns temporary AWS credentials for an AWS role in the AWS_C2S
-        cloud partition. Authenticated with a client certificate. Credentials are
-        issued only for roles assigned to the caller's account. Requires the CAP API
-        to be enabled."
+      description: "Returns temporary AWS credentials for an AWS role in the CAP cloud
+        partition. In Combine 3.15 and later, that is the combine.tap.api.cap.cloudPartitionId
+        Configuration Value (default AWS_C2S); in Combine 3.14.x, it is always AWS_C2S.
+        Authenticated with a client certificate. Credentials are issued only for roles
+        assigned to the caller's account. Requires the CAP API to be enabled."
       operationId: getAccess
       parameters:
         - name: duration
@@ -157,8 +163,8 @@ paths:
                 status: 403
                 message: User not authorized for that role.
         "404":
-          description: "No AWS role in the AWS_C2S cloud partition matches agency,
-            mission, and role, or the CAP API is not enabled."
+          description: "No AWS role in the CAP cloud partition matches agency, mission,
+            and role, or the CAP API is not enabled."
           content:
             application/json:
               schema:
@@ -228,8 +234,15 @@ paths:
                 success: false
                 message: API not enabled.
         "500":
-          description: The trail events could not be read (the Combine HTML error page).
+          description: "The trail events could not be read. Combine 3.14.x returns the
+            Combine HTML error page; Combine 3.15 and later return an ErrorResponse."
           content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: An unexpected error occurred.
             text/html:
               schema:
                 type: string
@@ -363,21 +376,36 @@ paths:
                     message: Parameter sort must be either 'asc' or 'desc'!
         "404":
           description: "The CAP API is not enabled, or page or page_size is not a
-            whole number (the Combine HTML not-found page)."
+            whole number. For a page or page_size that is not a whole number, Combine
+            3.14.x returns the Combine HTML not-found page and Combine 3.15 and later
+            return an ErrorResponse with the message Not Found."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                apiNotEnabled:
+                  value:
+                    success: false
+                    message: API not enabled.
+                notWholeNumber:
+                  value:
+                    success: false
+                    message: Not Found
+            text/html:
+              schema:
+                type: string
+        "500":
+          description: "The trail events could not be read, or (page - 1) x page_size
+            overflows a 32-bit integer to a negative number. Combine 3.14.x returns the
+            Combine HTML error page; Combine 3.15 and later return an ErrorResponse."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 success: false
-                message: API not enabled.
-            text/html:
-              schema:
-                type: string
-        "500":
-          description: "The trail events could not be read, or (page - 1) x page_size
-            overflows a 32-bit integer to a negative number (the Combine HTML error page)."
-          content:
+                message: An unexpected error occurred.
             text/html:
               schema:
                 type: string
@@ -388,9 +416,12 @@ paths:
       summary: List the caller's access
       description: "Returns the AWS roles assigned to the caller's account in the SCAP
         cloud partition (the combine.tap.api.scap.cloudPartitionId Configuration Value,
-        default AWS_SC2S), grouped by agency, accountName, and accountNumber. The order
-        of the entries is not defined. Authenticated with a client certificate. Requires
-        the SCAP API to be enabled."
+        default AWS_SC2S), grouped by agency, accountName, and accountNumber. In Combine
+        3.14.x, the entries come from the copies of the AWS roles stored on the account.
+        In Combine 3.15 and later, each assigned AWS role id is read from the AWS roles
+        table, and an id that no longer exists is left out. The order of the entries
+        is not defined. Authenticated with a client certificate. Requires the SCAP
+        API to be enabled."
       operationId: getCredentialsList_1
       responses:
         "200":
@@ -422,10 +453,11 @@ paths:
       tags:
         - SCAP
       summary: Get temporary AWS credentials
-      description: "Returns temporary AWS credentials for an AWS role in the AWS_SC2S
-        cloud partition. Authenticated with a client certificate. Credentials are
-        issued only for roles assigned to the caller's account. Requires the SCAP
-        API to be enabled."
+      description: "Returns temporary AWS credentials for an AWS role in the SCAP cloud
+        partition. In Combine 3.15 and later, that is the combine.tap.api.scap.cloudPartitionId
+        Configuration Value (default AWS_SC2S); in Combine 3.14.x, it is always AWS_SC2S.
+        Authenticated with a client certificate. Credentials are issued only for roles
+        assigned to the caller's account. Requires the SCAP API to be enabled."
       operationId: getTemporaryCredentials
       parameters:
         - name: duration
@@ -497,8 +529,8 @@ paths:
                 message: "You are not authorized to assume PowerUser for EXAMPLE:Example
                   Account"
         "404":
-          description: "No AWS role in the AWS_SC2S cloud partition matches agency,
-            accountName, and roleName, or the SCAP API is not enabled."
+          description: "No AWS role in the SCAP cloud partition matches agency, accountName,
+            and roleName, or the SCAP API is not enabled."
           content:
             application/json:
               schema:
@@ -530,6 +562,9 @@ components:
   schemas:
     ErrorResponse:
       type: object
+      description: "An error result. In Combine 3.15 and later, also the body of an
+        authentication failure, a path that no endpoint serves (Not Found), and an
+        unhandled server error (An unexpected error occurred.)."
       properties:
         success:
           type: boolean

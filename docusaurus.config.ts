@@ -80,9 +80,19 @@ const config: Config = {
         id: 'openapi',
         docsPluginId: 'default',
         config: {
-          tap: {
+          tap_3_14: {
             specPath: 'openapi/openapi.yaml',
-            outputDir: 'docs/combine-api',
+            outputDir: 'docs/combine-api-3-14',
+            hideSendButton: true,
+            externalJsonProps: true,
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+              categoryLinkSource: 'tag',
+            },
+          } satisfies OpenApiPlugin.Options,
+          tap_3_15: {
+            specPath: 'openapi/openapi-3.15.yaml',
+            outputDir: 'docs/combine-api-3-15',
             hideSendButton: true,
             externalJsonProps: true,
             sidebarOptions: {

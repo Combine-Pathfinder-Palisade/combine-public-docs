@@ -11,7 +11,8 @@
 .cache-loader
 
 # Generated OpenAPI docs
-/docs/combine-api/
+/docs/combine-api-3-14/
+/docs/combine-api-3-15/
 /docs/cap-scap-api/
 
 # Misc
