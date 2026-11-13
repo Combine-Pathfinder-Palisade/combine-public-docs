@@ -51,10 +51,10 @@ Contact the Combine Support Team to get the Combine IMDS Proxy package for your 
 If you operate a self-service Combine Deployment, the Account Automation Tool uploads the package with each release to the Combine DevOps Bucket:
 
 ```text
-s3://combine-devops-ACCOUNT_NUMBER-REGION/releases/VERSION/imds-proxy/combine-imds-proxy-linux.tar.gz
+s3://combine-devops-ACCOUNT_NUMBER-REGION/releases/BRICKS_RELEASE_VERSION/imds-proxy/combine-imds-proxy-linux.tar.gz
 ```
 
-If you have a sharded Combine Deployment, the bucket is named `combine-SHARD_ID-devops-ACCOUNT_NUMBER-REGION`. The same file is in the Account Automation Tool's `deployment/release/imds-proxy/` directory.
+`BRICKS_RELEASE_VERSION` is the `--bricks-release-version` the release was deployed with, for example `bricks_v_3_15_2`. If you have a sharded Combine Deployment, the bucket is named `combine-SHARD_ID-devops-ACCOUNT_NUMBER-REGION`. The same file is in the Account Automation Tool's `deployment/release/imds-proxy/` directory.
 
 The package extracts to a `combine-imds-proxy-VERSION/` directory that contains:
 
@@ -184,7 +184,7 @@ EOF
 
 ## Bake into an AMI
 
-For Auto Scaling Groups, EKS worker Nodes, and other fleets, bake the Combine IMDS Proxy into the AMI. During the AMI build (for example, with Packer, EC2 Image Builder, or a chroot build), run `install.sh` with the Configuration and without `--now`:
+For Auto Scaling Groups and other fleets, bake the Combine IMDS Proxy into the AMI. During the AMI build (for example, with Packer, EC2 Image Builder, or a chroot build), run `install.sh` with the Configuration and without `--now`:
 
 ```bash
 sudo ./install.sh --config imds-proxy.conf
@@ -214,7 +214,7 @@ sudo docker run --rm IMAGE sh -c 'TOKEN=$(curl -s -X PUT http://169.254.169.254/
     sudo firewall-cmd --permanent --zone=docker --add-port=254/tcp
     ```
 
-- **Kubernetes and EKS.** On a Kubernetes worker Node, Pods are treated like Containers when their traffic passes through the Node's `iptables` rules, as it does with the Amazon VPC CNI. Bake the Combine IMDS Proxy into the Node AMI. If you use Calico in its default insert mode, set `ChainInsertMode=Append`, or Calico and the Combine IMDS Proxy keep reordering each other's rules.
+- **Kubernetes and EKS.** An EKS worker Node needs Cluster changes and a `nodeadm` configuration file as well. Follow [Combine IMDS Proxy on EKS](../9-troubleshooting-eks/3-guidance-imds-proxy.md) instead of this page's install steps. For other Kubernetes worker Nodes, contact the Combine Support Team.
 
 These Container setups bypass the EC2 Instance's `iptables` rules, so they reach the real IMDS and are not supported:
 

@@ -9,6 +9,7 @@ title: Guidance
 Combine supports integrating AWS EKS into an emulated Region. Because of limitations in the AWS EKS architecture, there are several issues to be aware of when you stand up your EKS Cluster.
 
 - To configure EKS managed add-ons, see [Combine EKS Add-Ons](2-guidance-add-ons.md).
+- To make Nodes and Pods read emulated values from IMDS (Combine 3.15.2 and later), see [Combine IMDS Proxy on EKS](3-guidance-imds-proxy.md).
 - For a complete working example of an EKS Cluster in Combine, see the [Combine EKS example repository](https://github.com/Combine-Pathfinder-Palisade/combine-examples/tree/main/combine-eks-example).
 - To run Combine itself on an EKS Cluster, see [Configure Combine on EKS](../../tutorials/operations/how-to-configure-combine-on-eks.md).
 
@@ -47,10 +48,20 @@ In the screenshot, the **Source** of the first rule in the EKS Cluster's Securit
 
 ## Nodes Joining the Cluster
 
-If your Nodes cannot join the Cluster, try the following:
+A Node joins the Cluster in one of two ways.
 
-- Make sure the `EnableAirgapAccessEKS` CloudFormation Parameter on the Combine VPC Stack (the `combine-vpc.yaml` template) is set to `true` (the default). The Nodes need it to communicate with the Cluster's API server. The API server lives in AWS's network space, outside of the VPC, so Combine cannot proxy that traffic over the high side endpoints. (See [Reference - clients.json](../../tutorials/operations-self-service-deployment/reference-clients-json.md).)
-- More suggestions forthcoming.
+**Directly (the default).** The UserData that EKS generates for a managed node group points kubelet at the Cluster's own API endpoint, so kubelet connects to the Cluster without going through Combine. The Node also calls EC2 and pulls the EKS system images (VPC CNI, kube-proxy, and so on) from ECR in the commercial host Region. For these connections to work:
+
+- Enable private endpoint access on the Cluster. The Cluster's API endpoint then resolves to addresses inside your VPC, so kubelet's connection does not cross the Combine Firewall.
+- Make sure the `EnableAirgapAccessEKS` CloudFormation Parameter on the Combine VPC Stack (the `combine-vpc.yaml` template) is set to `true` (the default). It adds Combine Firewall exemptions for the commercial EC2, ECR, S3, STS, Elastic Load Balancing, and EKS endpoints of the host Region, including the Cluster's public API endpoint. (See [Reference - clients.json](../../tutorials/operations-self-service-deployment/reference-clients-json.md).)
+
+**Through Combine (Combine 3.15.2 and later).** A Node that runs the Combine IMDS Proxy bootstraps against the emulated Partition, and its kubelet joins through the Combine Kubernetes Proxy. Its kubelet's connection then needs no Combine Firewall exemption. See [Combine IMDS Proxy on EKS](3-guidance-imds-proxy.md).
+
+If your Nodes cannot join the Cluster, check `journalctl -u kubelet` on a Node:
+
+- **Connection timeouts to the Cluster's API endpoint.** For a direct join, check private endpoint access and `EnableAirgapAccessEKS`. For a join through Combine, check the [Security Group](#security-group).
+- **`Unauthorized`.** kubelet presents a token signed for the emulated Region to the Cluster's own API endpoint. This happens when a Node runs the Combine IMDS Proxy but still joins directly. See [Why kubelet Must Use the Combine Kubernetes Proxy](3-guidance-imds-proxy.md#why-kubelet-must-use-the-combine-kubernetes-proxy).
+- **Image pull errors (`ErrImagePull`) for the EKS system images.** The Node cannot reach ECR in the host Region. Check `EnableAirgapAccessEKS`.
 
 ## AWS EBS CSI Driver
 
@@ -87,7 +98,12 @@ Once you increase the hop limit to `2` on the worker Nodes, Pods should be able 
 
 ## Cluster Autoscaler (and Other Component) AZ/Topology Rewrites
 
-AWS Cluster Autoscaler cannot map Kubernetes Nodes to their Auto Scaling Groups in a Combine environment. Combine rewrites the Availability Zone to ISO form in AWS API responses, but a Node's `spec.providerID` keeps the commercial AZ. The autoscaler Pod retrieves this value from the default Kubernetes domain name `kubernetes.default.svc`, and this API call does not go through Combine. The autoscaler joins those two values as strings, so they never match.
+AWS Cluster Autoscaler matches each Kubernetes Node to an Auto Scaling Group instance by comparing the Node's `spec.providerID` (for example, `aws:///us-east-1c/i-0502afe1f135ab04c`) with a provider ID that it builds from the instance's Availability Zone and Instance ID. Combine rewrites the Availability Zone to ISO form in AWS API responses. The autoscaler Pod reads `spec.providerID` from the default Kubernetes domain name `kubernetes.default.svc`, and this API call does not go through Combine. The autoscaler compares the two values as strings, so they match only if both carry the same form of Availability Zone.
+
+A Node's `spec.providerID` takes its Availability Zone from IMDS when the Node registers:
+
+- **A Node without the Combine IMDS Proxy** registers with the commercial Availability Zone (`aws:///us-east-1c/...`). The autoscaler cannot match it unless you exempt the autoscaler from the Availability Zone rewrite (see [Exempting the Cluster Autoscaler](#exempting-the-cluster-autoscaler)).
+- **A Node with the Combine IMDS Proxy** (Combine 3.15.2 and later) registers with the ISO Availability Zone (`aws:///us-iso-east-1c/...`). The autoscaler matches it with Combine's default rewrite, so you do not need the exemption (see [Nodes That Run the Combine IMDS Proxy](#nodes-that-run-the-combine-imds-proxy)).
 
 ### Reproducing the Mismatch
 
@@ -140,7 +156,7 @@ _NOTE: This example shows the default rewrite, not the autoscaler's traffic. The
 
 ### Exempting the Cluster Autoscaler
 
-To fix the mismatch, disable the autoscaling Availability Zone response Rewriter for the cluster-autoscaler. Its `DescribeAutoScalingGroups` responses then pass through with the commercial AZ intact and match the Node's `spec.providerID`.
+Use this exemption only when none of the Nodes in the autoscaler's node groups run the Combine IMDS Proxy. To fix the mismatch, disable the autoscaling Availability Zone response Rewriter for the cluster-autoscaler. Its `DescribeAutoScalingGroups` responses then pass through with the commercial AZ intact and match the Node's `spec.providerID`.
 
 Set these two Configuration Values in the Combine Configuration table (see [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md)). The first scopes the exemption by the caller's assumed-role ARN, and the second by the caller's user-agent:
 
@@ -184,6 +200,17 @@ Two signals in that transaction confirm that the exemption applied:
 If Combine logs at the `VERBOSE` level (see [Log Level](../../tutorials/operations/how-to-view-combine-logs.md#log-level)) and the `combine.endpoints.log.ignore.api.handlers.disabled` Configuration Value is `false` (it defaults to `true`), you also see `API Handler [...ApiResponseRewriterAutoscalingAvailabilityZone] is disabled for ...`. That line depends on logging configuration, so rely on the two signals above.
 
 If a fresh autoscaler transaction still shows `us-iso-east-1c` and the AZ Rewriter still appears in the `Applying Rewriter` list, the Configuration Value did not reach the Rewriter. Check that the value is set in the Combine Configuration table at the correct environment/partition scope and has propagated, rather than looking for a logic error.
+
+### Nodes That Run the Combine IMDS Proxy
+
+In Combine 3.15.2 and later, you can run the [Combine IMDS Proxy](3-guidance-imds-proxy.md) on the Nodes instead of exempting the autoscaler. Each Node then registers with the ISO Availability Zone in `spec.providerID`, which matches the ISO Availability Zone that Combine returns to the autoscaler. The autoscaler maps the Nodes to their Auto Scaling Groups and scales the node groups up and down with Combine's default rewrite.
+
+- **Do not set the exemption Configuration Values.** With the exemption, the autoscaler receives commercial Availability Zones again, and it can no longer match these Nodes.
+- **Replace Nodes that registered before you installed the Combine IMDS Proxy.** `spec.providerID` cannot change after a Node registers, so an existing Node keeps the commercial Availability Zone. Roll each node group (for example, update its launch template) so that every Node registers again with the Combine IMDS Proxy in place.
+- **Do not mix the two kinds of Node in the node groups the autoscaler manages.** The autoscaler can match only one form of Availability Zone. It reports every Node that has the other form as unregistered, it cannot scale those Nodes down, and it treats their instances as unregistered. The autoscaler removes instances that stay unregistered for longer than `--max-node-provision-time` (15 minutes by default).
+- **Set the autoscaler's Region explicitly.** If the autoscaler uses IRSA, EKS injects `AWS_REGION` set to the commercial host Region into its Pod. Set the emulated Region with the Helm chart's `awsRegion` value (or the `AWS_REGION` environment variable), and give the autoscaler the Combine Certificate Authority, so that its AWS API calls go through Combine.
+
+To check, look at the `cluster-autoscaler-status` ConfigMap in the `kube-system` namespace. Each node group should report its Nodes under `registered`, with `unregistered: 0`. The autoscaler's log reports a Node that it cannot match as `node is not present in aws: could not find instance`.
 
 ## Additional Considerations
 
