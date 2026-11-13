@@ -182,6 +182,53 @@ If you build your own AMI or run self-managed Nodes, you supply the complete `no
 - Bake the Combine Certificate Authority and the Combine IMDS Proxy into the AMI (see [Bake into an AMI](../10-advanced-features/imds-proxy.md#bake-into-an-ami)). `nodeadm` then reads emulated values from the first boot.
 - Set `apiServerEndpoint` and `certificateAuthority` in the `NodeConfig` to the `endpoint` and `certificateAuthority.data` that `aws eks describe-cluster` returns when you call it through Combine. You do not need the `/etc/eks/nodeadm.d/` file.
 
+## TerraForm Example
+
+[Download the TerraForm example](./combine-eks-imds-proxy-example.zip) for a complete EKS Cluster whose Nodes run the Combine IMDS Proxy. It is a single TerraForm root module that applies every step on this page:
+
+| File | What it shows |
+| --- | --- |
+| `iam.tf` | The Cluster and Node IAM Roles, prefixed with `PROJECT_`, with an optional permissions boundary. Their ARNs and Service Principals come from the provider for the emulated Partition. |
+| `cluster.tf` | A private EKS Cluster, the Security Group rule for the Combine Endpoint Server, and the `vpc-cni` and `aws-ebs-csi-driver` add-ons configured as in [Step 1](#step-1-prepare-the-cluster). The `vpc-cni` add-on is created before the Nodes. |
+| `nodes.tf`, `node-user-data.tftpl` | The launch template with the UserData from [Step 2](#step-2-add-the-combine-imds-proxy-to-the-launch-template), and an EKS managed node group on the Amazon Linux 2023 EKS AMI. |
+| `variables.tf`, `terraform.tfvars.example` | Every value you supply, with defaults for the US Top Secret Partition (C2S). |
+
+To try it, extract the archive, copy `terraform.tfvars.example` to `terraform.tfvars`, fill in your values, and run `terraform init` and `terraform apply`. Run TerraForm from inside the Combine VPC (for example, from the Combine Proxy), with `WLDEVELOPER` credentials and the Combine Certificate Authority trusted, as for any other work in Combine. The archive's `README.md` lists every value and how to verify the result.
+
+To use it as a reference for your own TerraForm, keep these parts, even if you organize your modules differently:
+
+- **The Node UserData** (`node-user-data.tftpl`), including the `nodeadm` configuration file.
+- **The `vpc-cni` add-on configuration values**, and the dependency that creates the add-on before the node group.
+- **The `aws-ebs-csi-driver` add-on configuration value** `node.metadataSources`.
+- **The Security Group rule** that lets the Combine Endpoint Server reach the Cluster API.
+- **The IAM Role names and permissions boundary** that your Combine Deployment requires.
+
+## Cluster Autoscaler
+
+The Cluster Autoscaler matches each Node to an Auto Scaling Group instance by comparing the Node's `spec.providerID` with a provider ID that it builds from the instance's Availability Zone. The two must carry the same form of Availability Zone. A Node that runs the Combine IMDS Proxy registers with the ISO Availability Zone (`aws:///us-iso-east-1a/...`), and Combine returns ISO Availability Zones to the autoscaler by default. So the autoscaler matches these Nodes and scales their node groups up and down with no extra configuration.
+
+The [Cluster Autoscaler exemption](1-guidance.md#exempting-the-cluster-autoscaler) reverses this. It makes Combine return commercial Availability Zones to the autoscaler, which then matches only Nodes that do not run the Combine IMDS Proxy:
+
+| Node | Exemption not set (the default) | Exemption set |
+| --- | --- | --- |
+| Runs the Combine IMDS Proxy | Matched | Not matched |
+| Does not run the Combine IMDS Proxy | Not matched | Matched |
+
+- **Do not set the exemption** for node groups whose Nodes run the Combine IMDS Proxy.
+- **Do not mix the two kinds of Node** in the node groups the autoscaler manages. The autoscaler reports a Node it cannot match as unregistered and cannot scale it down. It also treats that Node's instance as unregistered, and it removes instances that stay unregistered for longer than `--max-node-provision-time` (15 minutes by default).
+- **Set the autoscaler's Region explicitly.** If the autoscaler uses IRSA, EKS injects `AWS_REGION` set to the commercial host Region into its Pod. Set the emulated Region with the Helm chart's `awsRegion` value (or the `AWS_REGION` environment variable), and give the autoscaler the Combine Certificate Authority, so that its AWS API calls go through Combine.
+
+To check, look at the `cluster-autoscaler-status` ConfigMap in the `kube-system` namespace. Each node group should report its Nodes under `registered`, with `unregistered: 0`. The autoscaler's log reports a Node that it cannot match as `node is not present in aws: could not find instance`.
+
+### Moving a Cluster From the Exemption
+
+If the autoscaler already uses the exemption, move the Cluster in this order so that the autoscaler never sees a mix of the two kinds of Node:
+
+1. Scale the autoscaler Deployment to `0` replicas.
+2. Add the Combine IMDS Proxy to the launch template of every node group that the autoscaler manages (see [Step 2](#step-2-add-the-combine-imds-proxy-to-the-launch-template)), and let each node group replace its Nodes. Every Node must register again, because `spec.providerID` cannot change after a Node registers.
+3. Delete both exemption Configuration Values, `combine.endpoints.aws.rewriter.response.autoscaling.availabilityZone.enable.roleArn.contains.except` and `combine.endpoints.aws.rewriter.response.autoscaling.availabilityZone.enable.userAgents.except` (see [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md)). Combine applies the change within a minute.
+4. Scale the autoscaler Deployment back up, and check the `cluster-autoscaler-status` ConfigMap.
+
 ## Verify
 
 1. Check that the Node is `Ready` and has an emulated provider ID:
@@ -221,5 +268,5 @@ If you build your own AMI or run self-managed Nodes, you supply the complete `no
 
 - **Calls from inside the Cluster bypass Combine.** Controllers, add-ons, and Pods that call the Kubernetes API through `kubernetes.default.svc` reach the EKS control plane directly. They see host values in Node labels, and the Combine Kubernetes Proxy does not rewrite their requests.
 - **Pods that use the Node IAM Role's credentials are signed with the Default Role.** Combine matches a caller to an EC2 Instance by the EC2 Instance's primary private IP address, and a Pod's IP address is a secondary private IP address. kubelet and host-network Pods use the primary private IP address, so Combine signs their calls with the Node IAM Role. To give a Pod its own IAM Role, use IRSA.
-- **Existing Nodes keep their provider ID.** `spec.providerID` cannot change after a Node registers, so Nodes that registered before you installed the Combine IMDS Proxy keep host Availability Zones in it. Replace them so that every Node registers again. This matters for the Cluster Autoscaler, which works with Nodes that run the Combine IMDS Proxy and Combine's default rewrite, but not with a mix of the two kinds of Node (see [Nodes That Run the Combine IMDS Proxy](1-guidance.md#nodes-that-run-the-combine-imds-proxy)).
+- **Existing Nodes keep their provider ID.** `spec.providerID` cannot change after a Node registers, so Nodes that registered before you installed the Combine IMDS Proxy keep host Availability Zones in it. Replace them so that every Node registers again. This matters for the Cluster Autoscaler, which works with Nodes that run the Combine IMDS Proxy and Combine's default rewrite, but not with a mix of the two kinds of Node (see [Cluster Autoscaler](#cluster-autoscaler)).
 - **The Combine Endpoint Server carries kubelet traffic.** Each Node's kubelet holds several long-lived connections to the Combine Endpoint Server and renews its Node lease through it every 10 seconds. Plan Endpoint Server capacity for the number of Nodes.
