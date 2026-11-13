@@ -4,16 +4,20 @@ info:
   description: |-
     The Combine TAP API manages users, servers, groups, AWS role assignments, certificates, alert events, configuration, metadata, and operational tools for a Combine deployment. The CAP- and SCAP-compatible endpoints that issue temporary AWS credentials are documented separately in the [CAP / SCAP API](/cap-scap-api/cap-scap-api) section.
 
-    All requests must use HTTPS, except the health check and the OCSP responder, which are also served over HTTP. Except where explicitly noted, requests require mutual TLS with a valid client certificate issued for the deployment. There is no login step: the certificate's serial number identifies the caller's user account, and that account's role (user, admin, or super_admin) determines what the caller can access. A request over plain HTTP, without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page, with HTTP status 200, instead of a JSON response.
+    All requests must use HTTPS, except the health check and the OCSP responder, which are also served over HTTP. Except where explicitly noted, requests require mutual TLS with a valid client certificate issued for the deployment. There is no login step: the certificate's serial number identifies the caller's user account, and that account's role (user, admin, or super_admin) determines what the caller can access. Each authenticated request sets the account's `lastConsoleLoginDate` to the current UTC date (YYYY-MM-DD). A request over plain HTTP, without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page, with HTTP status 200, instead of a JSON response. So does a request whose authentication fails unexpectedly.
 
     The Users and Servers endpoints are available in two versions. Version `v1` (`/tap/api/v1/users` and `/tap/api/v1/servers`) returns every user or server in full from the list endpoints and returns a presigned download link in `bundlePath`. Version `v2` (`/tap/api/v2/users` and `/tap/api/v2/servers`) returns a summary of each user or server from the list endpoints, with optional paging and search, and returns the stored location of the certificate bundle in `bundlePath`. Every other endpoint uses `/tap/api/v1`.
 
-    Responses of at least 1,024 bytes, or of unknown length, with a JSON, plain text, HTML, CSS, or JavaScript content type are compressed with gzip when the request sends `Accept-Encoding: gzip`.
+    Responses of at least 1,024 bytes, or of unknown length, with a content type of `application/json`, `text/plain`, `text/html`, `text/css`, or `application/javascript` are compressed with gzip when the request's `Accept-Encoding` header accepts gzip. Compression is set in the TAP server's HTTP and HTTPS connectors and is not controlled by a Configuration Value.
 
-    Requests that modify data must include the X-Requested-By header; this applies to every method except GET and HEAD. A request that omits it is rejected with 400 and an empty body. Administrative operations require an account with the admin role; the super_admin role satisfies every role check. A caller without the required role receives 403, except on `POST /tap/api/v1/admin/certificate/custom`, which returns 500.
+    Requests that modify data must include the X-Requested-By header, with any value; this applies to every method except GET and HEAD, on every path except the health check and the OCSP responder. The header is checked before authentication. A request that omits it is rejected with 400 and an empty body. Administrative operations require an account with the admin role; the super_admin role satisfies every role check. A caller without the required role receives 403, except on `POST /tap/api/v1/admin/certificate/custom`, which returns 500.
+
+    A request to a path that no endpoint serves, and a 404 that an operation returns without a body, receive the Combine HTML not-found page with 404; a PUT, PATCH, or DELETE request to a path that no endpoint serves receives 405 with the Combine HTML error page instead. Any other error status that an operation returns without a body, including 405 for an unsupported method, 406 for an `Accept` header that excludes every content type the operation returns, 415 for an unsupported `Content-Type`, and 500 for an unhandled server error, receives the Combine HTML error page with that status.
+
+    When the combine.tap.application.cors.enable Configuration Value is true (default false), every response carries the `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Credentials`, and `Referrer-Policy` headers set by the combine.tap.application.cors.* Configuration Values, and every OPTIONS request is answered with 200 and an empty body before the X-Requested-By and authentication checks.
 
     For a step-by-step guide with curl and Python examples, see [Call the TAP API](/Combine-AWS/tutorials/development/how-to-call-the-tap-api).
-  version: "3.14.9.4"
+  version: "3.14.10.1"
 servers:
   - url: "https://{host}"
     description: Base URL for a shard's TAP API.
@@ -100,11 +104,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AlertEventListResponse"
+        "500":
+          description: "dateStart and dateEnd are both set and dateStart sorts after
+            dateEnd as a string, so DynamoDB rejects the range. The Combine HTML error
+            page is returned."
+          content:
+            text/html:
+              schema:
+                type: string
     delete:
       tags:
         - Alert Events
       summary: Delete all alert events
-      description: Permanently deletes every alert event. Requires the admin role.
+      description: "Permanently deletes every alert event. An event that still cannot
+        be deleted after five attempts is left in place, and the response is still
+        200. Requires the admin role."
       operationId: deleteAlertEvents
       security:
         - mutualTLS: []
@@ -263,9 +277,11 @@ paths:
       tags:
         - AWS Console
       summary: Log in to the AWS console
-      description: Redirects to an AWS console federated sign-in URL for the assumed
+      description: "Redirects to an AWS console federated sign-in URL for the assumed
         role. Authenticated with a client certificate. The caller may sign in only
-        with roles assigned to them.
+        with roles assigned to them. The console session lasts the combine.tap.users.session.dashboard.duration.default
+        Configuration Value (default 3600 seconds), reduced to 3600 when the User
+        Management Account is reached by assuming a role."
       operationId: login
       parameters:
         - name: environment
@@ -299,10 +315,10 @@ paths:
       responses:
         "200":
           description: "The sign-in could not be completed: a parameter is missing,
-            no AWS role matches, the role is not assigned to the caller, or the role
-            could not be assumed. The Combine HTML error page is returned with status
-            200 and the message \"Could not sign in to the AWS Console. Please contact
-            your Combine Administrator.\""
+            no AWS role matches, the role is not assigned to the caller, the role could
+            not be assumed, or the AWS federation endpoint did not return a sign-in token.
+            The Combine HTML error page is returned with status 200 and the message
+            \"Could not sign in to the AWS Console. Please contact your Combine Administrator.\""
           content:
             text/html:
               schema:
@@ -322,9 +338,11 @@ paths:
       tags:
         - AWS Console
       summary: Get AWS console login credentials
-      description: Returns temporary AWS credentials for the dashboard login flow.
+      description: "Returns temporary AWS credentials for the dashboard login flow.
         Authenticated with a client certificate. Credentials are issued only for roles
-        assigned to the caller.
+        assigned to the caller. The credentials last the combine.tap.users.session.dashboard.duration.default
+        Configuration Value (default 3600 seconds), reduced to 3600 when the User
+        Management Account is reached by assuming a role."
       operationId: loginCredentials
       parameters:
         - name: environment
@@ -375,19 +393,22 @@ paths:
       tags:
         - System
       summary: Check service health
-      description: Returns a successful response when the service is available.
+      description: Returns 200 with an empty body when the service is available. Does
+        not require a client certificate, and is also served over HTTP.
       operationId: healthCheck
       security: []
       responses:
         "200":
-          description: The service is available.
+          description: The service is available. The body is empty.
   /tap/api/v1/admin/bundle:
     post:
       tags:
         - Administration
       summary: Rebuild all credential bundles
-      description: Rebuilds the certificate bundles for every user and server. Requires
-        the admin role.
+      description: "Rebuilds the certificate bundle of every user, active or inactive,
+        and every server from its stored certificate files and the current CA certificates.
+        No certificate is reissued. A bundle that cannot be rebuilt is skipped, and
+        the response is still 200. Requires the admin role."
       operationId: rebuildAllBundles
       security:
         - mutualTLS: []
@@ -650,10 +671,20 @@ paths:
       tags:
         - Certificates
       summary: Sign a custom certificate signing request
-      description: Signs a PEM-encoded PKCS#10 certificate signing request and returns
+      description: "Signs a PEM-encoded PKCS#10 certificate signing request and returns
         the signed certificate. Requires the admin role. Requires custom CSR signing
-        to be enabled. A caller without the admin role, or a deployment where custom
-        CSR signing is not enabled, receives 500 with the Combine HTML error page.
+        to be enabled (the combine.tap.api.certificates.signCustomCSR.enable Configuration
+        Value, default false). A caller without the admin role, or a deployment where
+        custom CSR signing is not enabled, receives 500 with the Combine HTML error
+        page. The CSR's signature is not verified. Only an RSA public key can be signed,
+        and a CSR that omits its attributes field cannot be signed; both return 500.
+        The certificate is issued by the deployment's signer certificate authority
+        and is valid for two years. It has the CSR's subject and public key, the DNS
+        names from the CSR's subject alternative name extension, client and server
+        authentication extended key usage, and an OCSP responder URL when the OCSP
+        responder is enabled. Its serial number is a random number from 1,000,000 to
+        1,999,999, which never identifies a TAP user account, so the certificate cannot
+        be used to call the TAP API."
       operationId: signCustomCsrRequest
       security:
         - mutualTLS: []
@@ -681,7 +712,8 @@ paths:
                   ...
                   -----END CERTIFICATE-----
         "400":
-          description: The request body is not a PEM-encoded certificate signing request.
+          description: The request body has no PEM object, or its first PEM object is
+            not a certificate signing request.
           content:
             text/plain:
               schema:
@@ -697,8 +729,10 @@ paths:
                 example: "The CSR exceeds the maximum supported size of [65536] bytes!"
         "500":
           description: "The certificate signing request could not be signed (plain text),
-            or the caller does not have the admin role or custom CSR signing is not enabled
-            (the Combine HTML error page)."
+            including a PEM object that cannot be parsed, a public key that is not RSA,
+            and a CSR that omits its attributes field; or the caller
+            does not have the admin role or custom CSR signing is not enabled (the Combine
+            HTML error page)."
           content:
             text/plain:
               schema:
@@ -755,7 +789,13 @@ paths:
         required: true
       responses:
         "200":
-          description: The updated application configuration.
+          description: "The submitted configuration, echoed back. An omitted field
+            holds its value from before the update and a field submitted as null is
+            omitted, except that an empty or null userValidateEmailDomainWhitelist holds
+            the default allowed domains that were written. Every other field is returned
+            as submitted: list values are not normalized, and a value submitted for a
+            field that is not written (such as awsAccountId or enableToolFirewallRules)
+            is echoed but not stored."
           content:
             application/json:
               schema:
@@ -767,7 +807,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: The application configuration could not be updated.
+          description: "The application configuration could not be updated, including
+            when the body is not valid JSON or a value has the wrong type."
           content:
             application/json:
               schema:
@@ -825,7 +866,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: The configuration item could not be updated.
+          description: "The configuration item could not be updated, including when
+            the body is not a JSON object or parameter_name or parameter_value is missing
+            or null."
           content:
             application/json:
               schema:
@@ -871,12 +914,16 @@ paths:
       tags:
         - Metadata
       summary: Get dashboard metadata
-      description: Returns metadata for the administrator dashboard. Requires the
-        admin role.
+      description: "Intended to return metadata for the administrator dashboard. Requires
+        the admin role. In this release the TAP Server cannot read its own version
+        number (its metadata file is not packaged where it is looked up), so every
+        request from a caller with the admin role fails with 500 and the Combine HTML
+        error page."
       operationId: getDashboardMetadata
       responses:
         "200":
-          description: The dashboard metadata.
+          description: "The dashboard metadata. Not returned in this release; see the
+            operation description."
           content:
             application/json:
               schema:
@@ -888,22 +935,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: The dashboard metadata could not be retrieved.
+          description: "Returned to every caller with the admin role, because the version
+            number cannot be read. The Combine HTML error page is returned."
           content:
-            application/json:
+            text/html:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                type: string
   /tap/api/v1/certificate/certificate-expiration-date:
     get:
       tags:
         - Certificates
       summary: Get certificate authority expiration dates
       description: Returns the expiration dates of the signer and root certificate
-        authority certificates. Available to any authenticated user.
+        authority certificates, read from the deployment's DevOps bucket. Available
+        to any authenticated user.
       operationId: getCertificateExpirationDates
       responses:
         "200":
-          description: The certificate authority expiration dates.
+          description: The certificate authority expiration dates. A date that could
+            not be read is null; the status is still 200.
           content:
             application/json:
               schema:
@@ -913,13 +963,18 @@ paths:
       tags:
         - Certificates
       summary: Process an OCSP request
-      description: Checks the revocation status of the certificates in a DER-encoded
+      description: "Checks the revocation status of the certificates in a DER-encoded
         OCSP request and returns a signed OCSP response. Requires the OCSP responder
-        to be enabled. Does not require a client certificate or the X-Requested-By
-        header. A request larger than the combine.tap.ocsp.responder.request.byteLimit
+        to be enabled (the combine.tap.certificates.ocsp Configuration Value, default
+        false). Does not require a client certificate or the X-Requested-By header,
+        and is also served over HTTP. A request larger than the combine.tap.ocsp.responder.request.byteLimit
         Configuration Value (default 8,192 bytes) receives an OCSP malformedRequest
         response, even when the responder is not enabled. A certificate not issued
-        by the deployment's signer certificate authority is reported as unknown.
+        by the deployment's signer certificate authority is reported as unknown. The
+        response is signed with the signer certificate authority's key, echoes the
+        request's nonce, and sets nextUpdate to the combine.tap.ocsp.responder.nextUpdate.duration
+        Configuration Value (default 86,400,000 milliseconds) after the time of the
+        response."
       operationId: handleRequest
       security: []
       requestBody:
@@ -938,9 +993,26 @@ paths:
               schema:
                 format: binary
         "404":
-          description: The OCSP responder is not enabled.
+          description: The OCSP responder is not enabled (the Combine HTML not-found
+            page).
+          content:
+            text/html:
+              schema:
+                type: string
+        "415":
+          description: The Content-Type is not application/ocsp-request (the Combine
+            HTML error page).
+          content:
+            text/html:
+              schema:
+                type: string
         "500":
-          description: The OCSP request could not be processed.
+          description: The OCSP request could not be processed, including a request
+            body that is not a DER-encoded OCSP request (the Combine HTML error page).
+          content:
+            text/html:
+              schema:
+                type: string
   /tap/api/v1/certificate/ocsp/{request}:
     get:
       tags:
@@ -949,9 +1021,12 @@ paths:
       description: "The RFC 6960 GET form of the OCSP responder. Checks the revocation\
         \ status of the certificates in the OCSP request carried in the rest of the\
         \ path and returns a signed OCSP response. Requires the OCSP responder to be\
-        \ enabled. Does not require a client certificate. A request that cannot be\
-        \ decoded receives an OCSP malformedRequest response, even when the responder\
-        \ is not enabled."
+        \ enabled (the combine.tap.certificates.ocsp Configuration Value, default false).\
+        \ Does not require a client certificate, and is also served over HTTP. A request\
+        \ that is not valid Base64 receives an OCSP malformedRequest response, even\
+        \ when the responder is not enabled. Over HTTPS, a path that contains an encoded\
+        \ slash (%2F) is rejected with 400 before it reaches the responder; over HTTP,\
+        \ as in the OCSP responder URL of an issued certificate, it is accepted."
       operationId: handleRequestEncoded
       security: []
       parameters:
@@ -959,22 +1034,36 @@ paths:
           in: path
           description: "The DER-encoded OCSP request, encoded with standard Base64 and
             then URL-encoded. It occupies the rest of the path and may contain unescaped
-            / characters."
+            / characters. An unescaped + is read as +, not as a space."
           required: true
           schema:
             type: string
       responses:
         "200":
           description: "The signed OCSP response, or an OCSP malformedRequest response\
-            \ when the request could not be decoded."
+            \ when the request is not valid Base64."
           content:
             application/ocsp-response:
               schema:
                 format: binary
+        "400":
+          description: The request was made over HTTPS and its path contains an encoded
+            slash (%2F).
         "404":
-          description: The OCSP responder is not enabled.
+          description: The OCSP responder is not enabled (the Combine HTML not-found
+            page).
+          content:
+            text/html:
+              schema:
+                type: string
         "500":
-          description: The OCSP request could not be processed.
+          description: The OCSP request could not be processed, including a request
+            that decodes but is not a DER-encoded OCSP request (the Combine HTML error
+            page).
+          content:
+            text/html:
+              schema:
+                type: string
   /tap/api/v1/documentation/service-endpoints:
     get:
       tags:
@@ -1023,9 +1112,13 @@ paths:
         - Documentation
       summary: List supported instance types
       description: "Returns the supported instance types for EC2, ElastiCache, RDS,
-        and EMR in each emulated environment, grouped by instance family. A service
-        and environment with no instance type list configured for the environment
-        is omitted, so the array can be empty."
+        and EMR in each emulated environment, grouped by instance family. Each list
+        is read from an environment-wide Configuration Value named for the service
+        and the lowercase environment ID, such as combine.endpoints.aws.metadata.ec2.supportedTypes.aws_c2s.
+        A service and environment whose value is not set is omitted. The deployment
+        templates set only the per-Region values (such as combine.endpoints.aws.metadata.ec2.supportedTypes.us-iso-east-1),
+        which this endpoint does not read, so the array is empty unless an environment-wide
+        value remains from an earlier release or was set by an administrator."
       operationId: getAllSupportedInstanceTypes
       responses:
         "200":
@@ -1199,7 +1292,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/GroupResponse"
         "400":
-          description: The group name was provided but empty.
+          description: The group name was provided but is blank.
           content:
             application/json:
               schema:
@@ -1303,10 +1396,11 @@ paths:
       tags:
         - Groups
       summary: Add members to a group
-      description: "Adds one or more users to a group. Every ID is checked before
-        any membership is written, so a 400, 403, or 404 response adds no one. Users
-        already in the group are skipped. Each membership stores a copy of the user's
-        fullName, email, and userRole. Requires the admin role."
+      description: "Adds one or more users to a group. Every ID is checked, in order,
+        before any membership is written, so a 400, 403, or 404 response adds no one
+        and reports the first ID that fails. Users already in the group are skipped.
+        Each membership stores a copy of the user's fullName, email, and userRole.
+        Requires the admin role."
       operationId: addMembers
       security:
         - mutualTLS: []
@@ -1333,8 +1427,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/AddMembersResponse"
         "400":
-          description: The request body is missing user IDs or contains an invalid
-            ID.
+          description: "The request body has neither userId nor userIds, userIds is
+            empty, or an ID is not a decimal number (\"Invalid user ID: {id}\")."
           content:
             application/json:
               schema:
@@ -1347,7 +1441,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: The group or one of the users was not found.
+          description: "The group was not found (\"Group not found.\"), or an ID is
+            not a user (\"User not found: {id}\"). A server ID is treated as not found,
+            in userId and in userIds alike."
           content:
             application/json:
               schema:
@@ -1365,7 +1461,9 @@ paths:
       tags:
         - Groups
       summary: Remove a member from a group
-      description: Removes a user from a group. Requires the admin role.
+      description: "Removes a user from a group. The membership is removed even when
+        its ID no longer belongs to a user, or belongs to a server added before this
+        release. Requires the admin role."
       operationId: removeMember
       security:
         - mutualTLS: []
@@ -1520,7 +1618,8 @@ paths:
       tags:
         - Metadata
       summary: Get reference data
-      description: Returns the reference data stored under the given identifier.
+      description: "Returns the reference data stored under the given identifier.
+        Available to any authenticated user."
       operationId: getReferenceData
       parameters:
         - name: id
@@ -1539,25 +1638,20 @@ paths:
                 type: string
         "404":
           description: "No reference data exists for the identifier, or it could not
-            be read."
+            be read. A read failure is reported as not found, not as 500."
           content:
             text/plain:
               schema:
                 type: string
               example: "Could not find reference data [example-id]!"
-        "500":
-          description: The reference data could not be retrieved.
-          content:
-            text/plain:
-              schema:
-                type: string
   /tap/api/v1/tools/analyze/cloudformation/template:
     post:
       tags:
         - Tools
       summary: Analyze a CloudFormation template
-      description: Analyzes an uploaded CloudFormation template against a cloud partition
-        and returns the findings for each resource.
+      description: "Analyzes an uploaded CloudFormation template against a cloud partition
+        and returns the findings for each resource. Available to any authenticated
+        user."
       operationId: analyzeCloudFormationTemplate
       security:
         - mutualTLS: []
@@ -1585,7 +1679,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: The CloudFormation template analysis tool is not enabled.
+          description: "The CloudFormation template analysis tool is not enabled (the
+            combine.tap.application.feature.tools.analyzeCloudFormationTemplate Configuration
+            Value, false by default)."
           content:
             application/json:
               schema:
@@ -1619,8 +1715,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: The firewall rules tool is not enabled, or no Combine firewall
-            override rule group is configured.
+          description: "The firewall rules tool is not enabled (the combine.tap.application.feature.tools.firewallRules
+            Configuration Value, true by default), or no Combine firewall override rule
+            group is configured."
           content:
             application/json:
               schema:
@@ -1675,8 +1772,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: The firewall rules tool is not enabled, or no Combine firewall
-            override rule group is configured.
+          description: "The firewall rules tool is not enabled (the combine.tap.application.feature.tools.firewallRules
+            Configuration Value, true by default), or no Combine firewall override rule
+            group is configured."
           content:
             application/json:
               schema:
@@ -1698,7 +1796,8 @@ paths:
       tags:
         - Tools
       summary: Get the workload health configuration
-      description: Returns the configured workload health dashboard and its markup.
+      description: "Returns the configured workload health dashboard and its markup.
+        Available to any authenticated user."
       operationId: viewworkloadHealth
       responses:
         "200":
@@ -1708,7 +1807,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/WorkloadHealthResponse"
         "404":
-          description: The workload health tool is not enabled.
+          description: "The workload health tool is not enabled (the combine.tap.tools.workloadHealth.enable
+            Configuration Value, false by default)."
           content:
             application/json:
               schema:
@@ -1744,7 +1844,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: The workload health tool is not enabled.
+          description: "The workload health tool is not enabled (the combine.tap.tools.workloadHealth.enable
+            Configuration Value, false by default)."
           content:
             application/json:
               schema:
@@ -1807,7 +1908,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: No user exists with the given identifier.
+          description: No user exists with the given identifier, or the identifier belongs to a server.
           content:
             application/json:
               schema:
@@ -1822,6 +1923,10 @@ paths:
         or awsRoles (a non-admin may send them unchanged). Group memberships are updated
         when fullName, email, or userRole changes. Changing commonName or fullName does
         not issue a new certificate; use POST /tap/api/v1/users/{userId}/certificate.
+        Certificate files are stored under a name derived from fullName, so after fullName
+        changes, download links point to a bundle that does not exist and POST
+        /tap/api/v1/users/{userId}/certificate/bundle builds a bundle without the user's
+        certificate until the certificate is rebuilt.
         A non-empty bundlePath in the response is replaced with a presigned download link valid for up to 8 hours."
       operationId: updateUser
       security:
@@ -1868,7 +1973,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: No user exists with the given identifier.
+          description: No user exists with the given identifier, or the identifier belongs to a server.
           content:
             application/json:
               schema:
@@ -1876,14 +1981,15 @@ paths:
         "422":
           description: "Email domain validation is on and the email domain is not allowed.
             The submitted email is checked, or the stored email when email is omitted;
-            the check is skipped when the only change is to active."
+            the check is skipped when active changes and fullName, email, userRole, and
+            the AWS role ids do not."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: "The user could not be updated, including when the request body
-            is not a JSON object."
+            is not a JSON object or a field has the wrong type."
           content:
             application/json:
               schema:
@@ -1893,7 +1999,8 @@ paths:
         - Users
       summary: Delete a user
       description: "Deletes a user and removes their group memberships, certificate
-        files, and certificate bundle. Requires the admin role."
+        files, and certificate bundle. Files stored under an earlier fullName may not
+        be removed. Requires the admin role."
       operationId: doDelete
       security:
         - mutualTLS: []
@@ -1926,7 +2033,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: No user exists with the given identifier.
+          description: No user exists with the given identifier, or the identifier belongs to a server.
           content:
             application/json:
               schema:
@@ -1974,7 +2081,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: No user exists with the given identifier.
+          description: No user exists with the given identifier, or the identifier belongs to a server.
           content:
             application/json:
               schema:
@@ -2011,7 +2118,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
         "400":
-          description: "The user is unknown, the identifier is invalid, or the certificate\
+          description: "The user is unknown (including an identifier that belongs\
+            \ to a server), the identifier is invalid, or the certificate\
             \ could not be rebuilt."
           content:
             application/json:
@@ -2051,7 +2159,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
         "400":
-          description: "The user is unknown, the identifier is invalid, or the certificate\
+          description: "The user is unknown (including an identifier that belongs\
+            \ to a server), the identifier is invalid, or the certificate\
             \ bundle could not be rebuilt."
           content:
             application/json:
@@ -2093,7 +2202,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
         "400":
-          description: "The user is unknown, the identifier is invalid, email integration
+          description: "The user is unknown (including an identifier that belongs to a
+            server), the identifier is invalid, email integration
             is not enabled, or the certificate email could not be sent."
           content:
             application/json:
@@ -2193,7 +2303,9 @@ paths:
         "500":
           description: "The user could not be created, or the user was created but a
             later step failed. When the certificate could not be generated, the user exists
-            without a certificate until POST /tap/api/v1/users/{userId}/certificate is called."
+            without a certificate until POST /tap/api/v1/users/{userId}/certificate is called.
+            Certificate generation fails, for example, when the certificate common name
+            is longer than 64 characters."
           content:
             application/json:
               schema:
@@ -2249,7 +2361,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: No user exists with the given identifier.
+          description: No user exists with the given identifier, or the identifier belongs to a server.
           content:
             application/json:
               schema:
@@ -2264,6 +2376,10 @@ paths:
         or awsRoles (a non-admin may send them unchanged). Group memberships are updated
         when fullName, email, or userRole changes. Changing commonName or fullName does
         not issue a new certificate; use POST /tap/api/v2/users/{userId}/certificate.
+        Certificate files are stored under a name derived from fullName, so after fullName
+        changes, download links point to a bundle that does not exist and POST
+        /tap/api/v2/users/{userId}/certificate/bundle builds a bundle without the user's
+        certificate until the certificate is rebuilt.
         bundlePath in the response is the stored location of the certificate bundle, not a download link."
       operationId: updateUserV2
       security:
@@ -2310,7 +2426,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: No user exists with the given identifier.
+          description: No user exists with the given identifier, or the identifier belongs to a server.
           content:
             application/json:
               schema:
@@ -2318,14 +2434,15 @@ paths:
         "422":
           description: "Email domain validation is on and the email domain is not allowed.
             The submitted email is checked, or the stored email when email is omitted;
-            the check is skipped when the only change is to active."
+            the check is skipped when active changes and fullName, email, userRole, and
+            the AWS role ids do not."
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: "The user could not be updated, including when the request body
-            is not a JSON object."
+            is not a JSON object or a field has the wrong type."
           content:
             application/json:
               schema:
@@ -2335,7 +2452,8 @@ paths:
         - Users
       summary: Delete a user (v2)
       description: "Deletes a user and removes their group memberships, certificate
-        files, and certificate bundle. Requires the admin role."
+        files, and certificate bundle. Files stored under an earlier fullName may not
+        be removed. Requires the admin role."
       operationId: doDeleteV2
       security:
         - mutualTLS: []
@@ -2368,7 +2486,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: No user exists with the given identifier.
+          description: No user exists with the given identifier, or the identifier belongs to a server.
           content:
             application/json:
               schema:
@@ -2416,7 +2534,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: No user exists with the given identifier.
+          description: No user exists with the given identifier, or the identifier belongs to a server.
           content:
             application/json:
               schema:
@@ -2453,7 +2571,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
         "400":
-          description: "The user is unknown, the identifier is invalid, or the certificate\
+          description: "The user is unknown (including an identifier that belongs\
+            \ to a server), the identifier is invalid, or the certificate\
             \ could not be rebuilt."
           content:
             application/json:
@@ -2493,7 +2612,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
         "400":
-          description: "The user is unknown, the identifier is invalid, or the certificate\
+          description: "The user is unknown (including an identifier that belongs\
+            \ to a server), the identifier is invalid, or the certificate\
             \ bundle could not be rebuilt."
           content:
             application/json:
@@ -2535,7 +2655,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
         "400":
-          description: "The user is unknown, the identifier is invalid, email integration
+          description: "The user is unknown (including an identifier that belongs to a
+            server), the identifier is invalid, email integration
             is not enabled, or the certificate email could not be sent."
           content:
             application/json:
@@ -2662,7 +2783,9 @@ paths:
         "500":
           description: "The user could not be created, or the user was created but a
             later step failed. When the certificate could not be generated, the user exists
-            without a certificate until POST /tap/api/v2/users/{userId}/certificate is called."
+            without a certificate until POST /tap/api/v2/users/{userId}/certificate is called.
+            Certificate generation fails, for example, when the certificate common name
+            is longer than 64 characters."
           content:
             application/json:
               schema:
@@ -2715,7 +2838,11 @@ paths:
         domains, and awsRoles are read; a field that is omitted or null is left unchanged,
         and every other field, including csr, is ignored. When email domain validation
         is on, the resulting email is checked even when email is not sent. Changing
-        fullName or domains does not issue a new certificate. Requires the admin role.
+        fullName or domains does not issue a new certificate. Certificate files are stored
+        under a name derived from fullName, so after fullName changes, download links point
+        to a bundle that does not exist and POST /tap/api/v1/servers/{serverId}/certificate/bundle
+        builds a bundle without the server's certificate until the certificate is rebuilt.
+        Requires the admin role.
         A non-empty bundlePath in the response is replaced with a presigned download link valid for up to 8 hours."
       operationId: updateServer
       security:
@@ -2780,7 +2907,8 @@ paths:
         - Servers
       summary: Delete a server
       description: "Deletes a server and removes its certificate files and certificate
-        bundle. Requires the admin role."
+        bundle. Files stored under an earlier fullName may not be removed. Requires the
+        admin role."
       operationId: doDelete_1
       security:
         - mutualTLS: []
@@ -3079,7 +3207,9 @@ paths:
           description: "The server could not be created, or the server was created but
             a later step failed. When the certificate could not be generated, the server
             exists without a certificate until POST /tap/api/v1/servers/{serverId}/certificate
-            is called."
+            is called. Certificate generation fails, for example, when csr is not a valid
+            PEM certificate signing request for an RSA key, or when csr is blank and fullName
+            is longer than 64 characters."
           content:
             application/json:
               schema:
@@ -3132,7 +3262,11 @@ paths:
         domains, and awsRoles are read; a field that is omitted or null is left unchanged,
         and every other field, including csr, is ignored. When email domain validation
         is on, the resulting email is checked even when email is not sent. Changing
-        fullName or domains does not issue a new certificate. Requires the admin role.
+        fullName or domains does not issue a new certificate. Certificate files are stored
+        under a name derived from fullName, so after fullName changes, download links point
+        to a bundle that does not exist and POST /tap/api/v2/servers/{serverId}/certificate/bundle
+        builds a bundle without the server's certificate until the certificate is rebuilt.
+        Requires the admin role.
         bundlePath in the response is the stored location of the certificate bundle, not a download link."
       operationId: updateServerV2
       security:
@@ -3197,7 +3331,8 @@ paths:
         - Servers
       summary: Delete a server (v2)
       description: "Deletes a server and removes its certificate files and certificate
-        bundle. Requires the admin role."
+        bundle. Files stored under an earlier fullName may not be removed. Requires the
+        admin role."
       operationId: deleteServerV2
       security:
         - mutualTLS: []
@@ -3522,7 +3657,9 @@ paths:
           description: "The server could not be created, or the server was created but
             a later step failed. When the certificate could not be generated, the server
             exists without a certificate until POST /tap/api/v2/servers/{serverId}/certificate
-            is called."
+            is called. Certificate generation fails, for example, when csr is not a valid
+            PEM certificate signing request for an RSA key, or when csr is blank and fullName
+            is longer than 64 characters."
           content:
             application/json:
               schema:
@@ -3550,10 +3687,15 @@ components:
         count:
           type: integer
           format: int64
+          description: Number of times the event has been seen.
         date:
           type: string
+          description: "Time the event was last seen, in epoch seconds."
         dateExpires:
           type: string
+          description: "Time after which the event is deleted, in epoch seconds. Reopening
+            or ignoring the event through this API stores dateExpires as text, which
+            DynamoDB never expires, so that event is kept until it is seen again."
         message:
           $ref: "#/components/schemas/Message"
         state:
@@ -3603,16 +3745,19 @@ components:
             $ref: "#/components/schemas/AlertEvent"
     AssumedRoleUser:
       type: object
-      description: Identifiers of the assumed role session.
+      description: "Identifiers of the assumed role session. The session name is the
+        common name of the caller's client certificate, up to its first comma, with
+        every character other than A-Z, a-z, and 0-9 removed."
       properties:
         AssumedRoleId:
           type: string
           description: Unique identifier of the assumed role session.
-          example: AROAEXAMPLEID:session
+          example: AROAEXAMPLEID:JaneDoe
         Arn:
           type: string
-          description: Amazon Resource Name of the assumed role session.
-          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/session
+          description: "Amazon Resource Name of the assumed role session, in the partition
+            that hosts the Combine deployment. It is not rewritten to the emulated partition."
+          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/JaneDoe
       required:
         - Arn
         - AssumedRoleId
@@ -3634,7 +3779,7 @@ components:
           example: FQoGZXIvYXdzEExampleSessionTokenABC123
         Expiration:
           type: string
-          description: "Expiration time of the credentials, in UTC."
+          description: "Expiration time of the credentials, in UTC, formatted as YYYY-MM-DDTHH:MM:SSZ."
           example: "2026-07-06T12:34:56Z"
       required:
         - AccessKeyId
@@ -3643,7 +3788,8 @@ components:
         - SessionToken
     CredentialsResponse:
       type: object
-      description: Temporary AWS credentials and the assumed role session.
+      description: "Temporary AWS credentials and the assumed role session, from an
+        AWS STS AssumeRole call in the partition that hosts the Combine deployment."
       properties:
         Credentials:
           $ref: "#/components/schemas/AwsCredentials"
@@ -3792,6 +3938,9 @@ components:
           type: boolean
         userValidateEmailDomainWhitelist:
           type: string
+          description: "The allowed email domains. A read returns them separated by
+            commas. An update accepts them separated by commas, semicolons, spaces, or
+            newlines."
         userDaysInactiveThreshold:
           type: integer
           format: int32
@@ -3903,7 +4052,7 @@ components:
         version:
           type: string
           description: Version of the application.
-          example: 3.14.9.4
+          example: 3.14.10.1
         userCountActive:
           type: integer
           format: int32
@@ -3927,15 +4076,17 @@ components:
           type:
             - string
             - "null"
-          description: Expiration date of the signer certificate authority, in UTC.
-            Null when the certificate could not be read.
+          description: "Expiration date of the signer certificate authority, in UTC,
+            formatted as EEE, d MMM yyyy HH:mm:ss (no time zone suffix). Null when the
+            certificate could not be read."
           example: Mon, 6 Jul 2026 12:00:00
         expirationCA:
           type:
             - string
             - "null"
-          description: Expiration date of the root certificate authority, in UTC. Null
-            when the certificate could not be read.
+          description: "Expiration date of the root certificate authority, in UTC, formatted
+            as EEE, d MMM yyyy HH:mm:ss (no time zone suffix). Null when the certificate
+            could not be read."
           example: Mon, 6 Jul 2026 12:00:00
     SupportedServiceNames:
       type: object
@@ -4024,8 +4175,10 @@ components:
             type: string
         createdDate:
           type: string
+          description: "Date the group was created, as YYYY-MM-DD in UTC."
         updatedDate:
           type: string
+          description: "Date the group was last updated, as YYYY-MM-DD in UTC."
     GroupResponse:
       type: object
       description: The requested group.
@@ -4088,7 +4241,8 @@ components:
       properties:
         name:
           type: string
-          description: "New display name. If provided, must not be blank."
+          description: "New display name, stored without surrounding whitespace. If
+            provided, must not be blank; null leaves the name unchanged."
           example: Example Group
         description:
           type: string
@@ -4152,7 +4306,10 @@ components:
       type: object
       description: "Users to add to a group. Provide userId or userIds; when both
         are present, userId is used and userIds is ignored. Each ID is a decimal user
-        ID, sent as a JSON string or number."
+        ID, sent as a JSON string or number. The ID is stored as sent, so a form with
+        a leading zero or plus sign is accepted, but that membership is not listed for
+        the user's own ID by GET /tap/api/v1/groups/user/{userId} or GET /tap/api/v1/groups/me,
+        and is not removed when the user is deleted."
       properties:
         userId:
           type: string
@@ -4221,6 +4378,8 @@ components:
           type: string
         level:
           type: string
+          description: Severity of the finding. Every finding is currently reported
+            as ERROR.
           enum:
             - ERROR
             - WARNING
@@ -4232,17 +4391,25 @@ components:
         sourceLineNumber:
           type: integer
           format: int32
+          description: "Line of the value in the template, starting at 1. 0 when the
+            value could not be located."
         sourceColumn:
           type: integer
           format: int32
+          description: "Column of the value in the template, starting at 1. 0 when the
+            value could not be located."
         observedValue:
           type: string
+          description: The template value that caused the finding. Omitted when the
+            finding has none.
         observedHighlightRanges:
           type: array
           items:
             $ref: "#/components/schemas/HighlightRange"
         expectedValue:
           type: string
+          description: The suggested replacement for observedValue. Omitted when the
+            finding has no suggested replacement.
         expectedHighlightRanges:
           type: array
           items:
@@ -4472,10 +4639,20 @@ components:
           type: string
         lastLoginDate:
           type: string
+          description: "UTC date (YYYY-MM-DD) on which AWS credentials were last issued
+            to the account through the CAP / SCAP credential endpoints, the AWS console
+            login, or /tap/api/v1/login/credentials."
         lastConsoleLoginDate:
           type: string
+          description: "UTC date (YYYY-MM-DD) of the account's most recent authenticated
+            TAP API request. Every authenticated request to any endpoint sets it, not
+            only an AWS console login."
         certificateCN:
           type: string
+          readOnly: true
+          description: "Common name of the user's certificate: commonName when it is not
+            blank, otherwise Combine - followed by fullName. A certificate cannot be issued
+            when it is longer than 64 characters."
     UserCurrentResponse:
       type: object
       description: The current authenticated user.
@@ -4549,10 +4726,15 @@ components:
           example: admin
         commonName:
           type: string
-          description: Common name to use in the user's certificate. Admin only.
+          description: "Common name to use in the user's certificate. Admin only. Takes
+            effect when the certificate is next issued; it must not be longer than 64
+            characters."
         awsRoles:
           type: array
-          description: Replacement list of AWS roles. Admin only.
+          description: "Replacement list of AWS roles. Admin only; a non-admin may send
+            a list with the same AWS role ids. Each AWS role is stored as sent, without
+            checking that its id exists or that its other fields match the AWS role, so
+            send the AWS roles returned by GET /tap/api/v1/aws-roles."
           items:
             $ref: "#/components/schemas/AwsRole"
     UserCreateResponse:
@@ -4567,7 +4749,9 @@ components:
           $ref: "#/components/schemas/User"
     UserCreateRequest:
       type: object
-      description: Fields accepted when creating a user.
+      description: "Fields accepted when creating a user. Any other field, including
+        id, isServer, bundlePath, storageVersion, lastLoginDate, and lastConsoleLoginDate,
+        is ignored."
       properties:
         fullName:
           type: string
@@ -4589,19 +4773,22 @@ components:
           example: user
         active:
           type: boolean
-          description: Whether the user is active. Defaults to true when omitted.
+          description: Whether the user is active. Defaults to true when omitted or null.
           default: true
           example: true
         awsRoles:
           type: array
-          description: AWS roles assigned to the user. Default roles are applied when
-            omitted or empty.
+          description: "AWS roles assigned to the user. Default roles are applied when
+            omitted or empty. Each AWS role is stored as sent, without checking that its
+            id exists or that its other fields match the AWS role, so send the AWS roles
+            returned by GET /tap/api/v1/aws-roles."
           items:
             $ref: "#/components/schemas/AwsRole"
         commonName:
           type: string
           description: "Common name for the user's certificate. When omitted or blank,
-            the certificate uses Combine - followed by fullName."
+            the certificate uses Combine - followed by fullName. The common name used must
+            not be longer than 64 characters, or the certificate cannot be issued."
       required:
         - email
         - fullName
@@ -4627,8 +4814,14 @@ components:
             - super_admin
         lastLoginDate:
           type: string
+          description: "UTC date (YYYY-MM-DD) on which AWS credentials were last issued
+            to the account through the CAP / SCAP credential endpoints, the AWS console
+            login, or /tap/api/v1/login/credentials."
         lastConsoleLoginDate:
           type: string
+          description: "UTC date (YYYY-MM-DD) of the account's most recent authenticated
+            TAP API request. Every authenticated request to any endpoint sets it, not
+            only an AWS console login."
         hasBundle:
           type: boolean
           description: Whether a certificate bundle location is recorded for the user.
@@ -4705,6 +4898,9 @@ components:
           type: string
         certificateCN:
           type: string
+          readOnly: true
+          description: "Common name of a certificate generated without a CSR, which is
+            fullName. A certificate cannot be generated when it is longer than 64 characters."
     ServerResponse:
       type: object
       description: The requested server.
@@ -4755,7 +4951,9 @@ components:
           example: example.com service.example.com
         awsRoles:
           type: array
-          description: Replacement list of AWS roles.
+          description: "Replacement list of AWS roles. Each AWS role is stored as sent,
+            without checking that its id exists or that its other fields match the AWS
+            role, so send the AWS roles returned by GET /tap/api/v1/aws-roles."
           items:
             $ref: "#/components/schemas/AwsRole"
     ServerCreateResponse:
@@ -4770,11 +4968,13 @@ components:
           $ref: "#/components/schemas/Server"
     ServerCreateRequest:
       type: object
-      description: Fields accepted when creating a server.
+      description: "Fields accepted when creating a server. Any other field, including
+        id, isServer, bundlePath, and storageVersion, is ignored."
       properties:
         fullName:
           type: string
-          description: Full name of the server.
+          description: "Full name of the server. When csr is blank, it is the certificate
+            common name and must not be longer than 64 characters."
           example: Example Server
         email:
           type: string
@@ -4782,7 +4982,7 @@ components:
           example: custodian@example.com
         active:
           type: boolean
-          description: Whether the server is active.
+          description: Whether the server is active. Defaults to true when omitted or null.
           example: true
         custodianName:
           type: string
@@ -4790,19 +4990,23 @@ components:
           example: Jane Doe
         domains:
           type: string
-          description: "Domains associated with the server, separated by spaces."
+          description: "Domains associated with the server, separated by spaces, commas,
+            or line breaks. They are stored separated by single spaces."
           example: example.com service.example.com
         csr:
           type: string
-          description: Certificate signing request for the server.
+          description: "PEM certificate signing request for the server. When it is not
+            blank, the CSR is signed instead of generating a key pair."
         isCsr:
           type: boolean
-          description: Whether the server uses a certificate signing request.
+          description: "Stored as sent. Whether the CSR is signed depends only on csr."
           example: false
         awsRoles:
           type: array
-          description: AWS roles assigned to the server. Default roles are applied when
-            omitted or empty.
+          description: "AWS roles assigned to the server. Default roles are applied when
+            omitted or empty. Each AWS role is stored as sent, without checking that its
+            id exists or that its other fields match the AWS role, so send the AWS roles
+            returned by GET /tap/api/v1/aws-roles."
           items:
             $ref: "#/components/schemas/AwsRole"
       required:

@@ -6,10 +6,12 @@ info:
 
     The CAP endpoints are enabled when the `combine.tap.api.cap.enable` Configuration Value is `true`, which is the default in a Combine Deployment that emulates C2S. The SCAP endpoints are enabled when `combine.tap.api.scap.enable` is `true`, which is the default in a Combine Deployment that emulates SC2S. A disabled endpoint returns 404.
 
-    All requests must use HTTPS and mutual TLS with a valid client certificate issued for the deployment. The certificate's serial number identifies the caller's user account, and credentials are issued only for the AWS roles assigned directly to that account. A request over plain HTTP, without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page, with HTTP status 200, instead of a JSON response.
+    All requests must use HTTPS and mutual TLS with a valid client certificate issued for the deployment. The certificate's serial number identifies the caller's user account, and credentials are issued only for the AWS roles assigned directly to that account. A request over plain HTTP, without a valid client certificate, with a revoked certificate, or for an unknown or inactive account receives the Combine HTML error page, with HTTP status 200, instead of a JSON response. A request without a client certificate also raises a "No Valid Client Certificate Found" Alert Event when the combine.tap.api.cap.certificate.error.report Configuration Value (for a CAP path) or combine.tap.api.scap.certificate.error.report (for a SCAP path) is true, which is the default.
+
+    When the combine.tap.trails.enable Configuration Value is true (default false), Combine records a trail event each time it issues credentials. This includes credentials issued through the TAP AWS console login, so the CAP trail events also cover console logins with AWS roles in the CAP cloud partition. An unhandled server error receives the Combine HTML error page with status 500.
 
     For a step-by-step guide with curl and Python examples, see [Call the TAP API](/Combine-AWS/tutorials/development/how-to-call-the-tap-api).
-  version: "3.14.9.4"
+  version: "3.14.10.1"
 servers:
   - url: "https://{host}"
     description: Base URL for a shard's TAP API.
@@ -192,9 +194,13 @@ paths:
         DN, agency, mission, and role that obtained credentials for the account, most
         recent last_access first. Only trail events for AWS roles in the CAP cloud partition
         (the combine.tap.api.cap.cloudPartitionId Configuration Value, default AWS_C2S)
-        are included. Trail events are recorded only when the combine.tap.trails.enable
-        Configuration Value is true (default false); otherwise the array is empty.
-        Requires the CAP API to be enabled."
+        are included. Trail events are recorded only while the combine.tap.trails.enable
+        Configuration Value is true (default false), so the array is empty when it
+        has never been enabled. Only the trail events in the first 1 MB that a single
+        DynamoDB scan reads from the trail event table are summarized, so a large table
+        gives incomplete results. Any authenticated caller can read the activity of
+        any account; the caller's AWS roles are not checked. Requires the CAP API to
+        be enabled."
       operationId: getActivity
       parameters:
         - name: accountId
@@ -221,6 +227,12 @@ paths:
               example:
                 success: false
                 message: API not enabled.
+        "500":
+          description: The trail events could not be read (the Combine HTML error page).
+          content:
+            text/html:
+              schema:
+                type: string
   /api/v1/accounts/{accountId}/trailevents:
     get:
       tags:
@@ -229,9 +241,13 @@ paths:
       description: "Returns a paginated list of credential issuance trail events for
         the account. Only trail events for AWS roles in the CAP cloud partition (the
         combine.tap.api.cap.cloudPartitionId Configuration Value, default AWS_C2S)
-        are included. Trail events are recorded only when the combine.tap.trails.enable
-        Configuration Value is true (default false); otherwise the array is empty.
-        Requires the CAP API to be enabled."
+        are included. Trail events are recorded only while the combine.tap.trails.enable
+        Configuration Value is true (default false), so the array is empty when it
+        has never been enabled. Only the trail events in the first 1 MB that a single
+        DynamoDB scan reads from the trail event table are returned, so a large table
+        gives incomplete results. Any authenticated caller can read the trail events
+        of any account; the caller's AWS roles are not checked. Requires the CAP API
+        to be enabled."
       operationId: getTrailEvents
       parameters:
         - name: accountId
@@ -275,7 +291,7 @@ paths:
         - name: sort
           in: query
           description: "Order of the events by event time. Must be exactly asc or desc.
-            asc returns the most recent event first, and desc returns the oldest event
+            asc returns the oldest event first, and desc returns the most recent event
             first. Paging is applied after sorting."
           schema:
             type: string
@@ -355,6 +371,13 @@ paths:
               example:
                 success: false
                 message: API not enabled.
+            text/html:
+              schema:
+                type: string
+        "500":
+          description: "The trail events could not be read, or (page - 1) x page_size
+            overflows a 32-bit integer to a negative number (the Combine HTML error page)."
+          content:
             text/html:
               schema:
                 type: string
@@ -583,9 +606,10 @@ components:
             - string
             - "null"
           description: "Time, in UTC, that credentials were last issued for this role
-            to the caller's client certificate. Null when there is no trail event, which
-            is always the case while the combine.tap.trails.enable Configuration Value
-            is false (the default)."
+            to a client certificate with the caller's subject DN, from the same trail
+            events as /api/v1/accounts/{accountId}/activity. Null when there is no such
+            trail event, which is always the case when the combine.tap.trails.enable
+            Configuration Value has never been true (the default is false)."
           example: "2026-07-06T12:34:56Z"
     ScapAccessListResponse:
       type: object
@@ -628,7 +652,8 @@ components:
           example: PowerUser
     CredentialsResponse:
       type: object
-      description: Temporary AWS credentials and the assumed role session.
+      description: "Temporary AWS credentials and the assumed role session, from an
+        AWS STS AssumeRole call in the partition that hosts the Combine deployment."
       properties:
         Credentials:
           $ref: "#/components/schemas/AwsCredentials"
@@ -655,7 +680,7 @@ components:
           example: FQoGZXIvYXdzEExampleSessionTokenABC123
         Expiration:
           type: string
-          description: "Expiration time of the credentials, in UTC."
+          description: "Expiration time of the credentials, in UTC, formatted as YYYY-MM-DDTHH:MM:SSZ."
           example: "2026-07-06T12:34:56Z"
       required:
         - AccessKeyId
@@ -664,16 +689,19 @@ components:
         - SessionToken
     AssumedRoleUser:
       type: object
-      description: Identifiers of the assumed role session.
+      description: "Identifiers of the assumed role session. The session name is the
+        common name of the caller's client certificate, up to its first comma, with
+        every character other than A-Z, a-z, and 0-9 removed."
       properties:
         AssumedRoleId:
           type: string
           description: Unique identifier of the assumed role session.
-          example: AROAEXAMPLEID:session
+          example: AROAEXAMPLEID:JaneDoe
         Arn:
           type: string
-          description: Amazon Resource Name of the assumed role session.
-          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/session
+          description: "Amazon Resource Name of the assumed role session, in the partition
+            that hosts the Combine deployment. It is not rewritten to the emulated partition."
+          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/JaneDoe
       required:
         - Arn
         - AssumedRoleId
@@ -703,12 +731,16 @@ components:
       properties:
         client_dn:
           type: string
-          description: Distinguished name from the client certificate.
-          example: "CN=Jane Doe,OU=Example,O=Combine"
+          description: Subject distinguished name of the client certificate, in RFC
+            2253 form.
+          example: "CN=Jane Doe,OU=Combine,O=Sequoia Holdings Inc,L=Reston,ST=VA,C=US"
         iaa_dn:
           type: string
-          description: Distinguished name of the issuing authority.
-          example: "CN=Example CA,O=Combine"
+          description: "Issuer distinguished name of the client certificate, in RFC
+            2253 form, when its common name starts with the combine.tap.trails.request.certificate.signerPrefix
+            Configuration Value (default Combine CA Signer -). Otherwise the combine.tap.trails.event.iaadn.default
+            Configuration Value (default the string null)."
+          example: "CN=Combine CA Signer - Example - 1751800000000,OU=Combine,O=Sequoia Holdings Inc,L=Reston,ST=VA,C=US"
         org:
           type: string
           description: Always Combine.
@@ -747,12 +779,16 @@ components:
           example: "2026-07-06T12:34:56Z"
         client_dn:
           type: string
-          description: Distinguished name from the client certificate.
-          example: "CN=Jane Doe,OU=Example,O=Combine"
+          description: Subject distinguished name of the client certificate, in RFC
+            2253 form.
+          example: "CN=Jane Doe,OU=Combine,O=Sequoia Holdings Inc,L=Reston,ST=VA,C=US"
         iaa_dn:
           type: string
-          description: Distinguished name of the issuing authority.
-          example: "CN=Example CA,O=Combine"
+          description: "Issuer distinguished name of the client certificate, in RFC
+            2253 form, when its common name starts with the combine.tap.trails.request.certificate.signerPrefix
+            Configuration Value (default Combine CA Signer -). Otherwise the combine.tap.trails.event.iaadn.default
+            Configuration Value (default the string null)."
+          example: "CN=Combine CA Signer - Example - 1751800000000,OU=Combine,O=Sequoia Holdings Inc,L=Reston,ST=VA,C=US"
         accountNumber:
           type: string
           description: AWS account number the access targeted.
@@ -787,13 +823,14 @@ components:
       properties:
         arn:
           type: string
-          description: Amazon Resource Name of the assumed role session.
-          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/session
+          description: "Amazon Resource Name of the assumed role session, in the partition
+            that hosts the Combine deployment."
+          example: arn:aws:sts::123456789012:assumed-role/ExampleRole/JaneDoe
         role_id:
           type: string
           description: "Unique identifier of the assumed role session, in the form
             <role ID>:<session name>."
-          example: AROAEXAMPLEID:session
+          example: AROAEXAMPLEID:JaneDoe
         key_id:
           type: string
           description: Access key ID of the issued credentials.
