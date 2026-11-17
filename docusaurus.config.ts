@@ -17,6 +17,13 @@ const config: Config = {
   baseUrl: '/',
   trailingSlash: false,
 
+  headTags: [
+    {
+      tagName: 'link',
+      attributes: { rel: 'describedby', href: '/llms.txt', type: 'text/plain' },
+    },
+  ],
+
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'combine-pathfinder-palisade', // Usually your GitHub org/user name.

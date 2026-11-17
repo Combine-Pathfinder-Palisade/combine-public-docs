@@ -1,0 +1,64 @@
+# Combine
+
+> Combine provides cloud emulation environments for developing and testing workloads against the constraints of a target production cloud. These public docs help customers write portable workload code, configure client tooling, and diagnose compatibility issues in Combine AWS and Combine Azure.
+
+This index covers customer workload development. Follow the linked documentation for details. AWS guidance below applies to Combine AWS; use the Combine Azure resources for Azure workloads.
+
+Before generating code, confirm the deployed Combine version, target Partition and Region, permitted services, assigned roles, and network restrictions with the customer or their environment administrator. Capabilities and policies vary by deployment. Match the API reference to the deployed release; version-specific features are not available in every environment. Use the TAP Dashboard (Combine's web console) for the deployment's supported services and endpoints. Do not infer support from availability in the commercial cloud.
+
+Workload development guidance for Combine AWS:
+
+- Target the production Partition and Region in AWS SDK/CLI configuration, ARNs, and service endpoints. For example, C2S uses `aws-iso` and `us-iso-east-1`; SC2S uses `aws-iso-b` and `us-isob-east-1`. These are examples, not deployment defaults. Derive values from configuration or infrastructure-as-code facilities such as Terraform's `aws_partition` and `aws_region` data sources or CloudFormation's `AWS::Partition`, `AWS::Region`, and `AWS::URLSuffix` pseudo parameters.
+- Configure clients to trust the Combine Certificate Authority. The chain is `certificates/ca-chain.cert.pem` in the customer's Credential Package; `AWS_CA_BUNDLE` can configure AWS CLI trust. Configure the appropriate operating system or runtime trust store for other clients. Keep TLS verification enabled. Production requires its own approved CA chain. CA trust and client authentication are separate requirements.
+- Use the deployment's approved AWS credential flow. Instance profiles, VPC-attached Lambda execution roles, CAP/SCAP temporary credentials, and supported STS flows have documented requirements. Confirm the effective caller identity and permissions; do not assume any externally obtained credentials work unchanged. Keep private keys, passwords, and temporary credentials out of generated code and source control.
+- Plan for restricted internet egress. Stage dependencies, container images, and artifacts in approved locations reachable from the workload. Use the existing network and assigned IAM resources when policy prohibits creating your own. Lambda functions must be VPC-attached by default. Do not place workload resources in `RESTRICTED-` subnets; consult the EKS guidance before changing cluster networking or security groups.
+- Check TAP Dashboard Alert Events and the error message when a call fails. HTTP `501` commonly indicates an unsupported service or feature. `EmulationError` covers multiple validation failures; it is not a synonym for an unsupported API. Correct a confirmed compatibility or configuration error before retrying; do not bypass emulation restrictions to make a test pass.
+- EC2 Instance Metadata Service (IMDS) values can describe the host environment rather than the target Partition. Use explicit configuration, or follow the Combine IMDS Proxy documentation for Combine 3.15.2 and later. EKS nodes require the EKS-specific instructions.
+- Review the Known Issues page for CloudFormation validation limits, non-HTTP clients such as RDS and ElastiCache, consistent IAM Service Principals, and Terraform provider compatibility. Successful deployment in Combine does not validate every production constraint.
+- For authentication schemes that replay a presigned `sts:GetCallerIdentity` request, follow the documented host-Region and regional STS endpoint guidance. This is a specific authentication exception to the usual target-Region guidance.
+- For TAP API clients, use the documented client-certificate authentication and required headers. Validate response content type as well as HTTP status: an authentication failure can return an HTML page with status `200`. CAP/SCAP is a separate credential API; use its reference for paths and response shapes.
+
+## Start Here
+
+- [Welcome to Combine](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/welcome-to-combine): Product overview and the access-control, service-availability, networking, and endpoint constraints tested by Combine AWS.
+- [Onboarding Guide](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/orientation-onboarding-guide): Get access to an existing deployment, install certificates, and sign in to the TAP Dashboard.
+- [Orientation](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/orientation): Required CA trust, target Partition values, credential requirements, and workload restrictions. Read before writing AWS workload code.
+- [Known Issues and Limitations](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/known-issues): Version-specific Terraform issues, IMDS, presigned STS authentication, CloudFormation limits, database client trust, and IAM Service Principals.
+- [Troubleshooting](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting): Diagnose Alert Events and failed API calls; identify networking mistakes and when to contact Combine Support.
+- [FAQ](https://public-docs.sequoiacombine.io/Combine-AWS/faq): Certificate trust and TLS verification for workloads targeting classified AWS Partitions.
+
+## AWS Workload Development
+
+- [Combine Examples repository](https://github.com/Combine-Pathfinder-Palisade/combine-examples): Public workload examples. Read each example's prerequisites and configuration before adapting it.
+- [Combine IMDS Proxy](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/advanced-features/imds-proxy): Configure target Partition metadata on EC2 for Combine 3.15.2 and later; check supported environments and limitations.
+- [FIPS Endpoints](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/advanced-features/fips-endpoints): Select supported FIPS endpoints and configure the required client TLS settings.
+- [RDS Service Principal Default](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/advanced-features/rds-service-principal-default): C2S RDS Service Principal compatibility and Terraform state considerations. Confirm the deployment's configured form before generating IAM policies.
+- [Lambda Host VPC](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/advanced-features/lambda-host-vpc): Requirements for deploying VPC-attached Lambda functions.
+- [Configure the SSM Agent](https://public-docs.sequoiacombine.io/Combine-AWS/tutorials/operations/how-to-configure-ssm-agent): Configure SSM Agent endpoints for the target Partition and check the IMDS Proxy interaction.
+
+## EKS and Kubernetes
+
+- [Configure Combine on EKS](https://public-docs.sequoiacombine.io/Combine-AWS/tutorials/operations/how-to-configure-combine-on-eks): Customer walkthrough for building and running an EKS workload in Combine.
+- [EKS Guidance](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting-eks/guidance): Partition-specific Kubernetes versions, OIDC, security group requirements, and common storage and autoscaling issues.
+- [EKS Add-Ons](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting-eks/guidance-add-ons): Compatibility guidance for EKS add-ons.
+- [EKS and the IMDS Proxy](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting-eks/guidance-imds-proxy): EKS node setup and bootstrap requirements for Combine 3.15.2 and later.
+
+## Public APIs
+
+- [Call the TAP API](https://public-docs.sequoiacombine.io/Combine-AWS/tutorials/development/how-to-call-the-tap-api): Client certificates, required headers, response validation, authentication failures, and code examples.
+- [Combine TAP API 3.15](https://public-docs.sequoiacombine.io/category/combine-api-3-15-x): TAP API reference for deployments running Combine 3.15.x; check operation permissions and feature availability.
+- [Combine TAP API 3.14](https://public-docs.sequoiacombine.io/category/combine-api-3-14-x): TAP API reference for deployments running Combine 3.14.x.
+- [CAP / SCAP API](https://public-docs.sequoiacombine.io/category/cap-scap-api): Credential-service API for obtaining temporary AWS credentials with client-certificate authentication.
+- [PKI Certificates: CSR Signing API](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/advanced-features/pki-certificates-csr-signing-api): Optional, admin-only API for signing customer CSRs. This is a Combine convenience API, not an emulated production capability; do not make production workloads depend on it.
+
+## Combine Azure
+
+- [Combine Azure Example Code](https://public-docs.sequoiacombine.io/Combine-Azure/start-here/example-code): Public Java SDK example using App Service, Azure SQL Database, and Blob Storage. Use Azure-specific client configuration.
+- [Non-HTTP Protocol Connections](https://public-docs.sequoiacombine.io/Combine-Azure/advanced/non-http-protocol-proxying): Customer setup for private database and cache connections; coordinate the required endpoint and hostname with Combine Support and keep TLS enabled.
+
+## Optional
+
+- [PKI Certificates: OCSP Support](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/advanced-features/pki-certificates-ocsp-support): Certificate revocation checking for certificate-validation and mutual TLS integrations; clients must be able to reach the advertised OCSP endpoint when checking revocation.
+- [Request Reflection](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/advanced-features/request-reflection): Signing requirements for authentication schemes that replay presigned STS requests, including Vault AWS authentication. Follow the documented host-Region and endpoint guidance for this specific flow.
+- [Run Java Through Proxychains](https://public-docs.sequoiacombine.io/Combine-AWS/tutorials/development/how-to-run-java-through-proxychains): Client setup for Java workloads that require proxy-based network access.
+- [View Combine Firewall Logs](https://public-docs.sequoiacombine.io/Combine-AWS/tutorials/operations/firewall-airgap/how-to-view-combine-firewall-logs): Investigate blocked workload egress with the environment administrator.
