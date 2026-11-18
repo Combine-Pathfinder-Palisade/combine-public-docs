@@ -24,12 +24,21 @@ These CloudFormation Parameters in the Combine VPC CloudFormation Template (`com
 | `WrappedVpcId` | Required. The ID of the VPC to wrap. |
 | `VpcCidrBlock`, `VpcCidrBlockAuxiliaryA` through `VpcCidrBlockAuxiliaryD` | Must match the CIDR Blocks of the wrapped VPC. Set `VpcCidrBlock`, and any Auxiliary CIDR Block parameters, accordingly. |
 | `WrappedVpcInternetGatewayId` | The Internet Gateway ID of the VPC. Required if the VPC has public internet access. If it is left empty, Combine assumes the VPC has no public internet access. |
-| `VpcCombineNetworkingBuild` | When `true` (the default), the template builds each Combine Subnet within the VPC. When `false`, you must build each subnet that Combine uses in advance and provide its ID (see below). |
-| `VpcCombineNetworkingBuildPublicAccess` | If the VPC has public internet access, set to `true` (the default) to build public internet access resources. |
-| `VpcCombineSubnetPublicA`, `VpcCombineSubnetPublicB` | Subnet IDs, required when `VpcCombineNetworkingBuild` is `false`. |
+| `VpcCombineNetworkingBuild` | When `true` (the default), the template builds each Combine Subnet within the VPC. When `false`, you must build each subnet that Combine uses in advance and provide its ID (see below), and Combine builds none of its public subnets or NAT Gateways, whatever `VpcCombineNetworkingBuildPublicAccess` is set to. Before Combine 3.15.2, also set `VpcCombineNetworkingBuildPublicAccess` to `false`. |
+| `VpcCombineNetworkingBuildPublicAccess` | If the VPC has public internet access, set to `true` (the default) to build public internet access resources. Ignored when `VpcCombineNetworkingBuild` is `false`. |
+| `VpcCombineSubnetPublicA`, `VpcCombineSubnetPublicB` | Subnet IDs for the internet-facing TAP and Endpoint Load Balancers. Required when the VPC has public internet access and `VpcCombineNetworkingBuild` or `VpcCombineNetworkingBuildPublicAccess` is `false`. |
 | `VpcCombineSubnetPrivateA`, `VpcCombineSubnetPrivateB` | Subnet IDs, required when `VpcCombineNetworkingBuild` is `false`. |
-| `VpcCombineSubnetPublicFirewallPublicA`, `VpcCombineSubnetPrivateFirewallPublicA`, `VpcCombineSubnetPrivateFirewallPrivateA` | Subnet IDs, required when `VpcCombineNetworkingBuild` is `false`. |
+| `VpcCombineSubnetPublicFirewallPublicA`, `VpcCombineSubnetPrivateFirewallPrivateA` | Subnet IDs, required when `VpcCombineNetworkingBuild` is `false`. See also [Private Combine Firewall Routing](#private-combine-firewall-routing). |
 | `VpcCombineSubnetPublicC` through `VpcCombineSubnetPublicF`, `VpcCombineSubnetPrivateC` through `VpcCombineSubnetPrivateF` | Ignore these. They only support a specific legacy customer deployment. |
+
+## Private Combine Firewall Routing
+
+Combine builds the NAT Gateway that carries the Private Combine Firewall's traffic out, and the routes that bring the replies back through it, only when it builds its public network resources. If you do not provide `WrappedVpcInternetGatewayId`, or you set `VpcCombineNetworkingBuild` or `VpcCombineNetworkingBuildPublicAccess` to `false`, provide these routes yourself:
+
+1. **Outbound:** route `0.0.0.0/0` from the Private Combine Firewall's subnet to your NAT Gateway or Transit Gateway. If Combine builds that subnet, set `CombineFirewallPrivateRouteTablePrivate` to a Route Table that has this route. Otherwise, add it to the Route Table of the subnet you provide as `VpcCombineSubnetPrivateFirewallPrivateA`.
+2. **Return:** in the Route Table of the subnet that holds your NAT Gateway or Transit Gateway attachment, replace the `local` route of each VPC CIDR Block with a route to the Private Combine Firewall's VPC Endpoint. Add the same route for any other CIDR Block whose traffic leaves through the Private Combine Firewall, such as a VPC attached through the Transit Gateway. Without these routes, replies skip the Private Combine Firewall, so it sees only one direction of each connection.
+
+The Private Combine Firewall's VPC Endpoint exists only after the Combine VPC Stack is created, so add the return routes after the Stack is created. The endpoint ID is the part after the `:` in the Stack Output `CombineFirewallPrivateEndpointIds`.
 
 ## Pitfalls
 
