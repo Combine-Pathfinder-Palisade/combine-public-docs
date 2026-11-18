@@ -26,6 +26,18 @@ As of Combine 3.14.7:
 | US GovCloud | `aws-us-gov` | 1.32, 1.33, 1.34, 1.35 | 1.35 |
 | EUSC | `aws-eusc` | 1.33, 1.34, 1.35 | 1.35 |
 
+## `kubectl` Version
+
+Combine proxies the `kubectl` streaming commands (`exec`, `cp`, `attach`, and `port-forward`) only over WebSockets. Use `kubectl` 1.31 or later, which sends all of them over WebSockets by default.
+
+Older versions of `kubectl` use SPDY instead: `kubectl` 1.29 and earlier for every streaming command, and `kubectl` 1.30 for `port-forward`. In Combine 3.15.2 and later, Combine refuses a SPDY request at once:
+
+```
+error: unable to upgrade connection: Combine supports Kubernetes streaming only over WebSockets. [Upgrade: SPDY/3.1] is not supported. Use [kubectl] 1.31 or later.
+```
+
+Earlier versions of Combine wait about 65 seconds before the command fails. Do not set `KUBECTL_REMOTE_COMMAND_WEBSOCKETS=false` or `KUBECTL_PORT_FORWARD_WEBSOCKETS=false`, which switch `kubectl` back to SPDY.
+
 ## Combine and OIDC
 
 Combine supports EKS OIDC integration without rewriting calls to the OIDC provider. The commercial URL that AWS provides works as-is.
