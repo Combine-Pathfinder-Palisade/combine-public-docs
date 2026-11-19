@@ -18,7 +18,7 @@ $ npm i
 $ npm run start
 ```
 
-This command regenerates the Combine API references for each Combine release line (`docs/combine-api-3-14/` from `openapi/openapi.yaml` and `docs/combine-api-3-15/` from `openapi/openapi-3.15.yaml`) and the CAP / SCAP API reference (`docs/cap-scap-api/`) from `openapi/cap-scap.yaml`, then starts a local development server on port 3001 and opens a browser window. Most changes are reflected live without restarting the server.
+This command regenerates the Combine API references for each Combine release line (`docs/combine-api-3-14/` from `static/openapi/combine-tap-api-3.14.yaml` and `docs/combine-api-3-15/` from `static/openapi/combine-tap-api-3.15.yaml`, which are also served for download at `/openapi/`) and the CAP / SCAP API reference (`docs/cap-scap-api/`) from `openapi/cap-scap.yaml`, then starts a local development server on port 3001 and opens a browser window. Most changes are reflected live without restarting the server.
 
 ### Build
 

@@ -88,7 +88,8 @@ const config: Config = {
         docsPluginId: 'default',
         config: {
           tap_3_14: {
-            specPath: 'openapi/openapi.yaml',
+            specPath: 'static/openapi/combine-tap-api-3.14.yaml',
+            downloadUrl: '/openapi/combine-tap-api-3.14.yaml',
             outputDir: 'docs/combine-api-3-14',
             hideSendButton: true,
             externalJsonProps: true,
@@ -98,7 +99,8 @@ const config: Config = {
             },
           } satisfies OpenApiPlugin.Options,
           tap_3_15: {
-            specPath: 'openapi/openapi-3.15.yaml',
+            specPath: 'static/openapi/combine-tap-api-3.15.yaml',
+            downloadUrl: '/openapi/combine-tap-api-3.15.yaml',
             outputDir: 'docs/combine-api-3-15',
             hideSendButton: true,
             externalJsonProps: true,
