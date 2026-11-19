@@ -6,16 +6,16 @@ title: Guidance
 
 # Combine EKS Support
 
-Combine supports integrating AWS EKS into an emulated Region. Because of limitations in the AWS EKS architecture, there are several issues to be aware of when you stand up your EKS Cluster.
+Combine supports AWS EKS Clusters in an emulated Region. This page covers the settings that every Cluster needs. Two more pages cover the rest:
 
-- To configure EKS managed add-ons, see [Combine EKS Add-Ons](2-guidance-add-ons.md).
-- To make Nodes and Pods read emulated values from IMDS (Combine 3.15.2 and later), see [Combine IMDS Proxy on EKS](3-guidance-imds-proxy.md).
-- For a complete working example of an EKS Cluster in Combine, see the [Combine EKS example repository](https://github.com/Combine-Pathfinder-Palisade/combine-examples/tree/main/combine-eks-example).
-- To run Combine itself on an EKS Cluster, see [Configure Combine on EKS](../../tutorials/operations/how-to-configure-combine-on-eks.md).
+- **[IMDS on EKS](3-guidance-imds.md)** covers how your Nodes join the Cluster and which AWS Service Endpoints they call, with or without the Combine IMDS Proxy. It also covers the Combine Firewall exemptions for EKS and the Cluster Autoscaler. Read it before you add Nodes.
+- **[Combine EKS Add-Ons](2-guidance-add-ons.md)** covers EKS managed add-ons.
+
+For a complete working example of an EKS Cluster in Combine, see the [Combine EKS example repository](https://github.com/Combine-Pathfinder-Palisade/combine-examples/tree/main/combine-eks-example). To run Combine itself on an EKS Cluster, see [Configure Combine on EKS](../../tutorials/operations/how-to-configure-combine-on-eks.md).
 
 ## Kubernetes Version
 
-Combine enforces which Kubernetes versions are supported in each emulated Partition. Combine rejects a `CreateCluster` or `UpdateClusterVersion` request with an unsupported `version` with an `InvalidParameterException` (`unsupported Kubernetes version <version>`) and raises an Alert Event. If a `CreateCluster` request does not specify a `version`, Combine sets it to the emulated Partition's default version.
+Combine enforces which Kubernetes versions each emulated Partition supports. Combine rejects a `CreateCluster` or `UpdateClusterVersion` request with an unsupported `version` with an `InvalidParameterException` (`unsupported Kubernetes version <version>`) and raises an Alert Event. If a `CreateCluster` request does not specify a `version`, Combine sets it to the emulated Partition's default version.
 
 As of Combine 3.14.7:
 
@@ -42,192 +42,50 @@ Earlier versions of Combine wait about 65 seconds before the command fails. Do n
 
 Combine supports EKS OIDC integration without rewriting calls to the OIDC provider. The commercial URL that AWS provides works as-is.
 
-You typically create the necessary IAM Roles with the `WLDEVELOPER` role. The OIDC provider itself must be created by the government customer on the high side. In Combine, you can simulate the government customer with the `WLCUSTOMER-IT` role (or an equivalent outside role).
+You typically create the IAM Roles with the `WLDEVELOPER` role. On the high side, the government customer creates the OIDC provider itself. In Combine, you can act as the government customer with the `WLCUSTOMER-IT` role (or an equivalent role outside Combine).
 
-`WLCUSTOMER-IT` grants permissions that are normally reserved for U.S. Government customers, so you can make those requests yourself. It operates outside the Combine emulation boundary.
+`WLCUSTOMER-IT` grants permissions that are normally reserved for U.S. Government customers, so that you can make those requests yourself. It operates outside the Combine emulation boundary.
 
 _NOTE: Use `WLCUSTOMER-IT` only to simulate actions reserved for the government customer. It is not intended for development._
 
 ## Security Group
 
-Combine proxies traffic from clients to your EKS Cluster, so it must have access to the EKS API.
+The Combine Kubernetes Proxy carries `kubectl` traffic to your Cluster's API endpoint, and kubelet traffic too if your Nodes run the Combine IMDS Proxy. So the Combine Endpoint Server must be able to reach the Cluster's API endpoint on port `443`.
 
-If your Cluster is open to all traffic within the VPC, no change is needed. Otherwise, at a minimum, give the Combine Endpoint Server Security Group access on your Cluster's Security Group. The Endpoint Server Security Group is named `<VpcName>-SG-Endpoints`, which is `Combine-SG-Endpoints` by default.
+If your Cluster is open to all traffic within the VPC, no change is needed. Otherwise, add a rule to the Cluster's Security Group that allows the Combine Endpoint Server Security Group. The Endpoint Server Security Group is named `<VpcName>-SG-Endpoints`, which is `Combine-SG-Endpoints` by default.
 
 ![EKS Cluster Security Group](/aws/eks-cluster-sg.png)
 
-In the screenshot, the **Source** of the first rule in the EKS Cluster's Security Group references the Security Group itself. Add a rule like the second rule, which references the Endpoint Server Security Group.
+In the screenshot, the **Source** of the first rule references the Cluster's Security Group itself. Add a rule like the second one, which references the Endpoint Server Security Group.
 
-## Nodes Joining the Cluster
+## Nodes and the Cluster Autoscaler
 
-A Node joins the Cluster in one of two ways.
-
-**Directly (the default).** The UserData that EKS generates for a managed node group points kubelet at the Cluster's own API endpoint, so kubelet connects to the Cluster without going through Combine. The Node also calls EC2 and pulls the EKS system images (VPC CNI, kube-proxy, and so on) from ECR in the commercial host Region. For these connections to work:
-
-- Enable private endpoint access on the Cluster. The Cluster's API endpoint then resolves to addresses inside your VPC, so kubelet's connection does not cross the Combine Firewall.
-- Make sure the `EnableAirgapAccessEKS` CloudFormation Parameter on the Combine VPC Stack (the `combine-vpc.yaml` template) is set to `true` (the default). It adds Combine Firewall exemptions for these endpoints in the host Region: the EC2, ECR, STS, and Elastic Load Balancing APIs; ECR registries, and the S3 bucket that ECR serves image layers from; EKS Cluster API endpoints and the EKS OIDC issuer; and the Amazon Linux 2023 package repository. To allow these exemptions only from your Nodes' subnets, set the `EnableAirgapAccessEKSForCidrBlocks` CloudFormation Parameter to their CIDR blocks. By default, the VPC CNI sends Pod traffic that leaves the VPC from the Node's address, so Pods on those Nodes can still use the exemptions. (See [Reference - clients.json](../../tutorials/operations-self-service-deployment/reference-clients-json.md).)
-
-**Through Combine (Combine 3.15.2 and later).** A Node that runs the Combine IMDS Proxy bootstraps against the emulated Partition, and its kubelet joins through the Combine Kubernetes Proxy. Its kubelet's connection then needs no Combine Firewall exemption. See [Combine IMDS Proxy on EKS](3-guidance-imds-proxy.md).
-
-If your Nodes cannot join the Cluster, check `journalctl -u kubelet` on a Node:
-
-- **Connection timeouts to the Cluster's API endpoint.** For a direct join, check private endpoint access and `EnableAirgapAccessEKS`. For a join through Combine, check the [Security Group](#security-group).
-- **`Unauthorized`.** kubelet presents a token signed for the emulated Region to the Cluster's own API endpoint. This happens when a Node runs the Combine IMDS Proxy but still joins directly. See [Why kubelet Must Use the Combine Kubernetes Proxy](3-guidance-imds-proxy.md#why-kubelet-must-use-the-combine-kubernetes-proxy).
-- **Image pull errors (`ErrImagePull`) for the EKS system images.** The Node cannot reach ECR in the host Region. Check `EnableAirgapAccessEKS`.
+How Nodes join the Cluster, the Combine Firewall exemptions for EKS, and the Cluster Autoscaler's Availability Zone exemption all depend on whether your Nodes run the Combine IMDS Proxy. See [IMDS on EKS](3-guidance-imds.md).
 
 ## AWS EBS CSI Driver
 
-### Recommended EBS CSI Driver Configuration
+Use version 1.33 or later of the [AWS EBS CSI Driver](https://github.com/kubernetes-sigs/aws-ebs-csi-driver). Newer versions, such as 1.53, work too. Then:
 
-Use a recent AWS EBS CSI Driver version and make sure IMDS is reachable from Pods:
-
-- Use version 1.33 or later of the [AWS EBS CSI Driver](https://github.com/kubernetes-sigs/aws-ebs-csi-driver). Newer versions, such as 1.53, are fine.
 - On the worker Nodes, enable IMDS and set the HTTP PUT response hop limit to `2` or more.
-- Give the CSI controller credentials through either:
-  - The Node IAM Role (IMDS)
-  - IRSA (if supported and configured)
-- Do not assume that an IMDS-related error is an emulation limitation.
+- Give the CSI controller credentials through the Node IAM Role (from IMDS) or through IRSA.
 
-With this configuration, you can provision dynamic EBS-backed PersistentVolumes in emulated EKS Clusters.
+With this configuration, you can provision dynamic EBS-backed PersistentVolumes in emulated EKS Clusters. If your Nodes run the Combine IMDS Proxy, also set the node plugin's metadata source (see [AWS EBS CSI Driver](3-guidance-imds.md#aws-ebs-csi-driver) in IMDS on EKS).
 
 ### PersistentVolumeClaims Stuck in `Pending`
 
-If PersistentVolumeClaims (PVCs) stay in `Pending` when you use the AWS EBS CSI Driver, Pods most likely cannot reach the EC2 Instance Metadata Service (IMDS), which prevents the EBS CSI Driver from obtaining credentials. The root cause is usually an incorrect IMDS hop limit.
+If PersistentVolumeClaims (PVCs) stay in `Pending`, Pods most likely cannot reach the EC2 Instance Metadata Service (IMDS), so the EBS CSI Driver cannot get credentials. You may see:
 
-When you deploy the AWS EBS CSI Driver in an EKS Cluster in an emulated Region, you may see these symptoms:
+- PVCs in `Pending` with messages like `Waiting for first consumer` or `ExternalProvisioning`
+- Errors such as `GetInstanceIdentityDocument` timing out, `failed to refresh cached credentials`, or `no EC2 IMDS role found`
 
-- PVCs remain in `Pending` with messages like:
-  - `Waiting for first consumer`
-  - `ExternalProvisioning`
-- Logs show errors such as:
-  - `GetInstanceIdentityDocument` timing out
-  - `failed to refresh cached credentials`
-  - `no EC2 IMDS role found`
+The cause is almost always an IMDS HTTP PUT response hop limit of `1`, not an emulation limitation. The hop limit is part of an EC2 Instance's metadata options, and it controls how many network hops a response from IMDS can take. A Pod needs a hop limit of at least `2`, because the response takes one more hop to reach the Pod's own network namespace. For more information, see [ModifyInstanceMetadataOptions](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_ModifyInstanceMetadataOptions.html#API_ModifyInstanceMetadataOptions_RequestParameters) in the Amazon EC2 API Reference.
 
-The misconfiguration is an IMDS HTTP PUT response hop limit of `1`. The HTTP PUT response hop limit is a setting in the instance metadata options of EC2 Instances, including EKS worker Nodes. It controls how many network hops a response from IMDS can take. Pods need a hop limit of at least `2` to reach IMDS from within the Node network namespace. For more information, see [ModifyInstanceMetadataOptions](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_ModifyInstanceMetadataOptions.html#API_ModifyInstanceMetadataOptions_RequestParameters) in the Amazon EC2 API Reference.
-
-Once you increase the hop limit to `2` on the worker Nodes, Pods should be able to access IMDS and retrieve credentials, and PVCs should be bound as expected.
-
-## Cluster Autoscaler (and Other Component) AZ/Topology Rewrites
-
-AWS Cluster Autoscaler matches each Kubernetes Node to an Auto Scaling Group instance by comparing the Node's `spec.providerID` (for example, `aws:///us-east-1c/i-0502afe1f135ab04c`) with a provider ID that it builds from the instance's Availability Zone and Instance ID. Combine rewrites the Availability Zone to ISO form in AWS API responses. The autoscaler Pod reads `spec.providerID` from the default Kubernetes domain name `kubernetes.default.svc`, and this API call does not go through Combine. The autoscaler compares the two values as strings, so they match only if both carry the same form of Availability Zone.
-
-A Node's `spec.providerID` takes its Availability Zone from IMDS when the Node registers:
-
-- **A Node without the Combine IMDS Proxy** registers with the commercial Availability Zone (`aws:///us-east-1c/...`). The autoscaler cannot match it unless you exempt the autoscaler from the Availability Zone rewrite (see [Exempting the Cluster Autoscaler](#exempting-the-cluster-autoscaler)).
-- **A Node with the Combine IMDS Proxy** (Combine 3.15.2 and later) registers with the ISO Availability Zone (`aws:///us-iso-east-1c/...`). The autoscaler matches it with Combine's default rewrite, so you do not need the exemption (see [Nodes That Run the Combine IMDS Proxy](#nodes-that-run-the-combine-imds-proxy)).
-
-### Reproducing the Mismatch
-
-These two commands reproduce the mismatch in a running Cluster:
-
-```bash
-# these two commands will reproduce the az/topology mismatch
-kubectl get nodes -o custom-columns='NAME:.metadata.name,PROVIDER:.spec.providerID'
-
-aws autoscaling describe-auto-scaling-groups \
-  --auto-scaling-group-names <asg> \
-  --query 'AutoScalingGroups[].[AutoScalingGroupName,Instances[].[InstanceId,AvailabilityZone]]'
-```
-
-In practice, they return values like these:
-
-```bash
-[ec2-user@ip-10-0-35-207 not-a-kubestronaut]$ kubectl get nodes -o custom-columns='NAME:.metadata.name,PROVIDER:.spec.providerID'
-NAME                          PROVIDER
-ip-10-0-36-249.ec2.internal   aws:///us-east-1c/i-0502afe1f135ab04c  💣 <-- bad cause commercial
-ip-10-0-40-23.ec2.internal    aws:///us-east-1c/i-05efda15056a6f86a
-[ec2-user@ip-10-0-35-207 not-a-kubestronaut]$ aws autoscaling describe-auto-scaling-groups \
-  --auto-scaling-group-names \
-    eks-combine-master-eks-ng-2-20260611172448052600000007-4ecf5bdb-87be-ad95-f634-b84acd83c998 \
-    eks-combine-master-eks-ng-2-20260611174930015800000007-6ccf5be6-d643-7366-b9e8-871ee0cadeda \
-  --query 'AutoScalingGroups[].[AutoScalingGroupName,Instances[].[InstanceId,AvailabilityZone]]'
-[
-  [
-    "eks-combine-master-eks-ng-2-20260611172448052600000007-4ecf5bdb-87be-ad95-f634-b84acd83c998",
-    [
-      [
-        "i-0502afe1f135ab04c",
-        "us-iso-east-1c" 💣 <-- bad cause iso
-      ]
-    ]
-  ],
-  [
-    "eks-combine-master-eks-ng-2-20260611174930015800000007-6ccf5be6-d643-7366-b9e8-871ee0cadeda",
-    [
-      [
-        "i-05efda15056a6f86a",
-        "us-iso-east-1c"
-      ]
-    ]
-  ]
-]
-```
-
-_NOTE: This example shows the default rewrite, not the autoscaler's traffic. The `aws autoscaling` command above runs under your own shell identity (your role and an `aws-cli/...` user-agent), which is never exempted. It shows what any non-exempt caller receives, and it keeps returning `us-iso-east-1c` even after you apply the fix below. Do not use it to validate the fix (see [Verifying the Fix](#verifying-the-fix)). The cluster-autoscaler itself never shells out to `aws`. It uses the AWS Go SDK under its own IRSA role and `cluster-autoscaler` user-agent, and only that traffic is exempted._
-
-### Exempting the Cluster Autoscaler
-
-Use this exemption only when none of the Nodes in the autoscaler's node groups run the Combine IMDS Proxy. To fix the mismatch, disable the autoscaling Availability Zone response Rewriter for the cluster-autoscaler. Its `DescribeAutoScalingGroups` responses then pass through with the commercial AZ intact and match the Node's `spec.providerID`.
-
-Set these two Configuration Values in the Combine Configuration table (see [Edit Combine Configuration Values](../../tutorials/operations/how-to-edit-combine-configuration.md)). The first scopes the exemption by the caller's assumed-role ARN, and the second by the caller's user-agent:
-
-```text
-combine.endpoints.aws.rewriter.response.autoscaling.availabilityZone.enable.roleArn.contains.except=cluster-autoscaler
-combine.endpoints.aws.rewriter.response.autoscaling.availabilityZone.enable.userAgents.except=cluster-autoscaler
-```
-
-Each value is a space-separated list, matched as a case-sensitive substring against the corresponding request attribute. A request skips the autoscaling AZ rewrite if either:
-
-- its assumed-role ARN contains a listed value (for example, `arn:aws:sts::<account>:assumed-role/PROJECT_cluster-autoscaler/...` contains `cluster-autoscaler`), or
-- its `user-agent` header contains a listed value (for example, `aws-sdk-go-v2/... cluster-autoscaler/1.35.0 ...` contains `cluster-autoscaler`).
-
-The two Configuration Values are independent. The role ARN condition matches the autoscaler's identity regardless of user-agent, and the user-agent condition matches the autoscaler's requests regardless of role. Both are true for the cluster-autoscaler, so setting both gives a redundant exemption.
-
-_NOTE: These Configuration Values are not the request-side `combine.endpoints.aws.rewriter.request.strictMode.userAgents.except`. That Configuration Value only controls request-side strict-mode validation and has no effect on whether response Availability Zones are rewritten. Combine still rewrites the response AZs of a request with the `cluster-autoscaler` user-agent to ISO form unless one of the `response.autoscaling.availabilityZone.enable.*.except` keys above matches._
-
-This targeted exemption gives up full, always-on emulation for the cluster-autoscaler so that it can map Nodes to their Auto Scaling Groups as expected. It is scoped to the autoscaler only. All other clients in the environment continue to receive emulated ISO Availability Zones.
-
-### Verifying the Fix
-
-Do not validate the fix with a manual `aws autoscaling` call. As noted above, that identity is never exempted and still returns `us-iso-east-1c`. Validate against the autoscaler's own Combine transaction instead.
-
-The autoscaler issues its tag-filtered `DescribeAutoScalingGroups` call automatically on its scan interval (about every 10 seconds), so a fresh transaction appears on its own. To force one immediately, restart the autoscaler:
-
-```bash
-kubectl rollout restart deployment/cluster-autoscaler -n kube-system
-```
-
-Then find that transaction in the Combine Log (see [View Combine Logs](../../tutorials/operations/how-to-view-combine-logs.md)). Confirm that it belongs to the autoscaler by its identity:
-
-- **user-agent** contains `cluster-autoscaler/...` (for example, `aws-sdk-go-v2/... cluster-autoscaler/1.35.0 ...`)
-- **roleArn** contains `...assumed-role/PROJECT_cluster-autoscaler/...`
-- **parameters** show `Action=DescribeAutoScalingGroups` with the `k8s.io/cluster-autoscaler/enabled` tag filter
-
-Two signals in that transaction confirm that the exemption applied:
-
-1. **The AZ Rewriter is skipped.** Combine logs a `Response Rewriting : Body : Applying Rewriter [...]` line for each Rewriter it runs. When the exemption works, `ApiResponseRewriterAutoscalingAvailabilityZone` is absent from that list. You still see `ApiResponseRewriterAutoscalingArn`, which is a separate Rewriter that is intentionally left enabled.
-2. **The client-facing response carries commercial AZs.** Compare the two response sections in the transaction: `responseProxy` (the raw reply from AWS) and `response` (what Combine returns to the autoscaler). With the exemption active, `response` shows `us-east-1c` / `us-east-1a,b,c`, matching `responseProxy`, instead of the rewritten `us-iso-east-1c`.
-
-If Combine logs at the `VERBOSE` level (see [Log Level](../../tutorials/operations/how-to-view-combine-logs.md#log-level)) and the `combine.endpoints.log.ignore.api.handlers.disabled` Configuration Value is `false` (it defaults to `true`), you also see `API Handler [...ApiResponseRewriterAutoscalingAvailabilityZone] is disabled for ...`. That line depends on logging configuration, so rely on the two signals above.
-
-If a fresh autoscaler transaction still shows `us-iso-east-1c` and the AZ Rewriter still appears in the `Applying Rewriter` list, the Configuration Value did not reach the Rewriter. Check that the value is set in the Combine Configuration table at the correct environment/partition scope and has propagated, rather than looking for a logic error.
-
-### Nodes That Run the Combine IMDS Proxy
-
-In Combine 3.15.2 and later, you can run the [Combine IMDS Proxy](3-guidance-imds-proxy.md) on the Nodes instead of exempting the autoscaler. Each Node then registers with the ISO Availability Zone in `spec.providerID`, which matches the ISO Availability Zone that Combine returns to the autoscaler. The autoscaler maps the Nodes to their Auto Scaling Groups and scales the node groups up and down with Combine's default rewrite.
-
-- **Do not set the exemption Configuration Values.** With the exemption, the autoscaler receives commercial Availability Zones again, and it can no longer match these Nodes. If the autoscaler already uses the exemption, see [Moving a Cluster From the Exemption](3-guidance-imds-proxy.md#moving-a-cluster-from-the-exemption).
-- **Replace Nodes that registered before you installed the Combine IMDS Proxy.** `spec.providerID` cannot change after a Node registers, so an existing Node keeps the commercial Availability Zone. Roll each node group (for example, update its launch template) so that every Node registers again with the Combine IMDS Proxy in place.
-- **Do not mix the two kinds of Node in the node groups the autoscaler manages.** The autoscaler can match only one form of Availability Zone. It reports every Node that has the other form as unregistered, it cannot scale those Nodes down, and it treats their instances as unregistered. The autoscaler removes instances that stay unregistered for longer than `--max-node-provision-time` (15 minutes by default).
-- **Set the autoscaler's Region explicitly.** If the autoscaler uses IRSA, EKS injects `AWS_REGION` set to the commercial host Region into its Pod. Set the emulated Region with the Helm chart's `awsRegion` value (or the `AWS_REGION` environment variable), and give the autoscaler the Combine Certificate Authority, so that its AWS API calls go through Combine.
-
-To check, look at the `cluster-autoscaler-status` ConfigMap in the `kube-system` namespace. Each node group should report its Nodes under `registered`, with `unregistered: 0`. The autoscaler's log reports a Node that it cannot match as `node is not present in aws: could not find instance`.
+Set the hop limit to `2` on the worker Nodes. Pods can then reach IMDS and get credentials, and the PVCs bind.
 
 ## Additional Considerations
 
-- We recommend that you provision your EKS Clusters with Infrastructure as Code (IaC). Clusters built by hand in the AWS Console ("ClickOps") have been shown to not be reliably reproducible, and the AWS Console offers options in the AWS Commercial and AWS GovCloud Partitions that are not present in the emulated Regions.
+- Provision your EKS Clusters with Infrastructure as Code (IaC). Clusters built by hand in the AWS Console ("ClickOps") are hard to reproduce reliably, and the AWS Console offers options in the AWS Commercial and AWS GovCloud Partitions that the emulated Regions do not have.
 - Combine does not fully support EKS Clusters provisioned with the [TerraForm AWS EKS module version 21.3.1](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/21.3.1). We anticipate supporting it soon.
-- You may need to modify the Helm Chart for some plugins, particularly for AWS Commercial ARNs, Regions, and Availability Zones.
+- Some Helm charts for plugins hard-code AWS Commercial ARNs, Regions, or Availability Zones. You may need to change them.
 - Your Combine Deployment must have Permissions Boundaries and IAM Self Service enabled. If you are not sure whether they are enabled on your account, [email the Combine Support Team](mailto:service-request@sequoiainc.com).
-- You must prefix every IAM Role that does EKS-related work (node groups, Pods, Clusters) with `PROJECT_`, as the customer's high side requirement specifies. Combine does not allow you to create roles that do not follow this format.
+- Prefix every IAM Role that does EKS-related work (node groups, Pods, Clusters) with `PROJECT_`, as the customer's high side requires. Combine does not let you create Roles that do not follow this format.

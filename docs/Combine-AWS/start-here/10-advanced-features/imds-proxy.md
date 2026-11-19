@@ -214,7 +214,7 @@ sudo docker run --rm IMAGE sh -c 'TOKEN=$(curl -s -X PUT http://169.254.169.254/
     sudo firewall-cmd --permanent --zone=docker --add-port=254/tcp
     ```
 
-- **Kubernetes and EKS.** An EKS worker Node needs Cluster changes and a `nodeadm` configuration file as well. Follow [Combine IMDS Proxy on EKS](../9-troubleshooting-eks/3-guidance-imds-proxy.md) instead of this page's install steps. For other Kubernetes worker Nodes, contact the Combine Support Team.
+- **Kubernetes and EKS.** An EKS worker Node needs Cluster changes and a `nodeadm` configuration file as well. Follow [With the Combine IMDS Proxy](../9-troubleshooting-eks/3-guidance-imds.md#with-the-combine-imds-proxy) in IMDS on EKS instead of this page's install steps. For other Kubernetes worker Nodes, contact the Combine Support Team.
 
 These Container setups bypass the EC2 Instance's `iptables` rules, so they reach the real IMDS and are not supported:
 

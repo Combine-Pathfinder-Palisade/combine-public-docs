@@ -16,4 +16,6 @@ Resource Role Masquerade is enabled by default. You can also turn it on or off i
 |---|---|---|
 | `combine.endpoints.aws.authorization.resourceRole.masquerade` | `true` | Enables or disables Resource Role Masquerade. |
 | `combine.endpoints.aws.authorization.resourceRole.masquerade.cacheTime` | `300000` (5 minutes) | How long, in milliseconds, to cache the resource role found for a source IP address, including a failed lookup or role assumption. |
+| `combine.endpoints.aws.authorization.resourceRole.masquerade.secondaryIpAddress` | `false` | When `true`, Combine also matches a source IP address to an EC2 Instance by its secondary private IP addresses and its IPv4 prefixes, so that an EKS Pod's calls are signed with the Node IAM Role instead of the Default Role. Combine 3.15.2 and later. |
+| `combine.endpoints.aws.authorization.resourceRole.masquerade.cacheTime.secondaryIpAddress` | `30000` (30 seconds) | How long, in milliseconds, to cache a resource role found by a secondary private IP address or an IPv4 prefix. It is shorter than `cacheTime` because the VPC CNI reassigns Pod IP addresses. Combine 3.15.2 and later. |
 | `combine.endpoints.aws.authorization.resourceRole.masquerade.log.violation` | `true` | When `true`, raises a **Could Not Assume Role** Alert Event when Combine finds a resource role but cannot assume it. |

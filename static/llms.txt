@@ -39,9 +39,9 @@ Workload development guidance for Combine AWS:
 ## EKS and Kubernetes
 
 - [Configure Combine on EKS](https://public-docs.sequoiacombine.io/Combine-AWS/tutorials/operations/how-to-configure-combine-on-eks): Customer walkthrough for building and running an EKS workload in Combine.
-- [EKS Guidance](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting-eks/guidance): Partition-specific Kubernetes versions, OIDC, security group requirements, and common storage and autoscaling issues.
-- [EKS Add-Ons](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting-eks/guidance-add-ons): Compatibility guidance for EKS add-ons.
-- [EKS and the IMDS Proxy](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting-eks/guidance-imds-proxy): EKS node setup and bootstrap requirements for Combine 3.15.2 and later.
+- [EKS Guidance](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting-eks/guidance): Settings every EKS Cluster needs: partition-specific Kubernetes versions, kubectl version, OIDC, the security group rule for Combine, and EBS CSI storage.
+- [EKS Add-Ons](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting-eks/guidance-add-ons): How nodes get EKS add-on images with or without the Combine EKS Add-On Rewriter, add-on prerequisites, and add-on compatibility.
+- [EKS and IMDS](https://public-docs.sequoiacombine.io/Combine-AWS/start-here/troubleshooting-eks/guidance-imds): How EKS nodes join the cluster with or without the Combine IMDS Proxy (3.15.2 and later): firewall exemptions, Cluster Autoscaler, node UserData, and a step-by-step boot sequence.
 
 ## Public APIs
 
